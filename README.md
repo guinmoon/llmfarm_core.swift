@@ -56,11 +56,13 @@ To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `P
 
 ## Usage
 
-### Swift library
+### [More examples in the examples directory.](/Examples)
 
-Example generate output from a prompt:
+### Example generate output from a prompt:
+
 
 ```swift
+import Foundation
 import llmfarm_core
 
 let maxOutputLength = 256
@@ -75,21 +77,16 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
     return false
 }
 
-let ai = AI(_modelPath: "orca-mini-3b.ggmlv3.q4_1.bin",_chatName: "chat")
+var input_text = "State the meaning of life."
+
+let ai = AI(_modelPath: "llama-2-7b.ggmlv3.q4_K_M.bin",_chatName: "chat")
 var params:ModelContextParams = .default
 params.use_metal = true
 
 try? ai.loadModel(ModelInference.LLamaInference,contextParams: params)
 ai.model.promptFormat = .LLaMa
 
-let output = try? ai.model.predict(prompt, mainCallback)
+let output = try? ai.model.predict(input_text, mainCallback)
 
-```
-
-
-#### Configuration
-
-
-```swift
 
 ```
