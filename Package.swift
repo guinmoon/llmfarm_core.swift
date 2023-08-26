@@ -42,7 +42,6 @@ let package = Package(
                 .unsafeFlags(["-pthread"]),
                 .unsafeFlags(["-w"]),    // ignore all warnings
                 //                .unsafeFlags(["-DGGML_QKK_64"]), // Dont forget to comment this if you dont use QKK_64
-                //                .unsafeFlags(["-DExternalMetal"]), // this flag for ModelTest with Metal
                 
             ],
             cxxSettings: [

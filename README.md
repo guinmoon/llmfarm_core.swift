@@ -47,6 +47,13 @@ dependencies: [
 ]
 ```
 
+## Build and Debug 
+
+To Debug `llmfarm_core` package, do not forget to comment `.unsafeFlags(["-Ofast"])` in `Package.swift`.
+Don't forget that the debug version is slower than the release version.
+
+To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `Package.swift`.
+
 ## Usage
 
 ### Swift library
