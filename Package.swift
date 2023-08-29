@@ -22,7 +22,7 @@ let package = Package(
               path: "Sources/llmfarm_core"),
         .target(
             name: "llmfarm_core_cpp",
-            sources: ["ggml.c","ggml_old.c","k_quants.c","ggml-alloc.c","ggml-metal.m","common.cpp","gpt_helpers.cpp","gpt_spm.cpp","package_helper.m",
+            sources: ["ggml.c","ggml_a1d0ea7.c","k_quants.c","ggml-alloc.c","ggml-metal.m","common.cpp","gpt_helpers.cpp","gpt_spm.cpp","package_helper.m",
                       "gptneox/gptneox.cpp","gpt2/gpt2.cpp","replit/replit.cpp","starcoder/starcoder.cpp", "llama/llama.cpp","rwkv/rwkv.cpp",
                       ],
             resources: [
