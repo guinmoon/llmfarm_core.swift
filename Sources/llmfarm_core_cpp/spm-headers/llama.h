@@ -1,7 +1,7 @@
 #ifndef LLAMA_H
 #define LLAMA_H
 
-#include "../ggml.h"
+#include "../ggml_dadbed9.h"
 #ifdef GGML_USE_CUBLAS
 #include "ggml-cuda.h"
 #define LLAMA_MAX_DEVICES GGML_CUDA_MAX_DEVICES

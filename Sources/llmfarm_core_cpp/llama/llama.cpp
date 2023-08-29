@@ -9,7 +9,7 @@
 #include "llama-util.h"
 #include "llama.h"
 
-#include "../ggml.h"
+#include "../ggml_dadbed9.h"
 #ifdef GGML_USE_CUBLAS
 #include "ggml-cuda.h"
 #elif defined(GGML_USE_CLBLAST)
