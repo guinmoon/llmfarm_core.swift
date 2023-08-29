@@ -33,25 +33,25 @@ struct starcoder_hparams:gpt_base_hparams {
 
 struct starcoder_layer {
     // normalization
-    struct ggml_tensor * ln_1_g;
-    struct ggml_tensor * ln_1_b;
+    struct ggml_dadbed9_tensor * ln_1_g;
+    struct ggml_dadbed9_tensor * ln_1_b;
 
-    struct ggml_tensor * ln_2_g;
-    struct ggml_tensor * ln_2_b;
+    struct ggml_dadbed9_tensor * ln_2_g;
+    struct ggml_dadbed9_tensor * ln_2_b;
 
     // attention
-    struct ggml_tensor * c_attn_attn_w;
-    struct ggml_tensor * c_attn_attn_b;
+    struct ggml_dadbed9_tensor * c_attn_attn_w;
+    struct ggml_dadbed9_tensor * c_attn_attn_b;
 
-    struct ggml_tensor * c_attn_proj_w;
-    struct ggml_tensor * c_attn_proj_b;
+    struct ggml_dadbed9_tensor * c_attn_proj_w;
+    struct ggml_dadbed9_tensor * c_attn_proj_b;
 
     // mlp
-    struct ggml_tensor * c_mlp_fc_w;
-    struct ggml_tensor * c_mlp_fc_b;
+    struct ggml_dadbed9_tensor * c_mlp_fc_w;
+    struct ggml_dadbed9_tensor * c_mlp_fc_b;
 
-    struct ggml_tensor * c_mlp_proj_w;
-    struct ggml_tensor * c_mlp_proj_b;
+    struct ggml_dadbed9_tensor * c_mlp_proj_w;
+    struct ggml_dadbed9_tensor * c_mlp_proj_b;
 };
 
 struct starcoder_model:gpt_base_model {
@@ -160,7 +160,7 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
     // for the big tensors, we have the option to store the data in 16-bit floats or quantized
     // in order to save memory and also to speed up the computation
-    ggml_type wtype = ggml_ftype_to_ggml_type((ggml_ftype) (model.hparams.ftype));
+    ggml_dadbed9_type wtype = ggml_dadbed9_ftype_to_ggml_dadbed9_type((ggml_dadbed9_ftype) (model.hparams.ftype));
     if (wtype == GGML_TYPE_COUNT) {
         fprintf(stderr, "%s: invalid model file '%s' (bad ftype value %d)\n",
                 __func__, fname.c_str(), model.hparams.ftype);
@@ -183,33 +183,33 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
         const int kv_heads = hparams.n_head; // 1 if MQA else hparams.n_head
         const int kv_dim   = kv_heads * head_dim;
 
-        ctx_size += n_embd*ggml_type_sizef(GGML_TYPE_F32); // ln_f_g
-        ctx_size += n_embd*ggml_type_sizef(GGML_TYPE_F32); // ln_f_b
+        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // ln_f_g
+        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // ln_f_b
 
-        ctx_size += n_vocab*n_embd*ggml_type_sizef(wtype);         // wte
-        ctx_size +=   n_ctx*n_embd*ggml_type_sizef(GGML_TYPE_F32); // wpe
-        ctx_size += n_vocab*n_embd*ggml_type_sizef(wtype);         // lm_head
+        ctx_size += n_vocab*n_embd*ggml_dadbed9_type_sizef(wtype);         // wte
+        ctx_size +=   n_ctx*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // wpe
+        ctx_size += n_vocab*n_embd*ggml_dadbed9_type_sizef(wtype);         // lm_head
 
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_1_g
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_1_b
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_1_g
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_1_b
 
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_2_g
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_2_b
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_2_g
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_2_b
 
-        ctx_size += n_layer*((n_embd + 2*kv_dim)*n_embd*ggml_type_sizef(wtype));         // c_attn_attn_w // TODO:
-        ctx_size += n_layer*(       (n_embd + 2*kv_dim)*ggml_type_sizef(GGML_TYPE_F32)); // c_attn_attn_b
+        ctx_size += n_layer*((n_embd + 2*kv_dim)*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_attn_attn_w // TODO:
+        ctx_size += n_layer*(       (n_embd + 2*kv_dim)*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_attn_attn_b
 
-        ctx_size += n_layer*(n_embd*n_embd*ggml_type_sizef(wtype));           // c_attn_proj_w
-        ctx_size += n_layer*(       n_embd*ggml_type_sizef(GGML_TYPE_F32));   // c_attn_proj_b
+        ctx_size += n_layer*(n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));           // c_attn_proj_w
+        ctx_size += n_layer*(       n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32));   // c_attn_proj_b
 
-        ctx_size += n_layer*(4*n_embd*n_embd*ggml_type_sizef(wtype));         // c_mlp_fc_w
-        ctx_size += n_layer*(       4*n_embd*ggml_type_sizef(GGML_TYPE_F32)); // c_mlp_fc_b
+        ctx_size += n_layer*(4*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_mlp_fc_w
+        ctx_size += n_layer*(       4*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_mlp_fc_b
 
-        ctx_size += n_layer*(4*n_embd*n_embd*ggml_type_sizef(wtype));         // c_mlp_proj_w
-        ctx_size += n_layer*(         n_embd*ggml_type_sizef(GGML_TYPE_F32)); // c_mlp_proj_b
+        ctx_size += n_layer*(4*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_mlp_proj_w
+        ctx_size += n_layer*(         n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_mlp_proj_b
 
-        ctx_size += n_ctx*n_layer*n_embd*ggml_type_sizef(GGML_TYPE_F32); // memory_k
-        ctx_size += n_ctx*n_layer*n_embd*ggml_type_sizef(GGML_TYPE_F32); // memory_v
+        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // memory_k
+        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // memory_v
 
         ctx_size += (6 + 12*n_layer)*512; // object overhead
 
@@ -218,15 +218,15 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
     // create the ggml context
     {
-        struct ggml_init_params params = {
+        struct ggml_dadbed9_init_params params = {
             /*.mem_size   =*/ ctx_size,
             /*.mem_buffer =*/ NULL,
             /*.no_alloc   =*/ false,
         };
 
-        model.ctx = ggml_init(params);
+        model.ctx = ggml_dadbed9_init(params);
         if (!model.ctx) {
-            fprintf(stderr, "%s: ggml_init() failed\n", __func__);
+            fprintf(stderr, "%s: ggml_dadbed9_init() failed\n", __func__);
             return false;
         }
     }
@@ -246,12 +246,12 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
         model.layers.resize(n_layer);
 
-        model.ln_f_g = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
-        model.ln_f_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+        model.ln_f_g = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+        model.ln_f_b = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
 
-        model.wte     = ggml_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
-        model.wpe     = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, n_ctx);
-        model.lm_head = ggml_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
+        model.wte     = ggml_dadbed9_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
+        model.wpe     = ggml_dadbed9_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, n_ctx);
+        model.lm_head = ggml_dadbed9_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
 
         // map by name
         model.tensors["model/ln_f/g"] = model.ln_f_g;
@@ -264,23 +264,23 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
         for (int i = 0; i < n_layer; ++i) {
             auto & layer = model.layers[i];
 
-            layer.ln_1_g        = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
-            layer.ln_1_b        = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_1_g        = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_1_b        = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
-            layer.ln_2_g        = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
-            layer.ln_2_b        = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_2_g        = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_2_b        = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
-            layer.c_attn_attn_w = ggml_new_tensor_2d(ctx, wtype,           n_embd, n_embd + 2*kv_dim);
-            layer.c_attn_attn_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd + 2*kv_dim);
+            layer.c_attn_attn_w = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, n_embd + 2*kv_dim);
+            layer.c_attn_attn_b = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd + 2*kv_dim);
 
-            layer.c_attn_proj_w = ggml_new_tensor_2d(ctx, wtype,           n_embd, n_embd);
-            layer.c_attn_proj_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.c_attn_proj_w = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, n_embd);
+            layer.c_attn_proj_b = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
-            layer.c_mlp_fc_w    = ggml_new_tensor_2d(ctx, wtype,           n_embd, 4*n_embd); //TODO: 4*n_embd = config.n_inner
-            layer.c_mlp_fc_b    = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 4*n_embd);
+            layer.c_mlp_fc_w    = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, 4*n_embd); //TODO: 4*n_embd = config.n_inner
+            layer.c_mlp_fc_b    = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 4*n_embd);
 
-            layer.c_mlp_proj_w  = ggml_new_tensor_2d(ctx, wtype,         4*n_embd, n_embd);
-            layer.c_mlp_proj_b  = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.c_mlp_proj_w  = ggml_dadbed9_new_tensor_2d(ctx, wtype,         4*n_embd, n_embd);
+            layer.c_mlp_proj_b  = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
             // map by name
             model.tensors["model/h" + std::to_string(i) + "/ln_1/g"]        = layer.ln_1_g;
@@ -314,10 +314,10 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
         const int n_mem      = n_layer*n_ctx;
         const int n_elements = n_embd*n_mem;
 
-        model.memory_k = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_elements);
-        model.memory_v = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_elements);
+        model.memory_k = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_elements);
+        model.memory_v = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_elements);
 
-        const size_t memory_size = ggml_nbytes(model.memory_k) + ggml_nbytes(model.memory_v);
+        const size_t memory_size = ggml_dadbed9_nbytes(model.memory_k) + ggml_dadbed9_nbytes(model.memory_v);
 
         printf("%s: memory size = %8.2f MB, n_mem = %d\n", __func__, memory_size/1024.0/1024.0, n_mem);
     }
@@ -362,37 +362,37 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
                         __func__, name.data(), (int) tensor->ne[0], (int) tensor->ne[1], ne[0], ne[1]);
                 return false;
             }
-            if (ggml_nelements(tensor) != nelements) {
+            if (ggml_dadbed9_nelements(tensor) != nelements) {
                 fprintf(stderr, "%s: tensor '%s' has wrong size in model file. got %d, expected %d\n",
-                        __func__, name.data(), (int) ggml_nelements(tensor), nelements);
+                        __func__, name.data(), (int) ggml_dadbed9_nelements(tensor), nelements);
                 return false;
             }
 
             // for debugging
             if (0) {
-                printf("%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.data(), ne[0], ne[1], ggml_type_name(ggml_type(ttype)), ggml_nbytes(tensor)/1024.0/1024.0, ggml_nbytes(tensor));
+                printf("%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.data(), ne[0], ne[1], ggml_dadbed9_type_name(ggml_dadbed9_type(ttype)), ggml_dadbed9_nbytes(tensor)/1024.0/1024.0, ggml_dadbed9_nbytes(tensor));
             }
 
-            const size_t bpe = ggml_type_size(ggml_type(ttype));
+            const size_t bpe = ggml_dadbed9_type_size(ggml_dadbed9_type(ttype));
 
-            if ((nelements*bpe)/ggml_blck_size(tensor->type) != ggml_nbytes(tensor)) {
+            if ((nelements*bpe)/ggml_dadbed9_blck_size(tensor->type) != ggml_dadbed9_nbytes(tensor)) {
                 fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %zu, expected %zu\n",
-                        __func__, name.data(), ggml_nbytes(tensor), nelements*bpe);
+                        __func__, name.data(), ggml_dadbed9_nbytes(tensor), nelements*bpe);
                 return false;
             }
 
-            fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
+            fin.read(reinterpret_cast<char *>(tensor->data), ggml_dadbed9_nbytes(tensor));
 
             // GPT-2 models share the WTE tensor as the LM head
             if (name == "model/wte" && has_lm_head == false) {
-                memcpy(model.lm_head->data, tensor->data, ggml_nbytes(tensor));
+                memcpy(model.lm_head->data, tensor->data, ggml_dadbed9_nbytes(tensor));
             }
 
             if (name == "model/lm_head") {
                 has_lm_head = true;
             }
 
-            total_size += ggml_nbytes(tensor);
+            total_size += ggml_dadbed9_nbytes(tensor);
         }
 
         printf("%s: model size  = %8.2f MB\n", __func__, total_size/1024.0/1024.0);
@@ -452,46 +452,46 @@ bool starcoder_eval(
         }
     }
 
-    struct ggml_init_params params = {
+    struct ggml_dadbed9_init_params params = {
         /*.mem_size   =*/ buf_size,
         /*.mem_buffer =*/ buf,
         /*.no_alloc   =*/ false,
     };
 
-    struct ggml_context * ctx0 = ggml_init(params);
-    struct ggml_cgraph gf = {};
+    struct ggml_dadbed9_context * ctx0 = ggml_dadbed9_init(params);
+    struct ggml_dadbed9_cgraph gf = {};
 
-    struct ggml_tensor * embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
-    memcpy(embd->data, embd_inp.data(), N*ggml_element_size(embd));
+    struct ggml_dadbed9_tensor * embd = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    memcpy(embd->data, embd_inp.data(), N*ggml_dadbed9_element_size(embd));
 
-    struct ggml_tensor * position = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    struct ggml_dadbed9_tensor * position = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
     for (int i = 0; i < N; ++i) {
         ((int32_t *) position->data)[i] = n_past + i;
     }
 
     // wte + wpe
-    struct ggml_tensor * inpL =
-        ggml_add(ctx0,
-                ggml_get_rows(ctx0, model.wte, embd),
-                ggml_get_rows(ctx0, model.wpe, position));
+    struct ggml_dadbed9_tensor * inpL =
+        ggml_dadbed9_add(ctx0,
+                ggml_dadbed9_get_rows(ctx0, model.wte, embd),
+                ggml_dadbed9_get_rows(ctx0, model.wpe, position));
 
     for (int il = 0; il < n_layer; ++il) {
-        struct ggml_tensor * cur;
+        struct ggml_dadbed9_tensor * cur;
 
-        ggml_set_scratch(ctx0, { 0, scr0_size, scr0, });
+        ggml_dadbed9_set_scratch(ctx0, { 0, scr0_size, scr0, });
 
         // norm
         {
             // [ 768, N]
-            cur = ggml_norm(ctx0, inpL);
+            cur = ggml_dadbed9_norm(ctx0, inpL);
 
             // cur = ln_1_g*cur + ln_1_b
             // [ 768, N]
-            cur = ggml_add(ctx0,
-                    ggml_mul(ctx0,
-                        ggml_repeat(ctx0, model.layers[il].ln_1_g, cur),
+            cur = ggml_dadbed9_add(ctx0,
+                    ggml_dadbed9_mul(ctx0,
+                        ggml_dadbed9_repeat(ctx0, model.layers[il].ln_1_g, cur),
                         cur),
-                    ggml_repeat(ctx0, model.layers[il].ln_1_b, cur));
+                    ggml_dadbed9_repeat(ctx0, model.layers[il].ln_1_b, cur));
         }
 
         // attn
@@ -503,104 +503,104 @@ bool starcoder_eval(
         // cur = attn_w*cur + attn_b
         // [2304, N]
         {
-            cur = ggml_mul_mat(ctx0,
+            cur = ggml_dadbed9_mul_mat(ctx0,
                     model.layers[il].c_attn_attn_w,
                     cur);
 
-            cur = ggml_add(ctx0,
-                    ggml_repeat(ctx0, model.layers[il].c_attn_attn_b, cur),
+            cur = ggml_dadbed9_add(ctx0,
+                    ggml_dadbed9_repeat(ctx0, model.layers[il].c_attn_attn_b, cur),
                     cur);
         }
 
         // self-attention
         {
-            struct ggml_tensor * Qcur = ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 0*sizeof(float)*n_embd);
-            struct ggml_tensor * Kcur = ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 1*sizeof(float)*n_embd);
-            struct ggml_tensor * Vcur = ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 2*sizeof(float)*n_embd);
+            struct ggml_dadbed9_tensor * Qcur = ggml_dadbed9_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 0*sizeof(float)*n_embd);
+            struct ggml_dadbed9_tensor * Kcur = ggml_dadbed9_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 1*sizeof(float)*n_embd);
+            struct ggml_dadbed9_tensor * Vcur = ggml_dadbed9_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 2*sizeof(float)*n_embd);
 
             // store key and value to memory
             if (N >= 1) {
-                struct ggml_tensor * k = ggml_view_1d(ctx0, model.memory_k, N*n_embd, (ggml_element_size(model.memory_k)*n_embd)*(il*n_ctx + n_past));
-                struct ggml_tensor * v = ggml_view_1d(ctx0, model.memory_v, N*n_embd, (ggml_element_size(model.memory_v)*n_embd)*(il*n_ctx + n_past));
+                struct ggml_dadbed9_tensor * k = ggml_dadbed9_view_1d(ctx0, model.memory_k, N*n_embd, (ggml_dadbed9_element_size(model.memory_k)*n_embd)*(il*n_ctx + n_past));
+                struct ggml_dadbed9_tensor * v = ggml_dadbed9_view_1d(ctx0, model.memory_v, N*n_embd, (ggml_dadbed9_element_size(model.memory_v)*n_embd)*(il*n_ctx + n_past));
 
-                ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Kcur, k));
-                ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Vcur, v));
+                ggml_dadbed9_build_forward_expand(&gf, ggml_dadbed9_cpy(ctx0, Kcur, k));
+                ggml_dadbed9_build_forward_expand(&gf, ggml_dadbed9_cpy(ctx0, Vcur, v));
             }
 
             // Q = Qcur.contiguous().view(n_embd/n_head, n_head, N).permute(0, 2, 1, 3)
             // [64, N, 12]
-            struct ggml_tensor * Q =
-                ggml_permute(ctx0,
-                        ggml_cpy(ctx0,
+            struct ggml_dadbed9_tensor * Q =
+                ggml_dadbed9_permute(ctx0,
+                        ggml_dadbed9_cpy(ctx0,
                             Qcur,
-                            ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, n_embd/n_head, n_head, N)),
+                            ggml_dadbed9_new_tensor_3d(ctx0, GGML_TYPE_F32, n_embd/n_head, n_head, N)),
                         0, 2, 1, 3);
 
             // K = Kmem.view(n_embd/n_head, n_head, n_past + N).permute(0, 2, 1, 3)
             // [64, n_past + N, 12]
-            struct ggml_tensor * K =
-                ggml_permute(ctx0,
-                        ggml_reshape_3d(ctx0,
-                            ggml_view_1d(ctx0, model.memory_k, (n_past + N)*n_embd, il*n_ctx*ggml_element_size(model.memory_k)*n_embd),
+            struct ggml_dadbed9_tensor * K =
+                ggml_dadbed9_permute(ctx0,
+                        ggml_dadbed9_reshape_3d(ctx0,
+                            ggml_dadbed9_view_1d(ctx0, model.memory_k, (n_past + N)*n_embd, il*n_ctx*ggml_dadbed9_element_size(model.memory_k)*n_embd),
                             n_embd/n_head, n_head, n_past + N),
                         0, 2, 1, 3); //TODO: need to be tiled
 
             // GG: flash attention
-            //struct ggml_tensor * V =
-            //    ggml_cpy(ctx0,
-            //            ggml_permute(ctx0,
-            //                ggml_reshape_3d(ctx0,
-            //                    ggml_view_1d(ctx0, model.memory_v, (n_past + N)*n_embd, il*n_ctx*ggml_element_size(model.memory_v)*n_embd),
+            //struct ggml_dadbed9_tensor * V =
+            //    ggml_dadbed9_cpy(ctx0,
+            //            ggml_dadbed9_permute(ctx0,
+            //                ggml_dadbed9_reshape_3d(ctx0,
+            //                    ggml_dadbed9_view_1d(ctx0, model.memory_v, (n_past + N)*n_embd, il*n_ctx*ggml_dadbed9_element_size(model.memory_v)*n_embd),
             //                    n_embd/n_head, n_head, n_past + N),
             //                1, 2, 0, 3),
-            //            ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, n_past + N, n_embd/n_head, n_head));
+            //            ggml_dadbed9_new_tensor_3d(ctx0, GGML_TYPE_F32, n_past + N, n_embd/n_head, n_head));
 
-            //struct ggml_tensor * KQV = ggml_flash_attn(ctx0, Q, K, V, true);
+            //struct ggml_dadbed9_tensor * KQV = ggml_dadbed9_flash_attn(ctx0, Q, K, V, true);
 
             // K * Q
             // [n_past + N, N, 12]
-            struct ggml_tensor * KQ = ggml_mul_mat(ctx0, K, Q); //TODO: check if it broadcasts
+            struct ggml_dadbed9_tensor * KQ = ggml_dadbed9_mul_mat(ctx0, K, Q); //TODO: check if it broadcasts
 
             // KQ_scaled = KQ / sqrt(n_embd/n_head)
             // [n_past + N, N, 12]
-            struct ggml_tensor * KQ_scaled =
-                ggml_scale_inplace(ctx0,
+            struct ggml_dadbed9_tensor * KQ_scaled =
+                ggml_dadbed9_scale_inplace(ctx0,
                         KQ,
-                        ggml_new_f32(ctx0, 1.0f/sqrt(float(n_embd)/n_head))
+                        ggml_dadbed9_new_f32(ctx0, 1.0f/sqrt(float(n_embd)/n_head))
                         );
 
             // KQ_masked = mask_past(KQ_scaled)
             // [n_past + N, N, 12]
-            struct ggml_tensor * KQ_masked = ggml_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
+            struct ggml_dadbed9_tensor * KQ_masked = ggml_dadbed9_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
 
             // KQ = soft_max(KQ_masked)
             // [n_past + N, N, 12]
-            struct ggml_tensor * KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_masked);
+            struct ggml_dadbed9_tensor * KQ_soft_max = ggml_dadbed9_soft_max_inplace(ctx0, KQ_masked);
 
             // V_trans = Vmem.view(n_embd/n_head, n_head, n_past + N).permute(1, 2, 0, 3).contiguous()
             // [n_past + N, 64, 12]
-            struct ggml_tensor * V_trans =
-                ggml_cpy(ctx0,
-                        ggml_permute(ctx0,
-                            ggml_reshape_3d(ctx0,
-                                ggml_view_1d(ctx0, model.memory_v, (n_past + N)*n_embd, il*n_ctx*ggml_element_size(model.memory_v)*n_embd),
+            struct ggml_dadbed9_tensor * V_trans =
+                ggml_dadbed9_cpy(ctx0,
+                        ggml_dadbed9_permute(ctx0,
+                            ggml_dadbed9_reshape_3d(ctx0,
+                                ggml_dadbed9_view_1d(ctx0, model.memory_v, (n_past + N)*n_embd, il*n_ctx*ggml_dadbed9_element_size(model.memory_v)*n_embd),
                                 n_embd/n_head, n_head, n_past + N),
                             1, 2, 0, 3),
-                        ggml_new_tensor_3d(ctx0, model.memory_v->type, n_past + N, n_embd/n_head, n_head));
+                        ggml_dadbed9_new_tensor_3d(ctx0, model.memory_v->type, n_past + N, n_embd/n_head, n_head));
 
             // KQV = transpose(V) * KQ_soft_max
             // [64, N, 12]
-            struct ggml_tensor * KQV = ggml_mul_mat(ctx0, V_trans, KQ_soft_max);
+            struct ggml_dadbed9_tensor * KQV = ggml_dadbed9_mul_mat(ctx0, V_trans, KQ_soft_max);
 
             // KQV_merged = KQV.permute(0, 2, 1, 3)
             // [64, 12, N]
-            struct ggml_tensor * KQV_merged = ggml_permute(ctx0, KQV, 0, 2, 1, 3);
+            struct ggml_dadbed9_tensor * KQV_merged = ggml_dadbed9_permute(ctx0, KQV, 0, 2, 1, 3);
 
             // cur = KQV_merged.contiguous().view(n_embd, N)
             // [768, N]
-            cur = ggml_cpy(ctx0,
+            cur = ggml_dadbed9_cpy(ctx0,
                     KQV_merged,
-                    ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
+                    ggml_dadbed9_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
         }
 
         // projection
@@ -612,35 +612,35 @@ bool starcoder_eval(
         // cur = proj_w*cur + proj_b
         // [768, N]
         {
-            cur = ggml_mul_mat(ctx0,
+            cur = ggml_dadbed9_mul_mat(ctx0,
                     model.layers[il].c_attn_proj_w,
                     cur);
 
-            cur = ggml_add(ctx0,
-                    ggml_repeat(ctx0, model.layers[il].c_attn_proj_b, cur),
+            cur = ggml_dadbed9_add(ctx0,
+                    ggml_dadbed9_repeat(ctx0, model.layers[il].c_attn_proj_b, cur),
                     cur);
         }
 
         // add the input
-        cur = ggml_add(ctx0, cur, inpL);
+        cur = ggml_dadbed9_add(ctx0, cur, inpL);
 
-        struct ggml_tensor * inpFF = cur;
+        struct ggml_dadbed9_tensor * inpFF = cur;
 
-        ggml_set_scratch(ctx0, { 0, scr1_size, scr1, });
+        ggml_dadbed9_set_scratch(ctx0, { 0, scr1_size, scr1, });
 
         // feed-forward network
         {
             // norm
             {
-                cur = ggml_norm(ctx0, inpFF);
+                cur = ggml_dadbed9_norm(ctx0, inpFF);
 
                 // cur = ln_2_g*cur + ln_2_b
                 // [ 768, N]
-                cur = ggml_add(ctx0,
-                        ggml_mul(ctx0,
-                            ggml_repeat(ctx0, model.layers[il].ln_2_g, cur),
+                cur = ggml_dadbed9_add(ctx0,
+                        ggml_dadbed9_mul(ctx0,
+                            ggml_dadbed9_repeat(ctx0, model.layers[il].ln_2_g, cur),
                             cur),
-                        ggml_repeat(ctx0, model.layers[il].ln_2_b, cur));
+                        ggml_dadbed9_repeat(ctx0, model.layers[il].ln_2_b, cur));
             }
 
             // fully connected
@@ -651,17 +651,17 @@ bool starcoder_eval(
             //
             // cur = fc_w*cur + fc_b
             // [3072, N]
-            cur = ggml_mul_mat(ctx0,
+            cur = ggml_dadbed9_mul_mat(ctx0,
                     model.layers[il].c_mlp_fc_w,
                     cur);
 
-            cur = ggml_add(ctx0,
-                    ggml_repeat(ctx0, model.layers[il].c_mlp_fc_b, cur),
+            cur = ggml_dadbed9_add(ctx0,
+                    ggml_dadbed9_repeat(ctx0, model.layers[il].c_mlp_fc_b, cur),
                     cur);
 
             // GELU activation
             // [3072, N]
-            cur = ggml_gelu(ctx0, cur);
+            cur = ggml_dadbed9_gelu(ctx0, cur);
 
             // projection
             // [ 768, 3072] - model.layers[il].c_mlp_proj_w
@@ -671,74 +671,74 @@ bool starcoder_eval(
             //
             // cur = proj_w*cur + proj_b
             // [768, N]
-            cur = ggml_mul_mat(ctx0,
+            cur = ggml_dadbed9_mul_mat(ctx0,
                     model.layers[il].c_mlp_proj_w,
                     cur);
 
-            cur = ggml_add(ctx0,
-                    ggml_repeat(ctx0, model.layers[il].c_mlp_proj_b, cur),
+            cur = ggml_dadbed9_add(ctx0,
+                    ggml_dadbed9_repeat(ctx0, model.layers[il].c_mlp_proj_b, cur),
                     cur);
         }
 
         // input for next layer
-        inpL = ggml_add(ctx0, cur, inpFF);
+        inpL = ggml_dadbed9_add(ctx0, cur, inpFF);
     }
 
-    ggml_set_scratch(ctx0, { 0, scr0_size, scr0, });
+    ggml_dadbed9_set_scratch(ctx0, { 0, scr0_size, scr0, });
 
     // norm
     {
         // [ 768, N]
-        inpL = ggml_norm(ctx0, inpL);
+        inpL = ggml_dadbed9_norm(ctx0, inpL);
 
         // inpL = ln_f_g*inpL + ln_f_b
         // [ 768, N]
-        inpL = ggml_add(ctx0,
-                ggml_mul(ctx0,
-                    ggml_repeat(ctx0, model.ln_f_g, inpL),
+        inpL = ggml_dadbed9_add(ctx0,
+                ggml_dadbed9_mul(ctx0,
+                    ggml_dadbed9_repeat(ctx0, model.ln_f_g, inpL),
                     inpL),
-                ggml_repeat(ctx0, model.ln_f_b, inpL));
+                ggml_dadbed9_repeat(ctx0, model.ln_f_b, inpL));
     }
 
-    ggml_set_scratch(ctx0, { 0, 0, nullptr, });
+    ggml_dadbed9_set_scratch(ctx0, { 0, 0, nullptr, });
 
     // inpL = WTE * inpL
     // [ 768, 50257] - model.lm_head
     // [ 768, N]     - inpL
-    inpL = ggml_mul_mat(ctx0, model.lm_head, inpL);
+    inpL = ggml_dadbed9_mul_mat(ctx0, model.lm_head, inpL);
 
     // logits -> probs
-    //inpL = ggml_soft_max_inplace(ctx0, inpL);
+    //inpL = ggml_dadbed9_soft_max_inplace(ctx0, inpL);
 
     // run the computation
-    ggml_build_forward_expand(&gf, inpL);
-    ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
+    ggml_dadbed9_build_forward_expand(&gf, inpL);
+    ggml_dadbed9_graph_compute_with_ctx(ctx0, &gf, n_threads);
 
     //if (n_past%100 == 0) {
-    //    ggml_graph_print   (&gf);
-    //    ggml_graph_dump_dot(&gf, NULL, "gpt-2.dot");
+    //    ggml_dadbed9_graph_print   (&gf);
+    //    ggml_dadbed9_graph_dump_dot(&gf, NULL, "gpt-2.dot");
     //}
 
     //embd_w.resize(n_vocab*N);
-    //memcpy(embd_w.data(), ggml_get_data(inpL), sizeof(float)*n_vocab*N);
+    //memcpy(embd_w.data(), ggml_dadbed9_get_data(inpL), sizeof(float)*n_vocab*N);
 
     // return result just for the last token
     embd_w.resize(n_vocab);
-    memcpy(embd_w.data(), (float *) ggml_get_data(inpL) + (n_vocab*(N-1)), sizeof(float)*n_vocab);
+    memcpy(embd_w.data(), (float *) ggml_dadbed9_get_data(inpL) + (n_vocab*(N-1)), sizeof(float)*n_vocab);
 
     if (mem_per_token == 0) {
-        mem_per_token = ggml_used_mem(ctx0)/N;
+        mem_per_token = ggml_dadbed9_used_mem(ctx0)/N;
     }
-    //printf("used_mem = %zu MB\n", ggml_used_mem(ctx0)/(1024*1024));
+    //printf("used_mem = %zu MB\n", ggml_dadbed9_used_mem(ctx0)/(1024*1024));
 
-    ggml_free(ctx0);
+    ggml_dadbed9_free(ctx0);
 
     return true;
 }
 
 
 struct starcoder_context * starcoder_init_from_file(const char * path_model, struct gpt_context_params   params) {
-    ggml_time_init();
+    ggml_dadbed9_time_init();
 
     starcoder_context * ctx = new starcoder_context;
 
@@ -749,7 +749,7 @@ struct starcoder_context * starcoder_init_from_file(const char * path_model, str
     ctx->rng = std::mt19937(params.seed);
     ctx->logits_all = params.logits_all;
 
-    ggml_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
+    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
     
     if (!starcoder_model_load(path_model, ctx->model, ctx->vocab)) {
         fprintf(stderr, "%s: failed to load model\n", __func__);
@@ -767,7 +767,7 @@ struct starcoder_context * starcoder_init_from_file(const char * path_model, str
 //        }
 //
 //        {
-//            const size_t memory_size = ggml_nbytes(ctx->model.kv_self.k) + ggml_nbytes(ctx->model.kv_self.v);
+//            const size_t memory_size = ggml_dadbed9_nbytes(ctx->model.kv_self.k) + ggml_dadbed9_nbytes(ctx->model.kv_self.v);
 //            fprintf(stderr, "%s: kv self size  = %7.2f MiB\n", __func__, memory_size / 1024.0 / 1024.0);
 //        }
 
@@ -824,7 +824,7 @@ int starcoder_eval(
     }
     // get a more accurate load time, upon first eval
     if (!ctx->has_evaluated_once) {
-        ctx->t_load_us = ggml_time_us() - ctx->t_start_us;
+        ctx->t_load_us = ggml_dadbed9_time_us() - ctx->t_start_us;
         ctx->has_evaluated_once = true;
     }
     return 0;
@@ -832,9 +832,9 @@ int starcoder_eval(
 
 //
 //int test_run(int argc, char ** argv) {
-//    ggml_time_init();
+//    ggml_dadbed9_time_init();
 //
-//    const int64_t t_main_start_us = ggml_time_us();
+//    const int64_t t_main_start_us = ggml_dadbed9_time_us();
 //
 //    gpt_params params;
 //    params.model = "models/gpt-2-117M/ggml-model.bin";
@@ -861,14 +861,14 @@ int starcoder_eval(
 //
 //    // load the model
 //    {
-//        const int64_t t_start_us = ggml_time_us();
+//        const int64_t t_start_us = ggml_dadbed9_time_us();
 //
 //        if (!starcoder_model_load(params.model, model, vocab)) {
 //            fprintf(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
 //            return 1;
 //        }
 //
-//        t_load_us = ggml_time_us() - t_start_us;
+//        t_load_us = ggml_dadbed9_time_us() - t_start_us;
 //
 //        test_gpt_tokenizer(vocab, params.token_test);
 //    }
@@ -930,14 +930,14 @@ int starcoder_eval(
 //    for (int i = embd.size(); i < embd_inp.size() + params.n_predict; i++) {
 //        // predict
 //        if (embd.size() > 0) {
-//            const int64_t t_start_us = ggml_time_us();
+//            const int64_t t_start_us = ggml_dadbed9_time_us();
 //
 //            if (!starcoder_eval(model, params.n_threads, n_past, embd, logits, mem_per_token)) {
 //                printf("Failed to predict\n");
 //                return 1;
 //            }
 //
-//            t_predict_us += ggml_time_us() - t_start_us;
+//            t_predict_us += ggml_dadbed9_time_us() - t_start_us;
 //        }
 //
 //        n_past += embd.size();
@@ -954,10 +954,10 @@ int starcoder_eval(
 //            gpt_vocab::id id = 0;
 //
 //            {
-//                const int64_t t_start_sample_us = ggml_time_us();
+//                const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 //
 //                id = gpt_sample_top_k_top_p_repeat(vocab, logits.data() + (logits.size() - n_vocab), last_n_tokens.data(), last_n_tokens.size(), top_k, top_p, temp, params.repeat_last_n, params.repeat_penalty, rng);
-//                t_sample_us += ggml_time_us() - t_start_sample_us;
+//                t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
 //            }
 //
 //            // add it to the context
@@ -1002,7 +1002,7 @@ int starcoder_eval(
 //
 //    // report timing
 //    {
-//        const int64_t t_main_end_us = ggml_time_us();
+//        const int64_t t_main_end_us = ggml_dadbed9_time_us();
 //
 //        printf("\n\n");
 //        printf("%s: mem per token = %8zu bytes\n", __func__, mem_per_token);
@@ -1012,7 +1012,7 @@ int starcoder_eval(
 //        printf("%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
 //    }
 //
-//    ggml_free(model.ctx);
+//    ggml_dadbed9_free(model.ctx);
 //
 //    return 0;
 //}

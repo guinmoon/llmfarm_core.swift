@@ -39,26 +39,26 @@
 
 struct gpt_neox_layer {
     // pre normalization
-    struct ggml_tensor * ln_1_g;
-    struct ggml_tensor * ln_1_b;
+    struct ggml_dadbed9_tensor * ln_1_g;
+    struct ggml_dadbed9_tensor * ln_1_b;
 
     // attention
-    struct ggml_tensor * c_attn_attn_w;
-    struct ggml_tensor * c_attn_attn_b;
+    struct ggml_dadbed9_tensor * c_attn_attn_w;
+    struct ggml_dadbed9_tensor * c_attn_attn_b;
 
-    struct ggml_tensor * c_attn_proj_w;
-    struct ggml_tensor * c_attn_proj_b;
+    struct ggml_dadbed9_tensor * c_attn_proj_w;
+    struct ggml_dadbed9_tensor * c_attn_proj_b;
 
     // post normalization
-    struct ggml_tensor * ln_2_g;
-    struct ggml_tensor * ln_2_b;
+    struct ggml_dadbed9_tensor * ln_2_g;
+    struct ggml_dadbed9_tensor * ln_2_b;
 
     // ff
-    struct ggml_tensor * c_mlp_fc_w;
-    struct ggml_tensor * c_mlp_fc_b;
+    struct ggml_dadbed9_tensor * c_mlp_fc_w;
+    struct ggml_dadbed9_tensor * c_mlp_fc_b;
 
-    struct ggml_tensor * c_mlp_proj_w;
-    struct ggml_tensor * c_mlp_proj_b;
+    struct ggml_dadbed9_tensor * c_mlp_proj_w;
+    struct ggml_dadbed9_tensor * c_mlp_proj_b;
 };
 
 struct gpt_neox_hparams:gpt_base_hparams {
@@ -74,8 +74,8 @@ struct gpt_neox_hparams:gpt_base_hparams {
 
 struct gpt_neox_model:gpt_base_model {
     gpt_neox_hparams hparams;
-    struct ggml_tensor * lmh_g; // language model head
-    //struct ggml_tensor * lmh_b; // language model bias
+    struct ggml_dadbed9_tensor * lmh_g; // language model head
+    //struct ggml_dadbed9_tensor * lmh_b; // language model bias
     std::vector<gpt_neox_layer> layers;
 };
 
@@ -174,7 +174,7 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 
     // for the big tensors, we have the option to store the data in 16-bit floats or quantized
     // in order to save memory and also to speed up the computation
-    ggml_type wtype = ggml_ftype_to_ggml_type((ggml_ftype) (model.hparams.ftype));
+    ggml_dadbed9_type wtype = ggml_dadbed9_ftype_to_ggml_dadbed9_type((ggml_dadbed9_ftype) (model.hparams.ftype));
     if (wtype == GGML_TYPE_COUNT) {
         fprintf(stderr, "%s: invalid model file '%s' (bad ftype value %d)\n",
                 __func__, fname.c_str(), model.hparams.ftype);
@@ -193,36 +193,36 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         const size_t n_ctx   = hparams.n_ctx;
         const size_t n_vocab = hparams.n_vocab;
 
-        ctx_size += n_embd*ggml_type_sizef(GGML_TYPE_F32); // ln_f_g
-        ctx_size += n_embd*ggml_type_sizef(GGML_TYPE_F32); // ln_f_b
+        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // ln_f_g
+        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // ln_f_b
 
-        ctx_size += n_embd*n_vocab*ggml_type_sizef(wtype); // wte
+        ctx_size += n_embd*n_vocab*ggml_dadbed9_type_sizef(wtype); // wte
 
-        ctx_size += n_embd*n_vocab*ggml_type_sizef(wtype);           // lmh_g
-        //ctx_size +=        n_vocab*ggml_type_sizef(GGML_TYPE_F32); // lmh_b
+        ctx_size += n_embd*n_vocab*ggml_dadbed9_type_sizef(wtype);           // lmh_g
+        //ctx_size +=        n_vocab*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // lmh_b
 
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_1_g
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_1_b
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_1_g
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_1_b
 
-        ctx_size += n_layer*(3*n_embd*n_embd*ggml_type_sizef(wtype));         // c_attn_attn_w
-        ctx_size += n_layer*(       3*n_embd*ggml_type_sizef(GGML_TYPE_F32)); // c_attn_attn_b
+        ctx_size += n_layer*(3*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_attn_attn_w
+        ctx_size += n_layer*(       3*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_attn_attn_b
 
-        ctx_size += n_layer*(n_embd*n_embd*ggml_type_sizef(wtype));         // c_attn_proj_w
-        ctx_size += n_layer*(n_embd*n_embd*ggml_type_sizef(GGML_TYPE_F32)); // c_attn_proj_b
+        ctx_size += n_layer*(n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_attn_proj_w
+        ctx_size += n_layer*(n_embd*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_attn_proj_b
 
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_2_g
-        ctx_size += n_layer*(n_embd*ggml_type_sizef(GGML_TYPE_F32)); // ln_2_b
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_2_g
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_2_b
 
-        ctx_size += n_layer*(4*n_embd*n_embd*ggml_type_sizef(wtype));         // c_mlp_fc_w
-        ctx_size += n_layer*(       4*n_embd*ggml_type_sizef(GGML_TYPE_F32)); // c_mlp_fc_b
+        ctx_size += n_layer*(4*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_mlp_fc_w
+        ctx_size += n_layer*(       4*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_mlp_fc_b
 
-        ctx_size += n_layer*(4*n_embd*n_embd*ggml_type_sizef(wtype));         // c_mlp_proj_w
-        ctx_size += n_layer*(         n_embd*ggml_type_sizef(GGML_TYPE_F32)); // c_mlp_proj_b
+        ctx_size += n_layer*(4*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_mlp_proj_w
+        ctx_size += n_layer*(         n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_mlp_proj_b
 
-        ctx_size += n_ctx*n_layer*n_embd*ggml_type_sizef(GGML_TYPE_F32); // memory_k
-        ctx_size += n_ctx*n_layer*n_embd*ggml_type_sizef(GGML_TYPE_F32); // memory_v
+        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // memory_k
+        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // memory_v
 
-        size_t overhead =ggml_tensor_overhead();
+        size_t overhead =ggml_dadbed9_tensor_overhead();
         ctx_size += (6 + 16*n_layer)*1024; // object overhead
 
         printf("%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size/(1024.0*1024.0));
@@ -230,15 +230,15 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 
     // create the ggml context
     {
-        struct ggml_init_params params = {
+        struct ggml_dadbed9_init_params params = {
             .mem_size   = ctx_size,
             .mem_buffer = NULL,
             .no_alloc   = false,
         };
 
-        model.ctx = ggml_init(params);
+        model.ctx = ggml_dadbed9_init(params);
         if (!model.ctx) {
-            fprintf(stderr, "%s: ggml_init() failed\n", __func__);
+            fprintf(stderr, "%s: ggml_dadbed9_init() failed\n", __func__);
             return false;
         }
     }
@@ -253,13 +253,13 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 
         model.layers.resize(n_layer);
 
-        model.wte    = ggml_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
+        model.wte    = ggml_dadbed9_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
 
-        model.ln_f_g = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
-        model.ln_f_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+        model.ln_f_g = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+        model.ln_f_b = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
 
-        model.lmh_g  = ggml_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
-        //model.lmh_b  = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_vocab);
+        model.lmh_g  = ggml_dadbed9_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
+        //model.lmh_b  = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_vocab);
 
         // map by name
         model.tensors["gpt_neox.embed_in.weight"] = model.wte;
@@ -273,23 +273,23 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         for (int i = 0; i < n_layer; ++i) {
             auto & layer = model.layers[i];
 
-            layer.ln_1_g          = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
-            layer.ln_1_b          = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_1_g          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_1_b          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
-            layer.c_attn_attn_w   = ggml_new_tensor_2d(ctx, wtype,           n_embd, 3*n_embd);
-            layer.c_attn_attn_b   = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 3*n_embd);
+            layer.c_attn_attn_w   = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, 3*n_embd);
+            layer.c_attn_attn_b   = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 3*n_embd);
 
-            layer.c_attn_proj_w   = ggml_new_tensor_2d(ctx, wtype,           n_embd,   n_embd);
-            layer.c_attn_proj_b   = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.c_attn_proj_w   = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd,   n_embd);
+            layer.c_attn_proj_b   = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
-            layer.ln_2_g          = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
-            layer.ln_2_b          = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_2_g          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_2_b          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
-            layer.c_mlp_fc_w      = ggml_new_tensor_2d(ctx, wtype,           n_embd, 4*n_embd);
-            layer.c_mlp_fc_b      = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 4*n_embd);
+            layer.c_mlp_fc_w      = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, 4*n_embd);
+            layer.c_mlp_fc_b      = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 4*n_embd);
 
-            layer.c_mlp_proj_w    = ggml_new_tensor_2d(ctx, wtype,         4*n_embd,   n_embd);
-            layer.c_mlp_proj_b    = ggml_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.c_mlp_proj_w    = ggml_dadbed9_new_tensor_2d(ctx, wtype,         4*n_embd,   n_embd);
+            layer.c_mlp_proj_b    = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
 
             // map by name
             model.tensors["gpt_neox.layers." + std::to_string(i) + ".input_layernorm.weight"] = layer.ln_1_g;
@@ -323,10 +323,10 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         const int64_t n_mem      = n_layer*n_ctx;
         const int64_t n_elements = n_embd*n_mem;
 
-        model.memory_k = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
-        model.memory_v = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
+        model.memory_k = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
+        model.memory_v = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
 
-        const size_t memory_size = ggml_nbytes(model.memory_k) + ggml_nbytes(model.memory_v);
+        const size_t memory_size = ggml_dadbed9_nbytes(model.memory_k) + ggml_dadbed9_nbytes(model.memory_v);
 
         printf("%s: memory_size = %8.2f MB, n_mem = %" PRId64 "\n", __func__, memory_size/1024.0/1024.0, n_mem);
     }
@@ -367,7 +367,7 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
             }
 
             auto tensor = model.tensors[name.data()];
-            if (ggml_nelements(tensor) != nelements) {
+            if (ggml_dadbed9_nelements(tensor) != nelements) {
                 fprintf(stderr, "%s: tensor '%s' has wrong size in model file\n", __func__, name.data());
                 return false;
             }
@@ -380,20 +380,20 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 
             // for debugging
             if (0) {
-                printf("%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.data(), ne[0], ne[1], ggml_type_name(ggml_type(ttype)), ggml_nbytes(tensor)/1024.0/1024.0, ggml_nbytes(tensor));
+                printf("%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.data(), ne[0], ne[1], ggml_dadbed9_type_name(ggml_dadbed9_type(ttype)), ggml_dadbed9_nbytes(tensor)/1024.0/1024.0, ggml_dadbed9_nbytes(tensor));
             }
 
-            const size_t bpe = ggml_type_size(ggml_type(ttype));
+            const size_t bpe = ggml_dadbed9_type_size(ggml_dadbed9_type(ttype));
 
-            if ((nelements*bpe)/ggml_blck_size(tensor->type) != ggml_nbytes(tensor)) {
+            if ((nelements*bpe)/ggml_dadbed9_blck_size(tensor->type) != ggml_dadbed9_nbytes(tensor)) {
                 fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %zu, expected %zu\n",
-                        __func__, name.data(), ggml_nbytes(tensor), nelements*bpe);
+                        __func__, name.data(), ggml_dadbed9_nbytes(tensor), nelements*bpe);
                 return false;
             }
 
-            fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
+            fin.read(reinterpret_cast<char *>(tensor->data), ggml_dadbed9_nbytes(tensor));
 
-            total_size += ggml_nbytes(tensor);
+            total_size += ggml_dadbed9_nbytes(tensor);
             if (++n_tensors % 8 == 0) {
                 printf(".");
                 fflush(stdout);
@@ -412,37 +412,37 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 
 
 // feed-forward network
-ggml_tensor * gpt_neox_ff(
+ggml_dadbed9_tensor * gpt_neox_ff(
         const gpt_neox_layer &layer,
-        ggml_context * ctx0,
-        ggml_tensor * inp) {
-    ggml_tensor * cur = ggml_norm(ctx0, inp);
+        ggml_dadbed9_context * ctx0,
+        ggml_dadbed9_tensor * inp) {
+    ggml_dadbed9_tensor * cur = ggml_dadbed9_norm(ctx0, inp);
 
-    cur = ggml_add(ctx0,
-        ggml_mul(ctx0,
-            ggml_repeat(ctx0, layer.ln_2_g, cur),
+    cur = ggml_dadbed9_add(ctx0,
+        ggml_dadbed9_mul(ctx0,
+            ggml_dadbed9_repeat(ctx0, layer.ln_2_g, cur),
             cur),
-        ggml_repeat(ctx0, layer.ln_2_b, cur));
+        ggml_dadbed9_repeat(ctx0, layer.ln_2_b, cur));
 
-    cur = ggml_mul_mat(ctx0,
+    cur = ggml_dadbed9_mul_mat(ctx0,
             layer.c_mlp_fc_w,
             cur);
 
-    cur = ggml_add(ctx0,
-            ggml_repeat(ctx0, layer.c_mlp_fc_b, cur),
+    cur = ggml_dadbed9_add(ctx0,
+            ggml_dadbed9_repeat(ctx0, layer.c_mlp_fc_b, cur),
             cur);
 
     // GELU activation
-    cur = ggml_gelu(ctx0, cur);
+    cur = ggml_dadbed9_gelu(ctx0, cur);
 
     // projection
     // cur = proj_w*cur + proj_b
-    cur = ggml_mul_mat(ctx0,
+    cur = ggml_dadbed9_mul_mat(ctx0,
             layer.c_mlp_proj_w,
             cur);
 
-    cur = ggml_add(ctx0,
-            ggml_repeat(ctx0, layer.c_mlp_proj_b, cur),
+    cur = ggml_dadbed9_add(ctx0,
+            ggml_dadbed9_repeat(ctx0, layer.c_mlp_proj_b, cur),
             cur);
     return cur;
 }
@@ -474,7 +474,7 @@ bool gpt_neox_eval(
     const int n_rot   = hparams.n_rot;
 
     static size_t buf_size = 256u*1024*1024;
-//    static size_t buf_size = 256u*1024*ggml_tensor_overhead();
+//    static size_t buf_size = 256u*1024*ggml_dadbed9_tensor_overhead();
     static void * buf = malloc(buf_size);
 
     // use 2 scratch buffers
@@ -498,203 +498,203 @@ bool gpt_neox_eval(
         }
     }
 
-    struct ggml_init_params params = {
+    struct ggml_dadbed9_init_params params = {
         /*.mem_size   =*/ buf_size,
         /*.mem_buffer =*/ buf,
         /*.no_alloc   =*/ false,
     };
 
-    struct ggml_context * ctx0 = ggml_init(params);
-    struct ggml_cgraph gf = {};
+    struct ggml_dadbed9_context * ctx0 = ggml_dadbed9_init(params);
+    struct ggml_dadbed9_cgraph gf = {};
 
-    struct ggml_tensor * embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
-    memcpy(embd->data, embd_inp.data(), N*ggml_element_size(embd));
+    struct ggml_dadbed9_tensor * embd = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    memcpy(embd->data, embd_inp.data(), N*ggml_dadbed9_element_size(embd));
 
     // wte
-    struct ggml_tensor * inpL = ggml_get_rows(ctx0, model.wte, embd);
+    struct ggml_dadbed9_tensor * inpL = ggml_dadbed9_get_rows(ctx0, model.wte, embd);
 
     for (int il = 0; il < n_layer; ++il) {
-        struct ggml_tensor * cur;
+        struct ggml_dadbed9_tensor * cur;
 
-        ggml_set_scratch(ctx0, { 0, scr0_size, scr0, });
+        ggml_dadbed9_set_scratch(ctx0, { 0, scr0_size, scr0, });
 
         // self-attention
         {
             {
-                cur = ggml_norm(ctx0, inpL);
+                cur = ggml_dadbed9_norm(ctx0, inpL);
 
-                cur = ggml_add(ctx0,
-                        ggml_mul(ctx0,
-                            ggml_repeat(ctx0, model.layers[il].ln_1_g, cur),
+                cur = ggml_dadbed9_add(ctx0,
+                        ggml_dadbed9_mul(ctx0,
+                            ggml_dadbed9_repeat(ctx0, model.layers[il].ln_1_g, cur),
                             cur),
-                        ggml_repeat(ctx0, model.layers[il].ln_1_b, cur));
+                        ggml_dadbed9_repeat(ctx0, model.layers[il].ln_1_b, cur));
             }
 
             // compute QKV
             {
-                cur = ggml_mul_mat(ctx0,
+                cur = ggml_dadbed9_mul_mat(ctx0,
                         model.layers[il].c_attn_attn_w,
                         cur);
 
-                cur = ggml_add(ctx0,
-                        ggml_repeat(ctx0, model.layers[il].c_attn_attn_b, cur),
+                cur = ggml_dadbed9_add(ctx0,
+                        ggml_dadbed9_repeat(ctx0, model.layers[il].c_attn_attn_b, cur),
                         cur);
             }
 
-            struct ggml_tensor * Qcur = ggml_cont(ctx0, ggml_view_3d(ctx0, cur, n_embd/n_head, n_head, N, cur->nb[1]/n_head, cur->nb[1], 0*sizeof(float)*n_embd/n_head));
-            struct ggml_tensor * Kcur = ggml_cont(ctx0, ggml_view_3d(ctx0, cur, n_embd/n_head, n_head, N, cur->nb[1]/n_head, cur->nb[1], 1*sizeof(float)*n_embd/n_head));
-            struct ggml_tensor * Vcur = ggml_cont(ctx0, ggml_view_3d(ctx0, cur, n_embd/n_head, n_head, N, cur->nb[1]/n_head, cur->nb[1], 2*sizeof(float)*n_embd/n_head));
+            struct ggml_dadbed9_tensor * Qcur = ggml_dadbed9_cont(ctx0, ggml_dadbed9_view_3d(ctx0, cur, n_embd/n_head, n_head, N, cur->nb[1]/n_head, cur->nb[1], 0*sizeof(float)*n_embd/n_head));
+            struct ggml_dadbed9_tensor * Kcur = ggml_dadbed9_cont(ctx0, ggml_dadbed9_view_3d(ctx0, cur, n_embd/n_head, n_head, N, cur->nb[1]/n_head, cur->nb[1], 1*sizeof(float)*n_embd/n_head));
+            struct ggml_dadbed9_tensor * Vcur = ggml_dadbed9_cont(ctx0, ggml_dadbed9_view_3d(ctx0, cur, n_embd/n_head, n_head, N, cur->nb[1]/n_head, cur->nb[1], 2*sizeof(float)*n_embd/n_head));
 
             // using mode = 2 for GPT-NeoX mode
-            Qcur = ggml_rope_inplace(ctx0, Qcur, n_past, n_rot, 2, 0);
-            Kcur = ggml_rope_inplace(ctx0, Kcur, n_past, n_rot, 2, 0);
+            Qcur = ggml_dadbed9_rope_inplace(ctx0, Qcur, n_past, n_rot, 2, 0);
+            Kcur = ggml_dadbed9_rope_inplace(ctx0, Kcur, n_past, n_rot, 2, 0);
 
             // store key and value to memory
             {
-                Vcur = ggml_transpose(ctx0, ggml_reshape_2d(ctx0, Vcur, n_embd, N));
+                Vcur = ggml_dadbed9_transpose(ctx0, ggml_dadbed9_reshape_2d(ctx0, Vcur, n_embd, N));
 
-                struct ggml_tensor * k = ggml_view_1d(ctx0, model.memory_k, N*n_embd, (ggml_element_size(model.memory_k)*n_embd)*(il*n_ctx + n_past));
-                struct ggml_tensor * v = ggml_view_2d(ctx0, model.memory_v, N, n_embd,
-                        (   n_ctx)*ggml_element_size(model.memory_v),
-                        (il*n_ctx)*ggml_element_size(model.memory_v)*n_embd + n_past*ggml_element_size(model.memory_v));
+                struct ggml_dadbed9_tensor * k = ggml_dadbed9_view_1d(ctx0, model.memory_k, N*n_embd, (ggml_dadbed9_element_size(model.memory_k)*n_embd)*(il*n_ctx + n_past));
+                struct ggml_dadbed9_tensor * v = ggml_dadbed9_view_2d(ctx0, model.memory_v, N, n_embd,
+                        (   n_ctx)*ggml_dadbed9_element_size(model.memory_v),
+                        (il*n_ctx)*ggml_dadbed9_element_size(model.memory_v)*n_embd + n_past*ggml_dadbed9_element_size(model.memory_v));
 
-                ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Kcur, k));
-                ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Vcur, v));
+                ggml_dadbed9_build_forward_expand(&gf, ggml_dadbed9_cpy(ctx0, Kcur, k));
+                ggml_dadbed9_build_forward_expand(&gf, ggml_dadbed9_cpy(ctx0, Vcur, v));
             }
 
             // Q = Qcur.contiguous().view(n_embd/n_head, n_head, N).permute(0, 2, 1, 3)
-            struct ggml_tensor * Q =
-                ggml_permute(ctx0,
+            struct ggml_dadbed9_tensor * Q =
+                ggml_dadbed9_permute(ctx0,
                         Qcur,
                         0, 2, 1, 3);
 
             // K = Kmem.view(n_embd/n_head, n_head, n_past + N).permute(0, 2, 1, 3)
-            struct ggml_tensor * K =
-                ggml_permute(ctx0,
-                        ggml_reshape_3d(ctx0,
-                            ggml_view_1d(ctx0, model.memory_k, (n_past + N)*n_embd, il*n_ctx*ggml_element_size(model.memory_k)*n_embd),
+            struct ggml_dadbed9_tensor * K =
+                ggml_dadbed9_permute(ctx0,
+                        ggml_dadbed9_reshape_3d(ctx0,
+                            ggml_dadbed9_view_1d(ctx0, model.memory_k, (n_past + N)*n_embd, il*n_ctx*ggml_dadbed9_element_size(model.memory_k)*n_embd),
                             n_embd/n_head, n_head, n_past + N),
                         0, 2, 1, 3);
 
             // K * Q
-            struct ggml_tensor * KQ = ggml_mul_mat(ctx0, K, Q);
+            struct ggml_dadbed9_tensor * KQ = ggml_dadbed9_mul_mat(ctx0, K, Q);
 
             // KQ_scaled = KQ / sqrt(n_embd/n_head)
-            struct ggml_tensor * KQ_scaled =
-                ggml_scale_inplace(ctx0,
+            struct ggml_dadbed9_tensor * KQ_scaled =
+                ggml_dadbed9_scale_inplace(ctx0,
                         KQ,
-                        ggml_new_f32(ctx0, 1.0f/sqrt(float(n_embd)/n_head))
+                        ggml_dadbed9_new_f32(ctx0, 1.0f/sqrt(float(n_embd)/n_head))
                         );
 
             // KQ_masked = mask_past(KQ_scaled)
-            struct ggml_tensor * KQ_masked = ggml_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
+            struct ggml_dadbed9_tensor * KQ_masked = ggml_dadbed9_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
 
             // KQ = soft_max(KQ_masked)
-            struct ggml_tensor * KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_masked);
+            struct ggml_dadbed9_tensor * KQ_soft_max = ggml_dadbed9_soft_max_inplace(ctx0, KQ_masked);
 
             // V_trans = Vmem.view(n_embd/n_head, n_head, n_past + N).permute(1, 2, 0, 3).contiguous()
-            struct ggml_tensor * V =
-                ggml_view_3d(ctx0, model.memory_v,
+            struct ggml_dadbed9_tensor * V =
+                ggml_dadbed9_view_3d(ctx0, model.memory_v,
                         n_past + N, n_embd/n_head, n_head,
-                        n_ctx*ggml_element_size(model.memory_v),
-                        n_ctx*ggml_element_size(model.memory_v)*n_embd/n_head,
-                        il*n_ctx*ggml_element_size(model.memory_v)*n_embd);
+                        n_ctx*ggml_dadbed9_element_size(model.memory_v),
+                        n_ctx*ggml_dadbed9_element_size(model.memory_v)*n_embd/n_head,
+                        il*n_ctx*ggml_dadbed9_element_size(model.memory_v)*n_embd);
 
             // KQV = transpose(V) * KQ_soft_max
-            struct ggml_tensor * KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
+            struct ggml_dadbed9_tensor * KQV = ggml_dadbed9_mul_mat(ctx0, V, KQ_soft_max);
 
             // KQV_merged = KQV.permute(0, 2, 1, 3)
-            struct ggml_tensor * KQV_merged = ggml_permute(ctx0, KQV, 0, 2, 1, 3);
+            struct ggml_dadbed9_tensor * KQV_merged = ggml_dadbed9_permute(ctx0, KQV, 0, 2, 1, 3);
 
             // cur = KQV_merged.contiguous().view(n_embd, N)
-            cur = ggml_cpy(ctx0,
+            cur = ggml_dadbed9_cpy(ctx0,
                     KQV_merged,
-                    ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
+                    ggml_dadbed9_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
 
             // projection
             {
-                cur = ggml_mul_mat(ctx0,
+                cur = ggml_dadbed9_mul_mat(ctx0,
                         model.layers[il].c_attn_proj_w,
                         cur);
 
-                cur = ggml_add(ctx0, ggml_repeat(ctx0, model.layers[il].c_attn_proj_b, cur), cur);
+                cur = ggml_dadbed9_add(ctx0, ggml_dadbed9_repeat(ctx0, model.layers[il].c_attn_proj_b, cur), cur);
             }
         }
 
-        ggml_set_scratch(ctx0, { 0, scr1_size, scr1, });
+        ggml_dadbed9_set_scratch(ctx0, { 0, scr1_size, scr1, });
 
         if (hparams.par_res == 0) {
-            struct ggml_tensor * inpFF = ggml_add(ctx0, cur, inpL);
+            struct ggml_dadbed9_tensor * inpFF = ggml_dadbed9_add(ctx0, cur, inpL);
 
             cur = gpt_neox_ff(model.layers[il], ctx0, inpFF);
 
             // input for next layer
-            inpL = ggml_add(ctx0, cur, inpFF);
+            inpL = ggml_dadbed9_add(ctx0, cur, inpFF);
         } else {
-            struct ggml_tensor * inpFF = cur;
+            struct ggml_dadbed9_tensor * inpFF = cur;
 
             // this is independent of the self-attention result, so it could be done in parallel to the self-attention
             // note here we pass inpL instead of cur
             cur = gpt_neox_ff(model.layers[il], ctx0, inpL);
 
             // layer input + FF
-            cur  = ggml_add(ctx0, cur, inpFF);
+            cur  = ggml_dadbed9_add(ctx0, cur, inpFF);
 
             // input for next layer
-            inpL = ggml_add(ctx0, cur, inpL);
+            inpL = ggml_dadbed9_add(ctx0, cur, inpL);
         }
     }
 
-    ggml_set_scratch(ctx0, { 0, scr0_size, scr0, });
+    ggml_dadbed9_set_scratch(ctx0, { 0, scr0_size, scr0, });
 
     // norm
     {
-        inpL = ggml_norm(ctx0, inpL);
+        inpL = ggml_dadbed9_norm(ctx0, inpL);
 
         // inpL = ln_f_g*inpL + ln_f_b
-        inpL = ggml_add(ctx0,
-                ggml_mul(ctx0,
-                    ggml_repeat(ctx0, model.ln_f_g, inpL),
+        inpL = ggml_dadbed9_add(ctx0,
+                ggml_dadbed9_mul(ctx0,
+                    ggml_dadbed9_repeat(ctx0, model.ln_f_g, inpL),
                     inpL),
-                ggml_repeat(ctx0, model.ln_f_b, inpL));
+                ggml_dadbed9_repeat(ctx0, model.ln_f_b, inpL));
     }
 
-    ggml_set_scratch(ctx0, { 0, 0, nullptr, });
+    ggml_dadbed9_set_scratch(ctx0, { 0, 0, nullptr, });
 
     // lm_head
     {
-        inpL = ggml_mul_mat(ctx0, model.lmh_g, inpL);
+        inpL = ggml_dadbed9_mul_mat(ctx0, model.lmh_g, inpL);
 
-        //inpL = ggml_add(ctx0,
-        //        ggml_repeat(ctx0, model.lmh_b, inpL),
+        //inpL = ggml_dadbed9_add(ctx0,
+        //        ggml_dadbed9_repeat(ctx0, model.lmh_b, inpL),
         //        inpL);
     }
 
     // logits -> probs
-    //inpL = ggml_soft_max_inplace(ctx0, inpL);
+    //inpL = ggml_dadbed9_soft_max_inplace(ctx0, inpL);
 
     // run the computation
-    ggml_build_forward_expand(&gf, inpL);
-    ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
+    ggml_dadbed9_build_forward_expand(&gf, inpL);
+    ggml_dadbed9_graph_compute_with_ctx(ctx0, &gf, n_threads);
 
     //if (n_past%100 == 0) {
-    //    ggml_graph_print   (&gf);
-    //    ggml_graph_dump_dot(&gf, NULL, "gpt-2.dot");
+    //    ggml_dadbed9_graph_print   (&gf);
+    //    ggml_dadbed9_graph_dump_dot(&gf, NULL, "gpt-2.dot");
     //}
 
     //embd_w.resize(n_vocab*N);
-    //memcpy(embd_w.data(), ggml_get_data(inpL), sizeof(float)*n_vocab*N);
+    //memcpy(embd_w.data(), ggml_dadbed9_get_data(inpL), sizeof(float)*n_vocab*N);
 
     // return result for just the last token
     embd_w.resize(n_vocab);
-    memcpy(embd_w.data(), (float *) ggml_get_data(inpL) + (n_vocab*(N-1)), sizeof(float)*n_vocab);
+    memcpy(embd_w.data(), (float *) ggml_dadbed9_get_data(inpL) + (n_vocab*(N-1)), sizeof(float)*n_vocab);
 
     if (mem_per_token == 0) {
-        mem_per_token = ggml_used_mem(ctx0)/N;
+        mem_per_token = ggml_dadbed9_used_mem(ctx0)/N;
     }
-    //printf("used_mem = %zu\n", ggml_used_mem(ctx0));
+    //printf("used_mem = %zu\n", ggml_dadbed9_used_mem(ctx0));
 
-    ggml_free(ctx0);
+    ggml_dadbed9_free(ctx0);
 
     return true;
 }
@@ -704,7 +704,7 @@ bool gpt_neox_eval(
 
 
 struct gpt_neox_context * gpt_neox_init_from_file(const char * path_model, struct gpt_context_params   params) {
-    ggml_time_init();
+    ggml_dadbed9_time_init();
 
     gpt_neox_context * ctx = new gpt_neox_context;
 
@@ -717,7 +717,7 @@ struct gpt_neox_context * gpt_neox_init_from_file(const char * path_model, struc
     ctx->rng = std::mt19937(params.seed);
     ctx->logits_all = params.logits_all;
 
-    ggml_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
+    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
     
     if (!gpt_neox_model_load(path_model, ctx->model, ctx->vocab,params.n_ctx)) {
         fprintf(stderr, "%s: failed to load model\n", __func__);
@@ -734,7 +734,7 @@ struct gpt_neox_context * gpt_neox_init_from_file(const char * path_model, struc
 //        }
 //
 //        {
-//            const size_t memory_size = ggml_nbytes(ctx->model.kv_self.k) + ggml_nbytes(ctx->model.kv_self.v);
+//            const size_t memory_size = ggml_dadbed9_nbytes(ctx->model.kv_self.k) + ggml_dadbed9_nbytes(ctx->model.kv_self.v);
 //            fprintf(stderr, "%s: kv self size  = %7.2f MiB\n", __func__, memory_size / 1024.0 / 1024.0);
 //        }
 
@@ -779,7 +779,7 @@ struct gpt_neox_context * gpt_neox_init_from_file(const char * path_model, struc
 //    for(int il = 0; il < n_layer; il++) {
 //        // K: Embeddings are in regular order so moving them is easy as copying the memory
 //        {
-//            int elem_byte_size = ggml_element_size(kv_self.k);
+//            int elem_byte_size = ggml_dadbed9_element_size(kv_self.k);
 //            uint8_t * dst_ptr = ((uint8_t *)kv_self.k->data) + (elem_byte_size * n_embd * (il * n_ctx));
 //            uint8_t * src_ptr = ((uint8_t *)kv_self.k->data) + (elem_byte_size * n_embd * (il * n_ctx + n));
 //            memcpy(dst_ptr, src_ptr, elem_byte_size * n_embd * (n_ctx - n));
@@ -787,7 +787,7 @@ struct gpt_neox_context * gpt_neox_init_from_file(const char * path_model, struc
 //        
 //        // V: Embeddings are transposed so each embedding element must be copied separately
 //        {
-//            int elem_byte_size = ggml_element_size(kv_self.v);
+//            int elem_byte_size = ggml_dadbed9_element_size(kv_self.v);
 //            for(int i = 0; i < n_embd; i++) {
 //                uint8_t * dst_ptr = ((uint8_t *)kv_self.v->data) + (elem_byte_size * (il * n_ctx * i));
 //                uint8_t * src_ptr = ((uint8_t *)kv_self.v->data) + (elem_byte_size * (il * n_ctx * i + n));
@@ -828,7 +828,7 @@ int gpt_neox_eval(
     }
     // get a more accurate load time, upon first eval
     if (!ctx->has_evaluated_once) {
-        ctx->t_load_us = ggml_time_us() - ctx->t_start_us;
+        ctx->t_load_us = ggml_dadbed9_time_us() - ctx->t_start_us;
         ctx->has_evaluated_once = true;
     }
     return 0;
@@ -859,20 +859,20 @@ int gpt_neox_eval(
 //    static std::string s;
 //
 //    s  = "";
-//    s += "AVX = "         + std::to_string(ggml_cpu_has_avx())         + " | ";
-//    s += "AVX2 = "        + std::to_string(ggml_cpu_has_avx2())        + " | ";
-//    s += "AVX512 = "      + std::to_string(ggml_cpu_has_avx512())      + " | ";
-//    s += "AVX512_VBMI = " + std::to_string(ggml_cpu_has_avx512_vbmi()) + " | ";
-//    s += "AVX512_VNNI = " + std::to_string(ggml_cpu_has_avx512_vnni()) + " | ";
-//    s += "FMA = "         + std::to_string(ggml_cpu_has_fma())         + " | ";
-//    s += "NEON = "        + std::to_string(ggml_cpu_has_neon())        + " | ";
-//    s += "ARM_FMA = "     + std::to_string(ggml_cpu_has_arm_fma())     + " | ";
-//    s += "F16C = "        + std::to_string(ggml_cpu_has_f16c())        + " | ";
-//    s += "FP16_VA = "     + std::to_string(ggml_cpu_has_fp16_va())     + " | ";
-//    s += "WASM_SIMD = "   + std::to_string(ggml_cpu_has_wasm_simd())   + " | ";
-//    s += "BLAS = "        + std::to_string(ggml_cpu_has_blas())        + " | ";
-//    s += "SSE3 = "        + std::to_string(ggml_cpu_has_sse3())        + " | ";
-//    s += "VSX = "         + std::to_string(ggml_cpu_has_vsx())         + " | ";
+//    s += "AVX = "         + std::to_string(ggml_dadbed9_cpu_has_avx())         + " | ";
+//    s += "AVX2 = "        + std::to_string(ggml_dadbed9_cpu_has_avx2())        + " | ";
+//    s += "AVX512 = "      + std::to_string(ggml_dadbed9_cpu_has_avx512())      + " | ";
+//    s += "AVX512_VBMI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vbmi()) + " | ";
+//    s += "AVX512_VNNI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vnni()) + " | ";
+//    s += "FMA = "         + std::to_string(ggml_dadbed9_cpu_has_fma())         + " | ";
+//    s += "NEON = "        + std::to_string(ggml_dadbed9_cpu_has_neon())        + " | ";
+//    s += "ARM_FMA = "     + std::to_string(ggml_dadbed9_cpu_has_arm_fma())     + " | ";
+//    s += "F16C = "        + std::to_string(ggml_dadbed9_cpu_has_f16c())        + " | ";
+//    s += "FP16_VA = "     + std::to_string(ggml_dadbed9_cpu_has_fp16_va())     + " | ";
+//    s += "WASM_SIMD = "   + std::to_string(ggml_dadbed9_cpu_has_wasm_simd())   + " | ";
+//    s += "BLAS = "        + std::to_string(ggml_dadbed9_cpu_has_blas())        + " | ";
+//    s += "SSE3 = "        + std::to_string(ggml_dadbed9_cpu_has_sse3())        + " | ";
+//    s += "VSX = "         + std::to_string(ggml_dadbed9_cpu_has_vsx())         + " | ";
 //
 //    return s.c_str();
 //}
@@ -913,10 +913,10 @@ int gpt_neox_eval(
 
 //
 //int32_t gpt_sample(struct gpt_neox_context * ctx, int top_k, float top_p, float temp) {
-//    const int64_t t_start_sample_us = ggml_time_us();
+//    const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 //    gpt_vocab::id smpl = gpt_sample_top_k_top_p(ctx->vocab, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()), top_k, top_p, temp, ctx->rng);
 //    if (ctx) {
-//        ctx->t_sample_us += ggml_time_us() - t_start_sample_us;
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
 //    }
 //    return  smpl;
 //}
@@ -928,23 +928,23 @@ int gpt_neox_eval(
 //                               int top_k, float top_p, float temp,
 //                               int repeat_last_n,
 //                               float repeat_penalty) {
-//    const int64_t t_start_sample_us = ggml_time_us();
+//    const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 //    gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(ctx->vocab, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()),
 //                                                       last_n_tokens_data,last_n_tokens_data_size,
 //                                                       top_k, top_p, temp,
 //                                                       repeat_last_n,repeat_penalty,
 //                                                       ctx->rng);
 //    if (ctx) {
-//        ctx->t_sample_us += ggml_time_us() - t_start_sample_us;
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
 //    }
 //    return  smpl;
 //}
 
 //
 //int test_run() {
-//    ggml_time_init();
+//    ggml_dadbed9_time_init();
 //
-//    const int64_t t_main_start_us = ggml_time_us();
+//    const int64_t t_main_start_us = ggml_dadbed9_time_us();
 //
 //    gpt_params params;
 //    params.model = "models/stablelm-base-alpha-3b/ggml-model-f16.bin";
@@ -971,14 +971,14 @@ int gpt_neox_eval(
 //
 //    // load the model
 //    {
-//        const int64_t t_start_us = ggml_time_us();
+//        const int64_t t_start_us = ggml_dadbed9_time_us();
 //
 //        if (!gpt_neox_model_load(params.model, model, vocab,1024)) {
 //            fprintf(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
 //            return 1;
 //        }
 //
-//        t_load_us = ggml_time_us() - t_start_us;
+//        t_load_us = ggml_dadbed9_time_us() - t_start_us;
 //
 //        test_gpt_tokenizer(vocab, params.token_test);
 //    }
@@ -1010,14 +1010,14 @@ int gpt_neox_eval(
 //    for (int i = embd.size(); i < embd_inp.size() + params.n_predict; i++) {
 //        // predict
 //        if (embd.size() > 0) {
-//            const int64_t t_start_us = ggml_time_us();
+//            const int64_t t_start_us = ggml_dadbed9_time_us();
 //
 //            if (!gpt_neox_eval(model, params.n_threads, n_past, embd, logits, mem_per_token)) {
 //                printf("Failed to predict\n");
 //                return 1;
 //            }
 //
-//            t_predict_us += ggml_time_us() - t_start_us;
+//            t_predict_us += ggml_dadbed9_time_us() - t_start_us;
 //        }
 //
 //        n_past += embd.size();
@@ -1034,11 +1034,11 @@ int gpt_neox_eval(
 //            gpt_vocab::id id = 0;
 //
 //            {
-//                const int64_t t_start_sample_us = ggml_time_us();
+//                const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 //
 //                id = gpt_sample_top_k_top_p(vocab, logits.data() + (logits.size() - n_vocab), top_k, top_p, temp, rng);
 //
-//                t_sample_us += ggml_time_us() - t_start_sample_us;
+//                t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
 //            }
 //
 //            // add it to the context
@@ -1068,7 +1068,7 @@ int gpt_neox_eval(
 //
 //    // report timing
 //    {
-//        const int64_t t_main_end_us = ggml_time_us();
+//        const int64_t t_main_end_us = ggml_dadbed9_time_us();
 //
 //        printf("\n\n");
 //        printf("%s: mem per token = %8zu bytes\n", __func__, mem_per_token);
@@ -1078,7 +1078,7 @@ int gpt_neox_eval(
 //        printf("%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
 //    }
 //
-//    ggml_free(model.ctx);
+//    ggml_dadbed9_free(model.ctx);
 //
 //    return 0;
 //}

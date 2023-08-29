@@ -512,7 +512,7 @@ struct llama_ctx_buffer {
     void resize(size_t size) {
         free();
 
-        addr = (uint8_t *) ggml_cuda_host_malloc(size);
+        addr = (uint8_t *) ggml_dadbed9_cuda_host_malloc(size);
         if (addr) {
             is_cuda = true;
         }
@@ -527,7 +527,7 @@ struct llama_ctx_buffer {
     void free() {
         if (addr) {
             if (is_cuda) {
-                ggml_cuda_host_free(addr);
+                ggml_dadbed9_cuda_host_free(addr);
             }
             else {
                 delete[] addr;

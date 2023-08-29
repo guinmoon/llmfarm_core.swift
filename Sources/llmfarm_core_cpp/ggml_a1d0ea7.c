@@ -1644,7 +1644,7 @@ static const quantize_fns_t quantize_fns[GGML_a1d0ea7_TYPE_COUNT] = {
         .quantize_row_q           = quantize_row_q2_K,
         .quantize_row_q_reference = (quantize_row_q_t) quantize_row_q2_K_reference,
         .quantize_row_q_dot       = quantize_row_q8_K,
-        .vec_dot_q                = ggml_vec_dot_q2_K_q8_K,
+        .vec_dot_q                = ggml_dadbed9_vec_dot_q2_K_q8_K,
         .vec_dot_type             = GGML_a1d0ea7_TYPE_Q8_K,
     },
     [GGML_a1d0ea7_TYPE_Q3_K] = {
@@ -1652,7 +1652,7 @@ static const quantize_fns_t quantize_fns[GGML_a1d0ea7_TYPE_COUNT] = {
         .quantize_row_q           = quantize_row_q3_K,
         .quantize_row_q_reference = (quantize_row_q_t) quantize_row_q3_K_reference,
         .quantize_row_q_dot       = quantize_row_q8_K,
-        .vec_dot_q                = ggml_vec_dot_q3_K_q8_K,
+        .vec_dot_q                = ggml_dadbed9_vec_dot_q3_K_q8_K,
         .vec_dot_type             = GGML_a1d0ea7_TYPE_Q8_K,
     },
     [GGML_a1d0ea7_TYPE_Q4_K] = {
@@ -1660,7 +1660,7 @@ static const quantize_fns_t quantize_fns[GGML_a1d0ea7_TYPE_COUNT] = {
         .quantize_row_q           = quantize_row_q4_K,
         .quantize_row_q_reference = (quantize_row_q_t) quantize_row_q4_K_reference,
         .quantize_row_q_dot       = quantize_row_q8_K,
-        .vec_dot_q                = ggml_vec_dot_q4_K_q8_K,
+        .vec_dot_q                = ggml_dadbed9_vec_dot_q4_K_q8_K,
         .vec_dot_type             = GGML_a1d0ea7_TYPE_Q8_K,
     },
     [GGML_a1d0ea7_TYPE_Q5_K] = {
@@ -1668,7 +1668,7 @@ static const quantize_fns_t quantize_fns[GGML_a1d0ea7_TYPE_COUNT] = {
         .quantize_row_q           = quantize_row_q5_K,
         .quantize_row_q_reference = (quantize_row_q_t) quantize_row_q5_K_reference,
         .quantize_row_q_dot       = quantize_row_q8_K,
-        .vec_dot_q                = ggml_vec_dot_q5_K_q8_K,
+        .vec_dot_q                = ggml_dadbed9_vec_dot_q5_K_q8_K,
         .vec_dot_type             = GGML_a1d0ea7_TYPE_Q8_K,
     },
     [GGML_a1d0ea7_TYPE_Q6_K] = {
@@ -1676,7 +1676,7 @@ static const quantize_fns_t quantize_fns[GGML_a1d0ea7_TYPE_COUNT] = {
         .quantize_row_q           = quantize_row_q6_K,
         .quantize_row_q_reference = (quantize_row_q_t) quantize_row_q6_K_reference,
         .quantize_row_q_dot       = quantize_row_q8_K,
-        .vec_dot_q                = ggml_vec_dot_q6_K_q8_K,
+        .vec_dot_q                = ggml_dadbed9_vec_dot_q6_K_q8_K,
         .vec_dot_type             = GGML_a1d0ea7_TYPE_Q8_K,
     },
 #endif
@@ -18870,31 +18870,31 @@ size_t ggml_a1d0ea7_quantize_chunk(enum ggml_a1d0ea7_type type, const float * sr
             {
                 GGML_a1d0ea7_ASSERT(start % QK_K == 0);
                 block_q2_K * block = (block_q2_K*)dst + start / QK_K;
-                result = ggml_quantize_q2_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q2_K(src + start, block, n, n, hist);
             } break;
         case GGML_a1d0ea7_TYPE_Q3_K:
             {
                 GGML_a1d0ea7_ASSERT(start % QK_K == 0);
                 block_q3_K * block = (block_q3_K*)dst + start / QK_K;
-                result = ggml_quantize_q3_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q3_K(src + start, block, n, n, hist);
             } break;
         case GGML_a1d0ea7_TYPE_Q4_K:
             {
                 GGML_a1d0ea7_ASSERT(start % QK_K == 0);
                 block_q4_K * block = (block_q4_K*)dst + start / QK_K;
-                result = ggml_quantize_q4_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q4_K(src + start, block, n, n, hist);
             } break;
         case GGML_a1d0ea7_TYPE_Q5_K:
             {
                 GGML_a1d0ea7_ASSERT(start % QK_K == 0);
                 block_q5_K * block = (block_q5_K*)dst + start / QK_K;
-                result = ggml_quantize_q5_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q5_K(src + start, block, n, n, hist);
             } break;
         case GGML_a1d0ea7_TYPE_Q6_K:
             {
                 GGML_a1d0ea7_ASSERT(start % QK_K == 0);
                 block_q6_K * block = (block_q6_K*)dst + start / QK_K;
-                result = ggml_quantize_q6_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q6_K(src + start, block, n, n, hist);
             } break;
 #endif
         case GGML_a1d0ea7_TYPE_F16:

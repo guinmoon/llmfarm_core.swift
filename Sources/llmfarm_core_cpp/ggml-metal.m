@@ -21,7 +21,7 @@
 
 #define GGML_MAX_CONCUR (2*GGML_MAX_NODES)
 
-struct ggml_metal_buffer {
+struct ggml_dadbed9_metal_buffer {
     const char * name;
 
     void   * data;
@@ -30,7 +30,7 @@ struct ggml_metal_buffer {
     id<MTLBuffer> metal;
 };
 
-struct ggml_metal_context {
+struct ggml_dadbed9_metal_context {
     int n_cb;
 
     float * logits;
@@ -40,7 +40,7 @@ struct ggml_metal_context {
     id<MTLLibrary>      library;
 
     int n_buffers;
-    struct ggml_metal_buffer buffers[GGML_METAL_MAX_BUFFERS];
+    struct ggml_dadbed9_metal_buffer buffers[GGML_METAL_MAX_BUFFERS];
 
     int concur_list[GGML_MAX_CONCUR];
     int concur_list_len;
@@ -106,10 +106,10 @@ static NSString * const msl_library_source = @"see metal.metal";
 @implementation GGMLMetalClass
 @end
 
-struct ggml_metal_context * ggml_metal_init(int n_cb) {
+struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
     fprintf(stderr, "%s: allocating\n", __func__);
 
-    struct ggml_metal_context * ctx = calloc(1, sizeof(struct ggml_metal_context));
+    struct ggml_dadbed9_metal_context * ctx = calloc(1, sizeof(struct ggml_dadbed9_metal_context));
 
     ctx->n_cb   = n_cb;
     ctx->device = MTLCreateSystemDefaultDevice();
@@ -230,7 +230,7 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
     return ctx;
 }
 
-void ggml_metal_free(struct ggml_metal_context * ctx) {
+void ggml_dadbed9_metal_free(struct ggml_dadbed9_metal_context * ctx) {
     fprintf(stderr, "%s: deallocating\n", __func__);
 //    for (int i = 0; i < ctx->n_buffers; ++i) {
 //        [ctx->buffers[i].metal release];
@@ -238,15 +238,15 @@ void ggml_metal_free(struct ggml_metal_context * ctx) {
     free(ctx);
 }
 
-void ggml_metal_set_n_cb(struct ggml_metal_context * ctx, int n_cb) {
+void ggml_dadbed9_metal_set_n_cb(struct ggml_dadbed9_metal_context * ctx, int n_cb) {
     ctx->n_cb = n_cb;
 }
 
-int ggml_metal_if_optimized(struct ggml_metal_context * ctx) {
+int ggml_dadbed9_metal_if_optimized(struct ggml_dadbed9_metal_context * ctx) {
     return ctx->concur_list_len;
 }
 
-int * ggml_metal_get_concur_list(struct ggml_metal_context * ctx) {
+int * ggml_dadbed9_metal_get_concur_list(struct ggml_dadbed9_metal_context * ctx) {
     return ctx->concur_list;
 }
 
@@ -254,10 +254,10 @@ int * ggml_metal_get_concur_list(struct ggml_metal_context * ctx) {
 // the assumption is that there is 1-to-1 mapping between the host and device memory buffers, so we can find the
 // Metal buffer based on the host memory pointer
 //
-static id<MTLBuffer> ggml_metal_get_buffer(struct ggml_metal_context * ctx, struct ggml_tensor * t, size_t * offs) {
+static id<MTLBuffer> ggml_dadbed9_metal_get_buffer(struct ggml_dadbed9_metal_context * ctx, struct ggml_dadbed9_tensor * t, size_t * offs) {
     //fprintf(stderr, "%s: data tensor '%16s', offs_data = %8ld, offs_eval = %8ld, offs_cach = %8ld\n", __func__, t->name, offs_data, offs_eval, offs_cach);
 
-    const int64_t tsize = ggml_nbytes(t);
+    const int64_t tsize = ggml_dadbed9_nbytes(t);
 
     // find the view that contains the tensor fully
     for (int i = 0; i < ctx->n_buffers; ++i) {
@@ -277,8 +277,8 @@ static id<MTLBuffer> ggml_metal_get_buffer(struct ggml_metal_context * ctx, stru
     return nil;
 }
 
-bool ggml_metal_add_buffer(
-        struct ggml_metal_context * ctx,
+bool ggml_dadbed9_metal_add_buffer(
+        struct ggml_dadbed9_metal_context * ctx,
                      const char * name,
                            void * data,
                          size_t   size,
@@ -367,31 +367,31 @@ bool ggml_metal_add_buffer(
     return true;
 }
 
-void ggml_metal_set_tensor(
-        struct ggml_metal_context * ctx,
-        struct ggml_tensor * t) {
+void ggml_dadbed9_metal_set_tensor(
+        struct ggml_dadbed9_metal_context * ctx,
+        struct ggml_dadbed9_tensor * t) {
     metal_printf("%s: set input for tensor '%s'\n", __func__, t->name);
 
     size_t offs;
-    id<MTLBuffer> id_dst = ggml_metal_get_buffer(ctx, t, &offs);
+    id<MTLBuffer> id_dst = ggml_dadbed9_metal_get_buffer(ctx, t, &offs);
 
-    memcpy((void *) ((uint8_t *) id_dst.contents + offs), t->data, ggml_nbytes(t));
+    memcpy((void *) ((uint8_t *) id_dst.contents + offs), t->data, ggml_dadbed9_nbytes(t));
 }
 
-void ggml_metal_get_tensor(
-        struct ggml_metal_context * ctx,
-        struct ggml_tensor * t) {
+void ggml_dadbed9_metal_get_tensor(
+        struct ggml_dadbed9_metal_context * ctx,
+        struct ggml_dadbed9_tensor * t) {
     metal_printf("%s: extract results for tensor '%s'\n", __func__, t->name);
 
     size_t offs;
-    id<MTLBuffer> id_src = ggml_metal_get_buffer(ctx, t, &offs);
+    id<MTLBuffer> id_src = ggml_dadbed9_metal_get_buffer(ctx, t, &offs);
 
-    memcpy(t->data, (void *) ((uint8_t *) id_src.contents + offs), ggml_nbytes(t));
+    memcpy(t->data, (void *) ((uint8_t *) id_src.contents + offs), ggml_dadbed9_nbytes(t));
 }
 
-void ggml_metal_graph_find_concurrency(
-        struct ggml_metal_context * ctx,
-        struct ggml_cgraph * gf, bool check_mem) {
+void ggml_dadbed9_metal_graph_find_concurrency(
+        struct ggml_dadbed9_metal_context * ctx,
+        struct ggml_dadbed9_cgraph * gf, bool check_mem) {
     int search_depth = gf->n_nodes; //we only find concurrency in this range to avoid wasting too much time
     int nodes_unused[GGML_MAX_CONCUR];
 
@@ -413,10 +413,10 @@ void ggml_metal_graph_find_concurrency(
 
                 // scan all srcs
                 for (int src_ind = 0; src_ind < GGML_MAX_SRC; src_ind++) {
-                    struct ggml_tensor * src_cur = gf->nodes[i]->src[src_ind];
+                    struct ggml_dadbed9_tensor * src_cur = gf->nodes[i]->src[src_ind];
                     if (src_cur) {
                         // if is leaf nodes it's satisfied.
-                        // TODO: ggml_is_leaf()
+                        // TODO: ggml_dadbed9_is_leaf()
                         if (src_cur->op == GGML_OP_NONE && src_cur->grad == NULL) {
                             continue;
                         }
@@ -442,14 +442,14 @@ void ggml_metal_graph_find_concurrency(
                     // check if nodes[i]'s data will be overwritten by a node before nodes[i].
                     // if node[5] and node[3] write to the same memory region, then we can't issue node[5] before node[3]
                     int64_t data_start = (int64_t) gf->nodes[i]->data;
-                    int64_t length     = (int64_t) ggml_nbytes(gf->nodes[i]);
+                    int64_t length     = (int64_t) ggml_dadbed9_nbytes(gf->nodes[i]);
                     for (int j = n_start; j < i; j++) {
                         if (nodes_unused[j] && gf->nodes[j]->op != GGML_OP_RESHAPE \
                                             && gf->nodes[j]->op != GGML_OP_VIEW \
                                             && gf->nodes[j]->op != GGML_OP_TRANSPOSE \
                                             && gf->nodes[j]->op != GGML_OP_PERMUTE) {
                             if (((int64_t)gf->nodes[j]->data) >= data_start + length || \
-                                ((int64_t)gf->nodes[j]->data) + (int64_t) ggml_nbytes(gf->nodes[j]) <= data_start) {
+                                ((int64_t)gf->nodes[j]->data) + (int64_t) ggml_dadbed9_nbytes(gf->nodes[j]) <= data_start) {
                                 continue;
                             }
 
@@ -481,9 +481,9 @@ void ggml_metal_graph_find_concurrency(
     }
 }
 
-void ggml_metal_graph_compute(
-        struct ggml_metal_context * ctx,
-               struct ggml_cgraph * gf) {
+void ggml_dadbed9_metal_graph_compute(
+        struct ggml_dadbed9_metal_context * ctx,
+               struct ggml_dadbed9_cgraph * gf) {
     metal_printf("%s: evaluating graph\n", __func__);
 
     // if there is ctx->concur_list, dispatch concurrently
@@ -535,11 +535,11 @@ void ggml_metal_graph_compute(
                     continue;
                 }
 
-                metal_printf("%s: encoding node %3d, op = %8s\n", __func__, i, ggml_op_name(gf->nodes[i]->op));
+                metal_printf("%s: encoding node %3d, op = %8s\n", __func__, i, ggml_dadbed9_op_name(gf->nodes[i]->op));
 
-                struct ggml_tensor * src0 = gf->nodes[i]->src[0];
-                struct ggml_tensor * src1 = gf->nodes[i]->src[1];
-                struct ggml_tensor * dst  = gf->nodes[i];
+                struct ggml_dadbed9_tensor * src0 = gf->nodes[i]->src[0];
+                struct ggml_dadbed9_tensor * src1 = gf->nodes[i]->src[1];
+                struct ggml_dadbed9_tensor * dst  = gf->nodes[i];
 
                 const int64_t  ne00 = src0 ? src0->ne[0] : 0;
                 const int64_t  ne01 = src0 ? src0->ne[1] : 0;
@@ -571,25 +571,25 @@ void ggml_metal_graph_compute(
                 const uint64_t nb2  = dst ? dst->nb[2] : 0;
                 const uint64_t nb3  = dst ? dst->nb[3] : 0;
 
-                const enum ggml_type src0t = src0 ? src0->type : GGML_TYPE_COUNT;
-                const enum ggml_type src1t = src1 ? src1->type : GGML_TYPE_COUNT;
-                const enum ggml_type dstt  = dst  ? dst->type  : GGML_TYPE_COUNT;
+                const enum ggml_dadbed9_type src0t = src0 ? src0->type : GGML_TYPE_COUNT;
+                const enum ggml_dadbed9_type src1t = src1 ? src1->type : GGML_TYPE_COUNT;
+                const enum ggml_dadbed9_type dstt  = dst  ? dst->type  : GGML_TYPE_COUNT;
 
-                id<MTLBuffer> id_src0 = src0 ? ggml_metal_get_buffer(ctx, src0, &offs_src0) : nil;
-                id<MTLBuffer> id_src1 = src1 ? ggml_metal_get_buffer(ctx, src1, &offs_src1) : nil;
-                id<MTLBuffer> id_dst  = dst  ? ggml_metal_get_buffer(ctx, dst,  &offs_dst)  : nil;
+                id<MTLBuffer> id_src0 = src0 ? ggml_dadbed9_metal_get_buffer(ctx, src0, &offs_src0) : nil;
+                id<MTLBuffer> id_src1 = src1 ? ggml_dadbed9_metal_get_buffer(ctx, src1, &offs_src1) : nil;
+                id<MTLBuffer> id_dst  = dst  ? ggml_dadbed9_metal_get_buffer(ctx, dst,  &offs_dst)  : nil;
 
-                //metal_printf("%s: op - %s\n", __func__, ggml_op_name(dst->op));
+                //metal_printf("%s: op - %s\n", __func__, ggml_dadbed9_op_name(dst->op));
                 //if (src0) {
-                //    metal_printf("%s: src0 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_type_name(src0t), ne00, ne01, ne02,
-                //            ggml_is_contiguous(src0), src0->name);
+                //    metal_printf("%s: src0 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_dadbed9_type_name(src0t), ne00, ne01, ne02,
+                //            ggml_dadbed9_is_contiguous(src0), src0->name);
                 //}
                 //if (src1) {
-                //    metal_printf("%s: src1 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_type_name(src1t), ne10, ne11, ne12,
-                //            ggml_is_contiguous(src1), src1->name);
+                //    metal_printf("%s: src1 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_dadbed9_type_name(src1t), ne10, ne11, ne12,
+                //            ggml_dadbed9_is_contiguous(src1), src1->name);
                 //}
                 //if (dst) {
-                //    metal_printf("%s: dst  - %4s [%5lld, %5lld, %5lld], 1, %s\n",  __func__, ggml_type_name(dstt),  ne0,  ne1,  ne2,
+                //    metal_printf("%s: dst  - %4s [%5lld, %5lld, %5lld], 1, %s\n",  __func__, ggml_dadbed9_type_name(dstt),  ne0,  ne1,  ne2,
                 //            dst->name);
                 //}
 
@@ -604,7 +604,7 @@ void ggml_metal_graph_compute(
                         } break;
                     case GGML_OP_ADD:
                         {
-                            if (ggml_nelements(src1) == ne10) {
+                            if (ggml_dadbed9_nelements(src1) == ne10) {
                                 // src1 is a row
                                 [encoder setComputePipelineState:ctx->pipeline_add_row];
                             } else {
@@ -615,13 +615,13 @@ void ggml_metal_graph_compute(
                             [encoder setBuffer:id_dst  offset:offs_dst  atIndex:2];
                             [encoder setBytes:&ne00 length:sizeof(ne00) atIndex:3];
 
-                            const int64_t n = ggml_nelements(dst);
+                            const int64_t n = ggml_dadbed9_nelements(dst);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
                     case GGML_OP_MUL:
                         {
-                            if (ggml_nelements(src1) == ne10) {
+                            if (ggml_dadbed9_nelements(src1) == ne10) {
                                 // src1 is a row
                                 [encoder setComputePipelineState:ctx->pipeline_mul_row];
                             } else {
@@ -632,7 +632,7 @@ void ggml_metal_graph_compute(
                             [encoder setBuffer:id_dst  offset:offs_dst  atIndex:2];
                             [encoder setBytes:&ne00 length:sizeof(ne00) atIndex:3];
 
-                            const int64_t n = ggml_nelements(dst);
+                            const int64_t n = ggml_dadbed9_nelements(dst);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
@@ -645,19 +645,19 @@ void ggml_metal_graph_compute(
                             [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
                             [encoder setBytes:&scale length:sizeof(scale) atIndex:2];
 
-                            const int64_t n = ggml_nelements(dst);
+                            const int64_t n = ggml_dadbed9_nelements(dst);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
                     case GGML_OP_UNARY:
-                        switch (ggml_get_unary_op(gf->nodes[i])) {
+                        switch (ggml_dadbed9_get_unary_op(gf->nodes[i])) {
                             case GGML_UNARY_OP_SILU:
                                 {
                                     [encoder setComputePipelineState:ctx->pipeline_silu];
                                     [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                                     [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
 
-                                    const int64_t n = ggml_nelements(dst);
+                                    const int64_t n = ggml_dadbed9_nelements(dst);
 
                                     [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                                 } break;
@@ -667,7 +667,7 @@ void ggml_metal_graph_compute(
                                     [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                                     [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
 
-                                    const int64_t n = ggml_nelements(dst);
+                                    const int64_t n = ggml_dadbed9_nelements(dst);
 
                                     [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                                 } break;
@@ -677,13 +677,13 @@ void ggml_metal_graph_compute(
                                     [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                                     [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
 
-                                    const int64_t n = ggml_nelements(dst);
+                                    const int64_t n = ggml_dadbed9_nelements(dst);
 
                                     [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                                 } break;
                             default:
                                 {
-                                    fprintf(stderr, "%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_op_name(dst->op));
+                                    fprintf(stderr, "%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_dadbed9_op_name(dst->op));
                                     GGML_ASSERT(false);
                                 }
                         } break;
@@ -725,8 +725,8 @@ void ggml_metal_graph_compute(
 
                             // for now the matrix-matrix multiplication kernel only works on A14+/M1+ SoCs
                             // AMD GPU and older A-chips will reuse matrix-vector multiplication kernel
-                            if (ggml_is_contiguous(src0) &&
-                                ggml_is_contiguous(src1) &&
+                            if (ggml_dadbed9_is_contiguous(src0) &&
+                                ggml_dadbed9_is_contiguous(src1) &&
                                 src1t == GGML_TYPE_F32 &&
                                 [ctx->device supportsFamily:MTLGPUFamilyApple7] &&
                                 ne00%32 == 0 &&
@@ -900,7 +900,7 @@ void ggml_metal_graph_compute(
                             [encoder setBytes:&(src0->nb[1]) length:sizeof(uint64_t) atIndex:4];
                             [encoder setBytes:&(dst->nb[1])  length:sizeof(uint64_t) atIndex:5];
 
-                            const int64_t n = ggml_nelements(src1);
+                            const int64_t n = ggml_dadbed9_nelements(src1);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
@@ -919,7 +919,7 @@ void ggml_metal_graph_compute(
                             [encoder setBytes:&eps  length:sizeof(   float) atIndex:4];
                             [encoder setThreadgroupMemoryLength:nth/32*sizeof(float) atIndex:0];
 
-                            const int64_t nrows = ggml_nrows(src0);
+                            const int64_t nrows = ggml_dadbed9_nrows(src0);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(nrows, 1, 1) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
@@ -937,7 +937,7 @@ void ggml_metal_graph_compute(
                             [encoder setBytes:&eps  length:sizeof(   float) atIndex:4];
                             [encoder setThreadgroupMemoryLength:nth*sizeof(float) atIndex:0];
 
-                            const int64_t nrows = ggml_nrows(src0);
+                            const int64_t nrows = ggml_dadbed9_nrows(src0);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(nrows, 1, 1) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
@@ -1067,7 +1067,7 @@ void ggml_metal_graph_compute(
                         } break;
                     default:
                         {
-                            fprintf(stderr, "%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_op_name(dst->op));
+                            fprintf(stderr, "%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_dadbed9_op_name(dst->op));
                             GGML_ASSERT(false);
                         }
                 }

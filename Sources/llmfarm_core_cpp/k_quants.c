@@ -308,10 +308,10 @@ void quantize_row_q2_K_reference(const float * restrict x, block_q2_K * restrict
                 int l = nearest_int(iscale*scales[j]);
                 y[i].scales[j] = l;
             }
-            y[i].d = ggml_fp32_to_fp16(max_scale/q4scale);
+            y[i].d = ggml_dadbed9_fp32_to_fp16(max_scale/q4scale);
         } else {
             for (int j = 0; j < QK_K/16; ++j) y[i].scales[j] = 0;
-            y[i].d = ggml_fp32_to_fp16(0.f);
+            y[i].d = ggml_dadbed9_fp32_to_fp16(0.f);
         }
         if (max_min > 0) {
             float iscale = q4scale/max_min;
@@ -319,14 +319,14 @@ void quantize_row_q2_K_reference(const float * restrict x, block_q2_K * restrict
                 int l = nearest_int(iscale*mins[j]);
                 y[i].scales[j] |= (l << 4);
             }
-            y[i].dmin = ggml_fp32_to_fp16(max_min/q4scale);
+            y[i].dmin = ggml_dadbed9_fp32_to_fp16(max_min/q4scale);
         } else {
-            y[i].dmin = ggml_fp32_to_fp16(0.f);
+            y[i].dmin = ggml_dadbed9_fp32_to_fp16(0.f);
         }
         for (int j = 0; j < QK_K/16; ++j) {
-            const float d = ggml_fp16_to_fp32(y[i].d) * (y[i].scales[j] & 0xF);
+            const float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * (y[i].scales[j] & 0xF);
             if (!d) continue;
-            const float dm = ggml_fp16_to_fp32(y[i].dmin) * (y[i].scales[j] >> 4);
+            const float dm = ggml_dadbed9_fp16_to_fp32(y[i].dmin) * (y[i].scales[j] >> 4);
             for (int ii = 0; ii < 16; ++ii) {
                 int l = nearest_int((x[16*j + ii] + dm)/d);
                 l = MAX(0, MIN(3, l));
@@ -357,8 +357,8 @@ void dequantize_row_q2_K(const block_q2_K * restrict x, float * restrict y, int 
 
     for (int i = 0; i < nb; i++) {
 
-        const float d = ggml_fp16_to_fp32(x[i].d);
-        const float min = ggml_fp16_to_fp32(x[i].dmin);
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float min = ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * q = x[i].qs;
 
@@ -401,7 +401,7 @@ void quantize_row_q2_K(const float * restrict x, void * restrict vy, int k) {
     quantize_row_q2_K_reference(x, vy, k);
 }
 
-size_t ggml_quantize_q2_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
+size_t ggml_dadbed9_quantize_q2_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
     const int nb = k / QK_K;
 
     // TODO - collect histograms - although, at a second thought, I don't really care about them
@@ -450,16 +450,16 @@ void quantize_row_q3_K_reference(const float * restrict x, block_q3_K * restrict
                 l >>= 4;
                 y[i].scales[j%4 + 8] |= (l << (2*(j/4)));
             }
-            y[i].d = ggml_fp32_to_fp16(1/iscale);
+            y[i].d = ggml_dadbed9_fp32_to_fp16(1/iscale);
         } else {
-            y[i].d = ggml_fp32_to_fp16(0.f);
+            y[i].d = ggml_dadbed9_fp32_to_fp16(0.f);
         }
 
         int8_t sc;
         for (int j = 0; j < QK_K/16; ++j) {
             sc = j < 8 ? y[i].scales[j] & 0xF : y[i].scales[j-8] >> 4;
             sc = (sc | (((y[i].scales[8 + j%4] >> (2*(j/4))) & 3) << 4)) - 32;
-            float d = ggml_fp16_to_fp32(y[i].d) * sc;
+            float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * sc;
             if (!d) {
                 continue;
             }
@@ -479,16 +479,16 @@ void quantize_row_q3_K_reference(const float * restrict x, block_q3_K * restrict
                 l2 = 8 + MAX(-8, MIN(7, l2));
                 y[i].scales[j/2] = l1 | (l2 << 4);
             }
-            y[i].d = ggml_fp32_to_fp16(1/iscale);
+            y[i].d = ggml_dadbed9_fp32_to_fp16(1/iscale);
         } else {
             for (int j = 0; j < QK_K/16; j+=2) {
                 y[i].scales[j/2] = 0;
             }
-            y[i].d = ggml_fp32_to_fp16(0.f);
+            y[i].d = ggml_dadbed9_fp32_to_fp16(0.f);
         }
         for (int j = 0; j < QK_K/16; ++j) {
             int s = j%2 == 0 ? y[i].scales[j/2] & 0xF : y[i].scales[j/2] >> 4;
-            float d = ggml_fp16_to_fp32(y[i].d) * (s - 8);
+            float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * (s - 8);
             if (!d) {
                 continue;
             }
@@ -542,7 +542,7 @@ void dequantize_row_q3_K(const block_q3_K * restrict x, float * restrict y, int 
 
     for (int i = 0; i < nb; i++) {
 
-        const float d_all = ggml_fp16_to_fp32(x[i].d);
+        const float d_all = ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q = x[i].qs;
         const uint8_t * restrict hm = x[i].hmask;
@@ -587,7 +587,7 @@ void dequantize_row_q3_K(const block_q3_K * restrict x, float * restrict y, int 
 
     for (int i = 0; i < nb; i++) {
 
-        const float d_all = ggml_fp16_to_fp32(x[i].d);
+        const float d_all = ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q = x[i].qs;
         const uint8_t * restrict hm = x[i].hmask;
@@ -617,7 +617,7 @@ void quantize_row_q3_K(const float * restrict x, void * restrict vy, int k) {
     quantize_row_q3_K_reference(x, vy, k);
 }
 
-size_t ggml_quantize_q3_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
+size_t ggml_dadbed9_quantize_q3_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
     const int nb = k / QK_K;
 
     // TODO - collect histograms - although, at a second thought, I don't really care about them
@@ -673,15 +673,15 @@ void quantize_row_q4_K_reference(const float * restrict x, block_q4_K * restrict
                 y[i].scales[j-0] |= ((lm >> 4) << 6);
             }
         }
-        y[i].d = ggml_fp32_to_fp16(max_scale/63.f);
-        y[i].dmin = ggml_fp32_to_fp16(max_min/63.f);
+        y[i].d = ggml_dadbed9_fp32_to_fp16(max_scale/63.f);
+        y[i].dmin = ggml_dadbed9_fp32_to_fp16(max_min/63.f);
 
         uint8_t sc, m;
         for (int j = 0; j < QK_K/32; ++j) {
             get_scale_min_k4(j, y[i].scales, &sc, &m);
-            const float d = ggml_fp16_to_fp32(y[i].d) * sc;
+            const float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * sc;
             if (!d) continue;
-            const float dm = ggml_fp16_to_fp32(y[i].dmin) * m;
+            const float dm = ggml_dadbed9_fp16_to_fp32(y[i].dmin) * m;
             for (int ii = 0; ii < 32; ++ii) {
                 int l = nearest_int((x[32*j + ii] + dm)/d);
                 l = MAX(0, MIN(15, l));
@@ -698,17 +698,17 @@ void quantize_row_q4_K_reference(const float * restrict x, block_q4_K * restrict
         int m2 = nearest_int(inv_min*mins[1]);
         y[i].scales[0] = d1 | (m1 << 4);
         y[i].scales[1] = d2 | (m2 << 4);
-        y[i].d[0] = ggml_fp32_to_fp16(max_scale/s_factor);
-        y[i].d[1] = ggml_fp32_to_fp16(max_min/s_factor);
+        y[i].d[0] = ggml_dadbed9_fp32_to_fp16(max_scale/s_factor);
+        y[i].d[1] = ggml_dadbed9_fp32_to_fp16(max_min/s_factor);
 
         float sumlx = 0;
         int   suml2 = 0;
         for (int j = 0; j < QK_K/32; ++j) {
             const uint8_t sd = y[i].scales[j] & 0xF;
             const uint8_t sm = y[i].scales[j] >>  4;
-            const float d = ggml_fp16_to_fp32(y[i].d[0]) * sd;
+            const float d = ggml_dadbed9_fp16_to_fp32(y[i].d[0]) * sd;
             if (!d) continue;
-            const float m = ggml_fp16_to_fp32(y[i].d[1]) * sm;
+            const float m = ggml_dadbed9_fp16_to_fp32(y[i].d[1]) * sm;
             for (int ii = 0; ii < 32; ++ii) {
                 int l = nearest_int((x[32*j + ii] + m)/d);
                 l = MAX(0, MIN(15, l));
@@ -718,7 +718,7 @@ void quantize_row_q4_K_reference(const float * restrict x, block_q4_K * restrict
             }
         }
         if (suml2) {
-            y[i].d[0] = ggml_fp32_to_fp16(sumlx/suml2);
+            y[i].d[0] = ggml_dadbed9_fp32_to_fp16(sumlx/suml2);
         }
 #endif
         uint8_t * q = y[i].qs;
@@ -742,8 +742,8 @@ void dequantize_row_q4_K(const block_q4_K * restrict x, float * restrict y, int 
 
 #if QK_K == 256
 
-        const float d   = ggml_fp16_to_fp32(x[i].d);
-        const float min = ggml_fp16_to_fp32(x[i].dmin);
+        const float d   = ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float min = ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         int is = 0;
         uint8_t sc, m;
@@ -757,8 +757,8 @@ void dequantize_row_q4_K(const block_q4_K * restrict x, float * restrict y, int 
             q += 32; is += 2;
         }
 #else
-        const float dall = ggml_fp16_to_fp32(x[i].d[0]);
-        const float mall = ggml_fp16_to_fp32(x[i].d[1]);
+        const float dall = ggml_dadbed9_fp16_to_fp32(x[i].d[0]);
+        const float mall = ggml_dadbed9_fp16_to_fp32(x[i].d[1]);
         const float d1 = dall * (x[i].scales[0] & 0xF), m1 = mall * (x[i].scales[0] >> 4);
         const float d2 = dall * (x[i].scales[1] & 0xF), m2 = mall * (x[i].scales[1] >> 4);
         for (int l = 0; l < 32; ++l) {
@@ -777,7 +777,7 @@ void quantize_row_q4_K(const float * restrict x, void * restrict vy, int k) {
     quantize_row_q4_K_reference(x, y, k);
 }
 
-size_t ggml_quantize_q4_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
+size_t ggml_dadbed9_quantize_q4_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
     assert(k % QK_K == 0);
     const int nb = k / QK_K;
     (void)hist; // TODO: collect histograms
@@ -837,15 +837,15 @@ void quantize_row_q5_K_reference(const float * restrict x, block_q5_K * restrict
                 y[i].scales[j-0] |= ((lm >> 4) << 6);
             }
         }
-        y[i].d = ggml_fp32_to_fp16(max_scale/63.f);
-        y[i].dmin = ggml_fp32_to_fp16(max_min/63.f);
+        y[i].d = ggml_dadbed9_fp32_to_fp16(max_scale/63.f);
+        y[i].dmin = ggml_dadbed9_fp32_to_fp16(max_min/63.f);
 
         uint8_t sc, m;
         for (int j = 0; j < QK_K/32; ++j) {
             get_scale_min_k4(j, y[i].scales, &sc, &m);
-            const float d = ggml_fp16_to_fp32(y[i].d) * sc;
+            const float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * sc;
             if (!d) continue;
-            const float dm = ggml_fp16_to_fp32(y[i].dmin) * m;
+            const float dm = ggml_dadbed9_fp16_to_fp32(y[i].dmin) * m;
             for (int ii = 0; ii < 32; ++ii) {
                 int l = nearest_int((x[32*j + ii] + dm)/d);
                 l = MAX(0, MIN(31, l));
@@ -889,10 +889,10 @@ void quantize_row_q5_K_reference(const float * restrict x, block_q5_K * restrict
             int l = nearest_int(iscale*scales[j]);
             y[i].scales[j] = MAX(-128, MIN(127, l));
         }
-        y[i].d = ggml_fp32_to_fp16(1/iscale);
+        y[i].d = ggml_dadbed9_fp32_to_fp16(1/iscale);
 
         for (int j = 0; j < QK_K/16; ++j) {
-            const float d = ggml_fp16_to_fp32(y[i].d) * y[i].scales[j];
+            const float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * y[i].scales[j];
             if (!d) continue;
             for (int ii = 0; ii < 16; ++ii) {
                 int l = nearest_int(x[16*j + ii]/d);
@@ -936,8 +936,8 @@ void dequantize_row_q5_K(const block_q5_K * restrict x, float * restrict y, int 
 
 #if QK_K == 256
 
-        const float d = ggml_fp16_to_fp32(x[i].d);
-        const float min = ggml_fp16_to_fp32(x[i].dmin);
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float min = ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         int is = 0;
         uint8_t sc, m;
@@ -953,7 +953,7 @@ void dequantize_row_q5_K(const block_q5_K * restrict x, float * restrict y, int 
             u1 <<= 2; u2 <<= 2;
         }
 #else
-        float d = ggml_fp16_to_fp32(x[i].d);
+        float d = ggml_dadbed9_fp16_to_fp32(x[i].d);
         const int8_t * restrict s = x[i].scales;
         for (int l = 0; l < 8; ++l) {
             y[l+ 0] = d * s[0] * ((ql[l+ 0] & 0xF) - (qh[l] & 0x01 ? 0 : 16));
@@ -976,7 +976,7 @@ void quantize_row_q5_K(const float * restrict x, void * restrict vy, int k) {
     quantize_row_q5_K_reference(x, y, k);
 }
 
-size_t ggml_quantize_q5_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
+size_t ggml_dadbed9_quantize_q5_K(const float * restrict src, void * restrict dst, int n, int k, int64_t * restrict hist) {
     assert(k % QK_K == 0);
     const int nb = k / QK_K;
     (void)hist;
@@ -1015,13 +1015,13 @@ void quantize_row_q6_K_reference(const float * restrict x, block_q6_K * restrict
         }
 
         float iscale = -128.f/max_scale;
-        y[i].d = ggml_fp32_to_fp16(1/iscale);
+        y[i].d = ggml_dadbed9_fp32_to_fp16(1/iscale);
         for (int ib = 0; ib < QK_K/16; ++ib) {
             y[i].scales[ib] = MIN(127, nearest_int(iscale*scales[ib]));
         }
 
         for (int j = 0; j < QK_K/16; ++j) {
-            float d = ggml_fp16_to_fp32(y[i].d) * y[i].scales[j];
+            float d = ggml_dadbed9_fp16_to_fp32(y[i].d) * y[i].scales[j];
             if (!d) {
                 continue;
             }
@@ -1070,7 +1070,7 @@ void dequantize_row_q6_K(const block_q6_K * restrict x, float * restrict y, int 
 
     for (int i = 0; i < nb; i++) {
 
-        const float d = ggml_fp16_to_fp32(x[i].d);
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict ql = x[i].ql;
         const uint8_t * restrict qh = x[i].qh;
@@ -1117,7 +1117,7 @@ void quantize_row_q6_K(const float * restrict x, void * restrict vy, int k) {
     quantize_row_q6_K_reference(x, y, k);
 }
 
-size_t ggml_quantize_q6_K(const float * src, void * dst, int n, int k, int64_t * hist) {
+size_t ggml_dadbed9_quantize_q6_K(const float * src, void * dst, int n, int k, int64_t * hist) {
     assert(k % QK_K == 0);
     const int nb = k / QK_K;
 
@@ -1239,7 +1239,7 @@ static inline __m128i get_scale_shuffle(int i) {
 #endif
 
 #if QK_K == 256
-void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
 
     const block_q2_K * restrict x = vx;
     const block_q8_K * restrict y = vy;
@@ -1259,8 +1259,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q2 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -1338,8 +1338,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q2 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -1405,8 +1405,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float dall = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float dall = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q2 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -1516,8 +1516,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
             summs += y[i].bsums[j] * (sc[j] >> 4);
         }
 
-        const float dall = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float dall = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         int isum = 0;
         int is = 0;
@@ -1546,7 +1546,7 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 
 #else
 
-void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
 
     const block_q2_K * restrict x = vx;
     const block_q8_K * restrict y = vy;
@@ -1632,8 +1632,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q2 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -1684,8 +1684,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q2 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -1741,8 +1741,8 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
             summs += y[i].bsums[j] * (sc[j] >> 4);
         }
 
-        const float dall = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float dall = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         isum[0] = isum[1] = isum[2] = isum[3] = 0;
         for (int l =  0; l < 16; ++l) {
@@ -1762,7 +1762,7 @@ void ggml_vec_dot_q2_K_q8_K(const int n, float * restrict s, const void * restri
 #endif
 
 #if QK_K == 256
-void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const uint32_t kmask1 = 0x03030303;
@@ -1795,7 +1795,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q3 = x[i].qs;
         const uint8_t * restrict qh = x[i].hmask;
@@ -1903,7 +1903,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q3 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -2008,7 +2008,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q3 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -2194,7 +2194,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
             for (int l = 0; l < 8; ++l) aux32[l] += (scales[j] - 32) * aux16[l];
             q8 += 8; a += 8;
         }
-        const float d = ggml_fp16_to_fp32(x[i].d) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d) * y[i].d;
         for (int l = 0; l < 8; ++l) sums[l] += d * aux32[l];
     }
     for (int l = 0; l < 8; ++l) sumf += sums[l];
@@ -2206,7 +2206,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 
 #else
 
-void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q3_K * restrict x = vx;
@@ -2296,7 +2296,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q3 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -2367,7 +2367,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q3 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -2479,7 +2479,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
             q8 += 8; a += 8;
             for (int l = 0; l < 8; ++l) aux32[l] += scales[j] * aux16[l];
         }
-        const float d = ggml_fp16_to_fp32(x[i].d) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d) * y[i].d;
         for (int l = 0; l < 8; ++l) sums[l] += d * aux32[l];
     }
     for (int l = 0; l < 8; ++l) sumf += sums[l];
@@ -2491,7 +2491,7 @@ void ggml_vec_dot_q3_K_q8_K(const int n, float * restrict s, const void * restri
 #endif
 
 #if QK_K == 256
-void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q4_K * restrict x = vx;
@@ -2519,8 +2519,8 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const int16x8_t q8sums = vpaddq_s16(vld1q_s16(y[i].bsums), vld1q_s16(y[i].bsums + 8));
 
@@ -2601,8 +2601,8 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 
    for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         memcpy(utmp, x[i].scales, 12);
         utmp[3] = ((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4);
@@ -2667,8 +2667,8 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 
    for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q4 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -2789,9 +2789,9 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
             for (int l = 0; l < 8; ++l) aux32[l] += scale * aux16[l];
             q8 += 8; a += 8;
         }
-        const float d = ggml_fp16_to_fp32(x[i].d) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d) * y[i].d;
         for (int l = 0; l < 8; ++l) sums[l] += d * aux32[l];
-        const float dmin = ggml_fp16_to_fp32(x[i].dmin) * y[i].d;
+        const float dmin = ggml_dadbed9_fp16_to_fp32(x[i].dmin) * y[i].d;
         sumf -= dmin * sumi;
     }
     for (int l = 0; l < 8; ++l) sumf += sums[l];
@@ -2799,7 +2799,7 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 #endif
 }
 #else
-void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q4_K * restrict x = vx;
@@ -2893,8 +2893,8 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = ggml_fp16_to_fp32(x[i].d[0]) * y[i].d;
-        const float m = ggml_fp16_to_fp32(x[i].d[1]) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d[0]) * y[i].d;
+        const float m = ggml_dadbed9_fp16_to_fp32(x[i].d[1]) * y[i].d;
         const __m256 vd = _mm256_set1_ps(d);
 
         const uint16_t * a = (const uint16_t *)x[i].scales;
@@ -2939,8 +2939,8 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = ggml_fp16_to_fp32(x[i].d[0]) * y[i].d;
-        const float m = ggml_fp16_to_fp32(x[i].d[1]) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d[0]) * y[i].d;
+        const float m = ggml_dadbed9_fp16_to_fp32(x[i].d[1]) * y[i].d;
         const __m256 vd = _mm256_set1_ps(d);
 
         const uint16_t * a = (const uint16_t *)x[i].scales;
@@ -3002,9 +3002,9 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
         s16[0] = b[0] & 0x0f0f;
         s16[1] = (b[0] >> 4) & 0x0f0f;
 
-        sumf -= y[i].d * ggml_fp16_to_fp32(x[i].d[1]) * (scales[2] * (y[i].bsums[0] + y[i].bsums[1]) + scales[3] * (y[i].bsums[2] + y[i].bsums[3]));
+        sumf -= y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d[1]) * (scales[2] * (y[i].bsums[0] + y[i].bsums[1]) + scales[3] * (y[i].bsums[2] + y[i].bsums[3]));
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d[0]);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d[0]);
 
         for (int j = 0; j < QK_K/32; ++j) {
             for (int l = 0; l < 16; ++l) aux16[l] = q8[l] * a[l];
@@ -3022,7 +3022,7 @@ void ggml_vec_dot_q4_K_q8_K(const int n, float * restrict s, const void * restri
 #endif
 
 #if QK_K == 256
-void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q5_K * restrict x = vx;
@@ -3050,8 +3050,8 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const int16x8_t q8sums = vpaddq_s16(vld1q_s16(y[i].bsums), vld1q_s16(y[i].bsums + 8));
 
@@ -3139,8 +3139,8 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
         const int8_t  * restrict q8 = y[i].qs;
 
 #if QK_K == 256
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         memcpy(utmp, x[i].scales, 12);
         utmp[3] = ((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4);
@@ -3221,8 +3221,8 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
-        const float dmin = -y[i].d * ggml_fp16_to_fp32(x[i].dmin);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
+        const float dmin = -y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].dmin);
 
         const uint8_t * restrict q5 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
@@ -3362,9 +3362,9 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
             for (int l = 0; l < 8; ++l) aux32[l] += scale * aux16[l];
             q8 += 8; a += 8;
         }
-        const float d = ggml_fp16_to_fp32(x[i].d) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d) * y[i].d;
         for (int l = 0; l < 8; ++l) sums[l] += d * aux32[l];
-        const float dmin = ggml_fp16_to_fp32(x[i].dmin) * y[i].d;
+        const float dmin = ggml_dadbed9_fp16_to_fp32(x[i].dmin) * y[i].d;
         sumf -= dmin * sumi;
     }
     for (int l = 0; l < 8; ++l) sumf += sums[l];
@@ -3374,7 +3374,7 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
 
 #else
 
-void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q5_K * restrict x = vx;
@@ -3460,7 +3460,7 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
         const uint8_t * restrict q5 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const __m256i q5bits = _mm256_loadu_si256((const __m256i*)q5);
 
@@ -3506,7 +3506,7 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
         const uint8_t * restrict q5 = x[i].qs;
         const int8_t  * restrict q8 = y[i].qs;
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const __m256i q5bits = _mm256_loadu_si256((const __m256i*)q5);
 
@@ -3573,7 +3573,7 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
             for (int l = 0; l < 8; ++l) a[8*is + l] -= (hm[l] & m ? 0 : 16);
         }
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
         const int8_t * restrict sc = x[i].scales;
 
         for (int j = 0; j < QK_K/16; ++j) {
@@ -3591,7 +3591,7 @@ void ggml_vec_dot_q5_K_q8_K(const int n, float * restrict s, const void * restri
 
 
 #if QK_K == 256
-void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q6_K * restrict x = vx;
@@ -3614,7 +3614,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d_all = ggml_fp16_to_fp32(x[i].d);
+        const float d_all = ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q6 = x[i].ql;
         const uint8_t * restrict qh = x[i].qh;
@@ -3746,7 +3746,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q4 = x[i].ql;
         const uint8_t * restrict qh = x[i].qh;
@@ -3826,7 +3826,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q4 = x[i].ql;
         const uint8_t * restrict qh = x[i].qh;
@@ -3970,7 +3970,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
             for (int l = 0; l < 8; ++l) aux32[l] += scale * aux16[l];
             q8 += 8; a += 8;
         }
-        const float d = ggml_fp16_to_fp32(x[i].d) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d) * y[i].d;
         for (int l = 0; l < 8; ++l) sums[l] += d * aux32[l];
     }
     for (int l = 0; l < 8; ++l) sumf += sums[l];
@@ -3980,7 +3980,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
 
 #else
 
-void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
+void ggml_dadbed9_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restrict vx, const void * restrict vy) {
     assert(n % QK_K == 0);
 
     const block_q6_K * restrict x = vx;
@@ -4066,7 +4066,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q4 = x[i].ql;
         const uint8_t * restrict qh = x[i].qh;
@@ -4123,7 +4123,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
 
     for (int i = 0; i < nb; ++i) {
 
-        const float d = y[i].d * ggml_fp16_to_fp32(x[i].d);
+        const float d = y[i].d * ggml_dadbed9_fp16_to_fp32(x[i].d);
 
         const uint8_t * restrict q4 = x[i].ql;
         const uint8_t * restrict qh = x[i].qh;
@@ -4215,7 +4215,7 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float * restrict s, const void * restri
             for (int l = 0; l < 8; ++l) aux32[l] += scale * aux16[l];
             q8 += 8; a += 8;
         }
-        const float d = ggml_fp16_to_fp32(x[i].d) * y[i].d;
+        const float d = ggml_dadbed9_fp16_to_fp32(x[i].d) * y[i].d;
         for (int l = 0; l < 8; ++l) sums[l] += d * aux32[l];
     }
     for (int l = 0; l < 8; ++l) sumf += sums[l];

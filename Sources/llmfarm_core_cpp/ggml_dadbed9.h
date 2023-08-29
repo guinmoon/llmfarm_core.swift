@@ -32,22 +32,22 @@
 // For example, here we define the function: f(x) = a*x^2 + b
 //
 //   {
-//       struct ggml_init_params params = {
+//       struct ggml_dadbed9_init_params params = {
 //           .mem_size   = 16*1024*1024,
 //           .mem_buffer = NULL,
 //       };
 //
 //       // memory allocation happens here
-//       struct ggml_context * ctx = ggml_init(params);
+//       struct ggml_dadbed9_context * ctx = ggml_dadbed9_init(params);
 //
-//       struct ggml_tensor * x = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
+//       struct ggml_dadbed9_tensor * x = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
 //
-//       ggml_set_param(ctx, x); // x is an input variable
+//       ggml_dadbed9_set_param(ctx, x); // x is an input variable
 //
-//       struct ggml_tensor * a  = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
-//       struct ggml_tensor * b  = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
-//       struct ggml_tensor * x2 = ggml_mul(ctx, x, x);
-//       struct ggml_tensor * f  = ggml_add(ctx, ggml_mul(ctx, a, x2), b);
+//       struct ggml_dadbed9_tensor * a  = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
+//       struct ggml_dadbed9_tensor * b  = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
+//       struct ggml_dadbed9_tensor * x2 = ggml_dadbed9_mul(ctx, x, x);
+//       struct ggml_dadbed9_tensor * f  = ggml_dadbed9_add(ctx, ggml_dadbed9_mul(ctx, a, x2), b);
 //
 //       ...
 //   }
@@ -58,33 +58,33 @@
 //   {
 //       ...
 //
-//       struct ggml_cgraph gf = ggml_build_forward(f);
+//       struct ggml_dadbed9_cgraph gf = ggml_dadbed9_build_forward(f);
 //
 //       // set the input variable and parameter values
-//       ggml_set_f32(x, 2.0f);
-//       ggml_set_f32(a, 3.0f);
-//       ggml_set_f32(b, 4.0f);
+//       ggml_dadbed9_set_f32(x, 2.0f);
+//       ggml_dadbed9_set_f32(a, 3.0f);
+//       ggml_dadbed9_set_f32(b, 4.0f);
 //
-//       ggml_graph_compute_with_ctx(ctx, &gf, n_threads);
+//       ggml_dadbed9_graph_compute_with_ctx(ctx, &gf, n_threads);
 //
-//       printf("f = %f\n", ggml_get_f32_1d(f, 0));
+//       printf("f = %f\n", ggml_dadbed9_get_f32_1d(f, 0));
 //
 //       ...
 //   }
 //
-// The actual computation is performed in the ggml_graph_compute() function.
+// The actual computation is performed in the ggml_dadbed9_graph_compute() function.
 //
-// The ggml_new_tensor_...() functions create new tensors. They are allocated in the memory buffer provided to the
-// ggml_init() function. You have to be careful not to exceed the memory buffer size. Therefore, you have to know
+// The ggml_dadbed9_new_tensor_...() functions create new tensors. They are allocated in the memory buffer provided to the
+// ggml_dadbed9_init() function. You have to be careful not to exceed the memory buffer size. Therefore, you have to know
 // in advance how much memory you need for your computation. Alternatively, you can allocate a large enough memory
-// and after defining the computation graph, call the ggml_used_mem() function to find out how much memory was
+// and after defining the computation graph, call the ggml_dadbed9_used_mem() function to find out how much memory was
 // actually needed.
 //
-// The ggml_set_param() function marks a tensor as an input variable. This is used by the automatic
+// The ggml_dadbed9_set_param() function marks a tensor as an input variable. This is used by the automatic
 // differentiation and optimization algorithms.
 //
 // The described approach allows to define the function graph once and then compute its forward or backward graphs
-// multiple times. All computations will use the same memory buffer allocated in the ggml_init() function. This way
+// multiple times. All computations will use the same memory buffer allocated in the ggml_dadbed9_init() function. This way
 // the user can avoid the memory allocation overhead at runtime.
 //
 // The library supports multi-dimensional tensors - up to 4 dimensions. The FP16 and FP32 data types are first class
@@ -95,9 +95,9 @@
 // clear that the library needs to support more complex operations. The way to support these operations is not clear
 // yet, but a few examples are demonstrated in the following operations:
 //
-//   - ggml_permute()
-//   - ggml_conv_1d_1s()
-//   - ggml_conv_1d_2s()
+//   - ggml_dadbed9_permute()
+//   - ggml_dadbed9_conv_1d_1s()
+//   - ggml_dadbed9_conv_1d_2s()
 //
 // For each tensor operator, the library implements a forward and backward computation function. The forward function
 // computes the output tensor value given the input tensor values. The backward function computes the adjoint of the
@@ -108,20 +108,20 @@
 //   https://www.youtube.com/watch?v=wG_nF1awSSY
 //
 //
-// ## Tensor data (struct ggml_tensor)
+// ## Tensor data (struct ggml_dadbed9_tensor)
 //
-// The tensors are stored in memory via the ggml_tensor struct. The structure provides information about the size of
+// The tensors are stored in memory via the ggml_dadbed9_tensor struct. The structure provides information about the size of
 // the tensor, the data type, and the memory buffer where the tensor data is stored. Additionally, it contains
 // pointers to the "source" tensors - i.e. the tensors that were used to compute the current tensor. For example:
 //
 //   {
-//       struct ggml_tensor * c = ggml_add(ctx, a, b);
+//       struct ggml_dadbed9_tensor * c = ggml_dadbed9_add(ctx, a, b);
 //
 //       assert(c->src[0] == a);
 //       assert(c->src[1] == b);
 //   }
 //
-// The multi-dimensional tensors are stored in row-major order. The ggml_tensor struct contains fields for the
+// The multi-dimensional tensors are stored in row-major order. The ggml_dadbed9_tensor struct contains fields for the
 // number of elements in each dimension ("ne") as well as the number of bytes ("nb", a.k.a. stride). This allows
 // to store tensors that are not contiguous in memory, which is useful for operations such as transposition and
 // permutation. All tensor operations have to take the stride into account and not assume that the tensor is
@@ -130,7 +130,7 @@
 // The data of the tensor is accessed via the "data" pointer. For example:
 //
 //   {
-//       struct ggml_tensor * a = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, 2, 3);
+//       struct ggml_dadbed9_tensor * a = ggml_dadbed9_new_tensor_2d(ctx, GGML_TYPE_F32, 2, 3);
 //
 //       // a[2, 1] = 1.0f;
 //       *(float *) ((char *) a->data + 2*a->nb[1] + 1*a->nb[0]) = 1.0f;
@@ -141,9 +141,9 @@
 //       ...
 //   }
 //
-// Alternatively, there are helper functions, such as ggml_get_f32_1d() and ggml_set_f32_1d() that can be used.
+// Alternatively, there are helper functions, such as ggml_dadbed9_get_f32_1d() and ggml_dadbed9_set_f32_1d() that can be used.
 //
-// ## The matrix multiplication operator (ggml_mul_mat)
+// ## The matrix multiplication operator (ggml_dadbed9_mul_mat)
 //
 // TODO
 //
@@ -257,22 +257,22 @@ extern "C" {
 
 #ifdef __ARM_NEON
     // we use the built-in 16-bit float type
-    typedef __fp16 ggml_fp16_t;
+    typedef __fp16 ggml_dadbed9_fp16_t;
 #else
-    typedef uint16_t ggml_fp16_t;
+    typedef uint16_t ggml_dadbed9_fp16_t;
 #endif
 
     // convert FP16 <-> FP32
-    GGML_API float       ggml_fp16_to_fp32(ggml_fp16_t x);
-    GGML_API ggml_fp16_t ggml_fp32_to_fp16(float x);
+    GGML_API float       ggml_dadbed9_fp16_to_fp32(ggml_dadbed9_fp16_t x);
+    GGML_API ggml_dadbed9_fp16_t ggml_dadbed9_fp32_to_fp16(float x);
 
-    GGML_API void ggml_fp16_to_fp32_row(const ggml_fp16_t * x, float * y, int n);
-    GGML_API void ggml_fp32_to_fp16_row(const float * x, ggml_fp16_t * y, int n);
+    GGML_API void ggml_dadbed9_fp16_to_fp32_row(const ggml_dadbed9_fp16_t * x, float * y, int n);
+    GGML_API void ggml_dadbed9_fp32_to_fp16_row(const float * x, ggml_dadbed9_fp16_t * y, int n);
 
-    struct ggml_object;
-    struct ggml_context;
+    struct ggml_dadbed9_object;
+    struct ggml_dadbed9_context;
 
-    enum ggml_type {
+    enum ggml_dadbed9_type {
         GGML_TYPE_F32  = 0,
         GGML_TYPE_F16  = 1,
         GGML_TYPE_Q4_0 = 2,
@@ -296,14 +296,14 @@ extern "C" {
         GGML_TYPE_COUNT,
     };
 
-    enum ggml_backend {
+    enum ggml_dadbed9_backend {
         GGML_BACKEND_CPU = 0,
         GGML_BACKEND_GPU = 10,
         GGML_BACKEND_GPU_SPLIT = 20,
     };
 
     // model file types
-    enum ggml_ftype {
+    enum ggml_dadbed9_ftype {
         GGML_FTYPE_UNKNOWN     = -1,
         GGML_FTYPE_ALL_F32     = 0,
         GGML_FTYPE_MOSTLY_F16  = 1,  // except 1d tensors
@@ -321,7 +321,7 @@ extern "C" {
     };
 
     // available tensor operations:
-    enum ggml_op {
+    enum ggml_dadbed9_op {
         GGML_OP_NONE = 0,
 
         GGML_OP_DUP,
@@ -397,7 +397,7 @@ extern "C" {
         GGML_OP_COUNT,
     };
 
-    enum ggml_unary_op {
+    enum ggml_dadbed9_unary_op {
         GGML_UNARY_OP_ABS,
         GGML_UNARY_OP_SGN,
         GGML_UNARY_OP_NEG,
@@ -410,30 +410,30 @@ extern "C" {
         GGML_UNARY_OP_SILU,
     };
 
-    enum ggml_object_type {
+    enum ggml_dadbed9_object_type {
         GGML_OBJECT_TENSOR,
         GGML_OBJECT_GRAPH,
         GGML_OBJECT_WORK_BUFFER
     };
 
     // ggml object
-    struct ggml_object {
+    struct ggml_dadbed9_object {
         size_t offs;
         size_t size;
 
-        struct ggml_object * next;
+        struct ggml_dadbed9_object * next;
 
-        enum ggml_object_type type;
+        enum ggml_dadbed9_object_type type;
 
         char padding[4];
     };
 
-    static const size_t GGML_OBJECT_SIZE = sizeof(struct ggml_object);
+    static const size_t GGML_OBJECT_SIZE = sizeof(struct ggml_dadbed9_object);
 
     // n-dimensional tensor
-    struct ggml_tensor {
-        enum ggml_type    type;
-        enum ggml_backend backend;
+    struct ggml_dadbed9_tensor {
+        enum ggml_dadbed9_type    type;
+        enum ggml_dadbed9_backend backend;
 
         int     n_dims;
         int64_t ne[GGML_MAX_DIMS]; // number of elements
@@ -443,15 +443,15 @@ extern "C" {
                                    // nb[i] = nb[i-1] * ne[i-1]
 
         // compute data
-        enum ggml_op op;
+        enum ggml_dadbed9_op op;
 
         // op params - allocated as int32_t for alignment
         int32_t op_params[GGML_MAX_OP_PARAMS / sizeof(int32_t)];
 
         bool is_param;
 
-        struct ggml_tensor * grad;
-        struct ggml_tensor * src[GGML_MAX_SRC];
+        struct ggml_dadbed9_tensor * grad;
+        struct ggml_dadbed9_tensor * src[GGML_MAX_SRC];
 
         // performance
         int     perf_runs;
@@ -467,20 +467,20 @@ extern "C" {
         char padding[4];
     };
 
-    static const size_t GGML_TENSOR_SIZE = sizeof(struct ggml_tensor);
+    static const size_t GGML_TENSOR_SIZE = sizeof(struct ggml_dadbed9_tensor);
 
-    // the compute plan that needs to be prepared for ggml_graph_compute()
+    // the compute plan that needs to be prepared for ggml_dadbed9_graph_compute()
     // since https://github.com/ggerganov/ggml/issues/287
-    struct ggml_cplan {
-        size_t    work_size; // size of work buffer, calculated by `ggml_graph_plan()`
-        uint8_t * work_data; // work buffer, to be allocated by caller before calling to `ggml_graph_compute()`
+    struct ggml_dadbed9_cplan {
+        size_t    work_size; // size of work buffer, calculated by `ggml_dadbed9_graph_plan()`
+        uint8_t * work_data; // work buffer, to be allocated by caller before calling to `ggml_dadbed9_graph_compute()`
 
         int n_threads;
 
         // the `n_tasks` of nodes, 1:1 mapping to cgraph nodes
         int n_tasks[GGML_MAX_NODES];
 
-        // abort ggml_graph_compute when true
+        // abort ggml_dadbed9_graph_compute when true
         bool (*abort_callback)(void * data);
         void * abort_callback_data;
     };
@@ -491,13 +491,13 @@ extern "C" {
     #define GGML_GRAPH_HASHTABLE_SIZE 8273
 
     // computation graph
-    struct ggml_cgraph {
+    struct ggml_dadbed9_cgraph {
         int n_nodes;
         int n_leafs;
 
-        struct ggml_tensor * nodes[GGML_MAX_NODES];
-        struct ggml_tensor * grads[GGML_MAX_NODES];
-        struct ggml_tensor * leafs[GGML_MAX_NODES];
+        struct ggml_dadbed9_tensor * nodes[GGML_MAX_NODES];
+        struct ggml_dadbed9_tensor * grads[GGML_MAX_NODES];
+        struct ggml_dadbed9_tensor * leafs[GGML_MAX_NODES];
 
         void * visited_hash_table[GGML_GRAPH_HASHTABLE_SIZE];
 
@@ -507,16 +507,16 @@ extern "C" {
         int64_t perf_time_us;
     };
 
-    static const size_t GGML_GRAPH_SIZE = sizeof(struct ggml_cgraph);
+    static const size_t GGML_GRAPH_SIZE = sizeof(struct ggml_dadbed9_cgraph);
 
     // scratch buffer
-    struct ggml_scratch {
+    struct ggml_dadbed9_scratch {
         size_t offs;
         size_t size;
         void * data;
     };
 
-    struct ggml_init_params {
+    struct ggml_dadbed9_init_params {
         // memory pool
         size_t mem_size;   // bytes
         void * mem_buffer; // if NULL, memory will be allocated internally
@@ -528,14 +528,14 @@ extern "C" {
 
     // NOTE: the INIT or FINALIZE pass is not scheduled unless explicitly enabled.
     // This behavior was changed since https://github.com/ggerganov/llama.cpp/pull/1995.
-    enum ggml_task_type {
+    enum ggml_dadbed9_task_type {
         GGML_TASK_INIT = 0,
         GGML_TASK_COMPUTE,
         GGML_TASK_FINALIZE,
     };
 
-    struct ggml_compute_params {
-        enum ggml_task_type type;
+    struct ggml_dadbed9_compute_params {
+        enum ggml_dadbed9_task_type type;
 
         // ith = thread index, nth = number of threads
         int ith, nth;
@@ -547,531 +547,531 @@ extern "C" {
 
     // misc
 
-    GGML_API void    ggml_time_init(void); // call this once at the beginning of the program
-    GGML_API int64_t ggml_time_ms(void);
-    GGML_API int64_t ggml_time_us(void);
-    GGML_API int64_t ggml_cycles(void);
-    GGML_API int64_t ggml_cycles_per_ms(void);
+    GGML_API void    ggml_dadbed9_time_init(void); // call this once at the beginning of the program
+    GGML_API int64_t ggml_dadbed9_time_ms(void);
+    GGML_API int64_t ggml_dadbed9_time_us(void);
+    GGML_API int64_t ggml_dadbed9_cycles(void);
+    GGML_API int64_t ggml_dadbed9_cycles_per_ms(void);
 
-    GGML_API void    ggml_numa_init(void); // call once for better performance on NUMA systems
-    GGML_API bool    ggml_is_numa(void); // true if init detected that system has >1 NUMA node
+    GGML_API void    ggml_dadbed9_numa_init(void); // call once for better performance on NUMA systems
+    GGML_API bool    ggml_dadbed9_is_numa(void); // true if init detected that system has >1 NUMA node
 
-    GGML_API void    ggml_print_object (const struct ggml_object * obj);
-    GGML_API void    ggml_print_objects(const struct ggml_context * ctx);
+    GGML_API void    ggml_dadbed9_print_object (const struct ggml_dadbed9_object * obj);
+    GGML_API void    ggml_dadbed9_print_objects(const struct ggml_dadbed9_context * ctx);
 
-    GGML_API int64_t ggml_nelements   (const struct ggml_tensor * tensor);
-    GGML_API int64_t ggml_nrows       (const struct ggml_tensor * tensor);
-    GGML_API size_t  ggml_nbytes      (const struct ggml_tensor * tensor);
-    GGML_API size_t  ggml_nbytes_split(const struct ggml_tensor * tensor, int nrows_split);
+    GGML_API int64_t ggml_dadbed9_nelements   (const struct ggml_dadbed9_tensor * tensor);
+    GGML_API int64_t ggml_dadbed9_nrows       (const struct ggml_dadbed9_tensor * tensor);
+    GGML_API size_t  ggml_dadbed9_nbytes      (const struct ggml_dadbed9_tensor * tensor);
+    GGML_API size_t  ggml_dadbed9_nbytes_split(const struct ggml_dadbed9_tensor * tensor, int nrows_split);
 
-    GGML_API int     ggml_blck_size (enum ggml_type type);
-    GGML_API size_t  ggml_type_size (enum ggml_type type); // size in bytes for all elements in a block
-    GGML_API float   ggml_type_sizef(enum ggml_type type); // ggml_type_size()/ggml_blck_size() as float
+    GGML_API int     ggml_dadbed9_blck_size (enum ggml_dadbed9_type type);
+    GGML_API size_t  ggml_dadbed9_type_size (enum ggml_dadbed9_type type); // size in bytes for all elements in a block
+    GGML_API float   ggml_dadbed9_type_sizef(enum ggml_dadbed9_type type); // ggml_dadbed9_type_size()/ggml_dadbed9_blck_size() as float
 
-    GGML_API const char * ggml_type_name(enum ggml_type type);
-    GGML_API const char * ggml_op_name  (enum ggml_op   op);
-    GGML_API const char * ggml_op_symbol(enum ggml_op   op);
+    GGML_API const char * ggml_dadbed9_type_name(enum ggml_dadbed9_type type);
+    GGML_API const char * ggml_dadbed9_op_name  (enum ggml_dadbed9_op   op);
+    GGML_API const char * ggml_dadbed9_op_symbol(enum ggml_dadbed9_op   op);
 
-    GGML_API size_t  ggml_element_size(const struct ggml_tensor * tensor);
+    GGML_API size_t  ggml_dadbed9_element_size(const struct ggml_dadbed9_tensor * tensor);
 
-    GGML_API bool    ggml_is_quantized(enum ggml_type type);
+    GGML_API bool    ggml_dadbed9_is_quantized(enum ggml_dadbed9_type type);
 
     // TODO: temporary until model loading of ggml examples is refactored
-    GGML_API enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype);
+    GGML_API enum ggml_dadbed9_type ggml_dadbed9_ftype_to_ggml_dadbed9_type(enum ggml_dadbed9_ftype ftype);
 
-    GGML_API bool ggml_is_transposed(const struct ggml_tensor * tensor);
-    GGML_API bool ggml_is_contiguous(const struct ggml_tensor * tensor);
-    GGML_API bool ggml_is_permuted  (const struct ggml_tensor * tensor);
+    GGML_API bool ggml_dadbed9_is_transposed(const struct ggml_dadbed9_tensor * tensor);
+    GGML_API bool ggml_dadbed9_is_contiguous(const struct ggml_dadbed9_tensor * tensor);
+    GGML_API bool ggml_dadbed9_is_permuted  (const struct ggml_dadbed9_tensor * tensor);
 
-    GGML_API bool ggml_are_same_shape(const struct ggml_tensor * t0, const struct ggml_tensor * t1);
+    GGML_API bool ggml_dadbed9_are_same_shape(const struct ggml_dadbed9_tensor * t0, const struct ggml_dadbed9_tensor * t1);
 
     // use this to compute the memory overhead of a tensor
-    GGML_API size_t ggml_tensor_overhead(void);
+    GGML_API size_t ggml_dadbed9_tensor_overhead(void);
 
     // main
 
-    GGML_API struct ggml_context * ggml_init(struct ggml_init_params params);
-    GGML_API void                  ggml_free(struct ggml_context * ctx);
+    GGML_API struct ggml_dadbed9_context * ggml_dadbed9_init(struct ggml_dadbed9_init_params params);
+    GGML_API void                  ggml_dadbed9_free(struct ggml_dadbed9_context * ctx);
 
-    GGML_API size_t  ggml_used_mem(const struct ggml_context * ctx);
+    GGML_API size_t  ggml_dadbed9_used_mem(const struct ggml_dadbed9_context * ctx);
 
-    GGML_API size_t  ggml_set_scratch (struct ggml_context * ctx, struct ggml_scratch scratch);
-    GGML_API bool    ggml_get_no_alloc(struct ggml_context * ctx);
-    GGML_API void    ggml_set_no_alloc(struct ggml_context * ctx, bool no_alloc);
+    GGML_API size_t  ggml_dadbed9_set_scratch (struct ggml_dadbed9_context * ctx, struct ggml_dadbed9_scratch scratch);
+    GGML_API bool    ggml_dadbed9_get_no_alloc(struct ggml_dadbed9_context * ctx);
+    GGML_API void    ggml_dadbed9_set_no_alloc(struct ggml_dadbed9_context * ctx, bool no_alloc);
 
-    GGML_API void *  ggml_get_mem_buffer     (const struct ggml_context * ctx);
-    GGML_API size_t  ggml_get_mem_size       (const struct ggml_context * ctx);
-    GGML_API size_t  ggml_get_max_tensor_size(const struct ggml_context * ctx);
+    GGML_API void *  ggml_dadbed9_get_mem_buffer     (const struct ggml_dadbed9_context * ctx);
+    GGML_API size_t  ggml_dadbed9_get_mem_size       (const struct ggml_dadbed9_context * ctx);
+    GGML_API size_t  ggml_dadbed9_get_max_tensor_size(const struct ggml_dadbed9_context * ctx);
 
-    GGML_API struct ggml_tensor * ggml_new_tensor(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_tensor(
+            struct ggml_dadbed9_context * ctx,
+            enum   ggml_dadbed9_type type,
             int    n_dims,
             const int64_t *ne);
 
-    GGML_API struct ggml_tensor * ggml_new_tensor_1d(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_tensor_1d(
+            struct ggml_dadbed9_context * ctx,
+            enum   ggml_dadbed9_type type,
             int64_t ne0);
 
-    GGML_API struct ggml_tensor * ggml_new_tensor_2d(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_tensor_2d(
+            struct ggml_dadbed9_context * ctx,
+            enum   ggml_dadbed9_type type,
             int64_t ne0,
             int64_t ne1);
 
-    GGML_API struct ggml_tensor * ggml_new_tensor_3d(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_tensor_3d(
+            struct ggml_dadbed9_context * ctx,
+            enum   ggml_dadbed9_type type,
             int64_t ne0,
             int64_t ne1,
             int64_t ne2);
 
-    GGML_API struct ggml_tensor * ggml_new_tensor_4d(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_tensor_4d(
+            struct ggml_dadbed9_context * ctx,
+            enum   ggml_dadbed9_type type,
             int64_t ne0,
             int64_t ne1,
             int64_t ne2,
             int64_t ne3);
 
-    GGML_API struct ggml_tensor * ggml_new_i32(struct ggml_context * ctx, int32_t value);
-    GGML_API struct ggml_tensor * ggml_new_f32(struct ggml_context * ctx, float value);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_i32(struct ggml_dadbed9_context * ctx, int32_t value);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_new_f32(struct ggml_dadbed9_context * ctx, float value);
 
-    GGML_API struct ggml_tensor * ggml_dup_tensor (struct ggml_context * ctx, const struct ggml_tensor * src);
-    GGML_API struct ggml_tensor * ggml_view_tensor(struct ggml_context * ctx, const struct ggml_tensor * src);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_dup_tensor (struct ggml_dadbed9_context * ctx, const struct ggml_dadbed9_tensor * src);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_view_tensor(struct ggml_dadbed9_context * ctx, const struct ggml_dadbed9_tensor * src);
 
-    GGML_API struct ggml_tensor * ggml_get_tensor(struct ggml_context * ctx, const char * name);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_get_tensor(struct ggml_dadbed9_context * ctx, const char * name);
 
-    GGML_API struct ggml_tensor * ggml_set_zero(struct ggml_tensor * tensor);
-    GGML_API struct ggml_tensor * ggml_set_i32 (struct ggml_tensor * tensor, int32_t value);
-    GGML_API struct ggml_tensor * ggml_set_f32 (struct ggml_tensor * tensor, float value);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_zero(struct ggml_dadbed9_tensor * tensor);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_i32 (struct ggml_dadbed9_tensor * tensor, int32_t value);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_f32 (struct ggml_dadbed9_tensor * tensor, float value);
 
-    GGML_API int32_t ggml_get_i32_1d(const struct ggml_tensor * tensor, int i);
-    GGML_API void    ggml_set_i32_1d(const struct ggml_tensor * tensor, int i, int32_t value);
+    GGML_API int32_t ggml_dadbed9_get_i32_1d(const struct ggml_dadbed9_tensor * tensor, int i);
+    GGML_API void    ggml_dadbed9_set_i32_1d(const struct ggml_dadbed9_tensor * tensor, int i, int32_t value);
 
-    GGML_API float   ggml_get_f32_1d(const struct ggml_tensor * tensor, int i);
-    GGML_API void    ggml_set_f32_1d(const struct ggml_tensor * tensor, int i, float value);
+    GGML_API float   ggml_dadbed9_get_f32_1d(const struct ggml_dadbed9_tensor * tensor, int i);
+    GGML_API void    ggml_dadbed9_set_f32_1d(const struct ggml_dadbed9_tensor * tensor, int i, float value);
 
-    GGML_API void *  ggml_get_data    (const struct ggml_tensor * tensor);
-    GGML_API float * ggml_get_data_f32(const struct ggml_tensor * tensor);
+    GGML_API void *  ggml_dadbed9_get_data    (const struct ggml_dadbed9_tensor * tensor);
+    GGML_API float * ggml_dadbed9_get_data_f32(const struct ggml_dadbed9_tensor * tensor);
 
-    GGML_API enum ggml_unary_op ggml_get_unary_op(const struct ggml_tensor * tensor);
+    GGML_API enum ggml_dadbed9_unary_op ggml_dadbed9_get_unary_op(const struct ggml_dadbed9_tensor * tensor);
 
-    GGML_API const char *         ggml_get_name   (const struct ggml_tensor * tensor);
-    GGML_API struct ggml_tensor * ggml_set_name   (      struct ggml_tensor * tensor, const char * name);
-    GGML_API struct ggml_tensor * ggml_format_name(      struct ggml_tensor * tensor, const char * fmt, ...);
+    GGML_API const char *         ggml_dadbed9_get_name   (const struct ggml_dadbed9_tensor * tensor);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_name   (      struct ggml_dadbed9_tensor * tensor, const char * name);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_format_name(      struct ggml_dadbed9_tensor * tensor, const char * fmt, ...);
 
     //
     // operations on tensors with backpropagation
     //
 
-    GGML_API struct ggml_tensor * ggml_dup(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_dup(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_dup_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_dup_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_add(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_add(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_add_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_add_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_add1(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_add1(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_add1_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_add1_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_acc(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_acc(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                nb1,
             size_t                nb2,
             size_t                nb3,
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_acc_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_acc_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                nb1,
             size_t                nb2,
             size_t                nb3,
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_sub(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sub(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_sub_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sub_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_mul(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_mul(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_mul_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_mul_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_div(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_div(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_div_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_div_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_sqr(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sqr(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_sqr_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sqr_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_sqrt(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sqrt(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_sqrt_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sqrt_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_log(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_log(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_log_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_log_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // return scalar
-    GGML_API struct ggml_tensor * ggml_sum(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sum(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // sums along rows, with input shape [a,b,c,d] return shape [1,b,c,d]
-    GGML_API struct ggml_tensor * ggml_sum_rows(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sum_rows(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // mean along rows
-    GGML_API struct ggml_tensor * ggml_mean(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_mean(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // argmax along rows
-    GGML_API struct ggml_tensor * ggml_argmax(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_argmax(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // if a is the same shape as b, and a is not parameter, return a
     // otherwise, return a new tensor: repeat(a) to fit in b
-    GGML_API struct ggml_tensor * ggml_repeat(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_repeat(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_repeat_back(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_repeat_back(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_abs(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_abs(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_abs_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_abs_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_sgn(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sgn(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_sgn_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_sgn_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_neg(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_neg(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_neg_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_neg_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_step(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_step(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_step_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_step_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_tanh(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_tanh(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_tanh_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_tanh_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_elu(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_elu(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_elu_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_elu_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_relu(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_relu(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_relu_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_relu_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // TODO: double-check this computation is correct
-    GGML_API struct ggml_tensor * ggml_gelu(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_gelu(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_gelu_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_gelu_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_gelu_quick(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_gelu_quick(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_gelu_quick_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_gelu_quick_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_silu(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_silu(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_silu_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_silu_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // a - x
     // b - dy
-    GGML_API struct ggml_tensor * ggml_silu_back(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_silu_back(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // normalize along rows
     // TODO: eps is hardcoded to 1e-5 for now
-    GGML_API struct ggml_tensor * ggml_norm(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_norm(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_norm_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_norm_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_rms_norm(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rms_norm(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             float                 eps);
 
-    GGML_API struct ggml_tensor * ggml_rms_norm_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rms_norm_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             float                 eps);
 
     // a - x
     // b - dy
     // TODO: update with configurable eps
-    GGML_API struct ggml_tensor * ggml_rms_norm_back(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rms_norm_back(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // A: n columns, m rows
     // B: n columns, p rows  (i.e. we transpose it internally)
     // result is m columns, p rows
-    GGML_API struct ggml_tensor * ggml_mul_mat(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_mul_mat(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // A: m columns, n rows,
     // B: p columns, n rows,
     // result is m columns, p rows
-    GGML_API struct ggml_tensor * ggml_out_prod(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_out_prod(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     //
     // operations on tensors without backpropagation
     //
 
-    GGML_API struct ggml_tensor * ggml_scale(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_scale(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_scale_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_scale_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // b -> view(a,offset,nb1,nb2,3), return modified a
-    GGML_API struct ggml_tensor * ggml_set(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                nb1,
             size_t                nb2,
             size_t                nb3,
             size_t                offset);
 
     // b -> view(a,offset,nb1,nb2,3), return view(a)
-    GGML_API struct ggml_tensor * ggml_set_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                nb1,
             size_t                nb2,
             size_t                nb3,
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_set_1d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_1d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_set_1d_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_1d_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                offset);
 
     // b -> view(a,offset,nb1,nb2,3), return modified a
-    GGML_API struct ggml_tensor * ggml_set_2d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_2d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                nb1,
             size_t                offset);
 
     // b -> view(a,offset,nb1,nb2,3), return view(a)
-    GGML_API struct ggml_tensor * ggml_set_2d_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_set_2d_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             size_t                nb1,
             size_t                offset);
 
 
     // a -> b, return view(b)
-    GGML_API struct ggml_tensor * ggml_cpy(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_cpy(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // a -> b, in-place, return view(b)
-    GGML_API struct ggml_tensor * ggml_cpy_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_cpy_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // make contiguous
-    GGML_API struct ggml_tensor * ggml_cont(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_cont(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // make contiguous, in-place
-    GGML_API struct ggml_tensor * ggml_cont_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_cont_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // return view(a), b specifies the new shape
     // TODO: when we start computing gradient, make a copy instead of view
-    GGML_API struct ggml_tensor * ggml_reshape(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_reshape(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // return view(a)
     // TODO: when we start computing gradient, make a copy instead of view
-    GGML_API struct ggml_tensor * ggml_reshape_1d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_reshape_1d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0);
 
-    GGML_API struct ggml_tensor * ggml_reshape_2d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_reshape_2d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             int64_t               ne1);
 
     // return view(a)
     // TODO: when we start computing gradient, make a copy instead of view
-    GGML_API struct ggml_tensor * ggml_reshape_3d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_reshape_3d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             int64_t               ne1,
             int64_t               ne2);
 
-    GGML_API struct ggml_tensor * ggml_reshape_4d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_reshape_4d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             int64_t               ne1,
             int64_t               ne2,
             int64_t               ne3);
 
     // offset in bytes
-    GGML_API struct ggml_tensor * ggml_view_1d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_view_1d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_view_2d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_view_2d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             int64_t               ne1,
             size_t                nb1, // row stride in bytes
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_view_3d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_view_3d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             int64_t               ne1,
             int64_t               ne2,
@@ -1079,9 +1079,9 @@ extern "C" {
             size_t                nb2, // slice stride in bytes
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_view_4d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_view_4d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int64_t               ne0,
             int64_t               ne1,
             int64_t               ne2,
@@ -1091,104 +1091,104 @@ extern "C" {
             size_t                nb3,
             size_t                offset);
 
-    GGML_API struct ggml_tensor * ggml_permute(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_permute(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   axis0,
             int                   axis1,
             int                   axis2,
             int                   axis3);
 
-    // alias for ggml_permute(ctx, a, 1, 0, 2, 3)
-    GGML_API struct ggml_tensor * ggml_transpose(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    // alias for ggml_dadbed9_permute(ctx, a, 1, 0, 2, 3)
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_transpose(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_get_rows(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_get_rows(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
-    GGML_API struct ggml_tensor * ggml_get_rows_back(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
-            struct ggml_tensor  * c);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_get_rows_back(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
+            struct ggml_dadbed9_tensor  * c);
 
-    GGML_API struct ggml_tensor * ggml_diag(
-        struct ggml_context     * ctx,
-        struct ggml_tensor      * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_diag(
+        struct ggml_dadbed9_context     * ctx,
+        struct ggml_dadbed9_tensor      * a);
 
     // set elements above the diagonal to -INF
-    GGML_API struct ggml_tensor * ggml_diag_mask_inf(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_diag_mask_inf(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_diag_mask_inf_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_diag_mask_inf_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past);
 
     // set elements above the diagonal to 0
-    GGML_API struct ggml_tensor * ggml_diag_mask_zero(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_diag_mask_zero(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_diag_mask_zero_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_diag_mask_zero_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past);
 
-    GGML_API struct ggml_tensor * ggml_soft_max(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_soft_max(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_soft_max_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_soft_max_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a);
 
-    GGML_API struct ggml_tensor * ggml_soft_max_back(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_soft_max_back(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_soft_max_back_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_soft_max_back_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b);
 
     // rotary position embedding
     // if mode & 1 == 1, skip n_past elements
     // if mode & 2 == 1, GPT-NeoX style
     // if mode & 4 == 1, ChatGLM style
     // TODO: avoid creating a new tensor every time
-    GGML_API struct ggml_tensor * ggml_rope(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rope(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past,
             int                   n_dims,
             int                   mode,
             int                   n_ctx);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_rope_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rope_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past,
             int                   n_dims,
             int                   mode,
             int                   n_ctx);
 
     // custom RoPE
-    GGML_API struct ggml_tensor * ggml_rope_custom(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rope_custom(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past,
             int                   n_dims,
             int                   mode,
@@ -1197,9 +1197,9 @@ extern "C" {
             float                 freq_scale);
 
     // in-place, returns view(a)
-    GGML_API struct ggml_tensor * ggml_rope_custom_inplace(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rope_custom_inplace(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past,
             int                   n_dims,
             int                   mode,
@@ -1209,9 +1209,9 @@ extern "C" {
 
     // rotary position embedding backward, i.e compute dx from dy
     // a - dy
-    GGML_API struct ggml_tensor * ggml_rope_back(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_rope_back(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past,
             int                   n_dims,
             int                   mode,
@@ -1219,33 +1219,33 @@ extern "C" {
 
     // alibi position embedding
     // in-place, returns view(a)
-    struct ggml_tensor * ggml_alibi(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    struct ggml_dadbed9_tensor * ggml_dadbed9_alibi(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   n_past,
             int                   n_head,
             float                 bias_max);
 
     // clamp
     // in-place, returns view(a)
-    struct ggml_tensor * ggml_clamp(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    struct ggml_dadbed9_tensor * ggml_dadbed9_clamp(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             float                 min,
             float                 max);
 
-    GGML_API struct ggml_tensor * ggml_conv_1d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_conv_1d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             int                   s0,  // stride
             int                   p0,  // padding
             int                   d0); // dilation
 
-    GGML_API struct ggml_tensor * ggml_conv_2d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_conv_2d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             int                   s0,
             int                   s1,
             int                   p0,
@@ -1254,32 +1254,32 @@ extern "C" {
             int                   d1);
 
     // conv_1d with padding = half
-    // alias for ggml_conv_1d(a, b, s, a->ne[0]/2, d)
-    GGML_API struct ggml_tensor * ggml_conv_1d_ph(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b,
+    // alias for ggml_dadbed9_conv_1d(a, b, s, a->ne[0]/2, d)
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_conv_1d_ph(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b,
             int                   s,
             int                   d);
 
-    enum ggml_op_pool {
+    enum ggml_dadbed9_op_pool {
         GGML_OP_POOL_MAX,
         GGML_OP_POOL_AVG,
         GGML_OP_POOL_COUNT,
     };
 
-    GGML_API struct ggml_tensor * ggml_pool_1d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            enum ggml_op_pool     op,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_pool_1d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            enum ggml_dadbed9_op_pool     op,
             int                   k0, // kernel size
             int                   s0, // stride
             int                   p0); // padding
 
-    GGML_API struct ggml_tensor * ggml_pool_2d(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            enum ggml_op_pool     op,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_pool_2d(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            enum ggml_dadbed9_op_pool     op,
             int                   k0,
             int                   k1,
             int                   s0,
@@ -1287,28 +1287,28 @@ extern "C" {
             int                   p0,
             int                   p1);
 
-    GGML_API struct ggml_tensor * ggml_flash_attn(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * q,
-            struct ggml_tensor  * k,
-            struct ggml_tensor  * v,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_flash_attn(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * q,
+            struct ggml_dadbed9_tensor  * k,
+            struct ggml_dadbed9_tensor  * v,
             bool                  masked);
 
-    GGML_API struct ggml_tensor * ggml_flash_attn_back(
-           struct ggml_context * ctx,
-           struct ggml_tensor  * q,
-           struct ggml_tensor  * k,
-           struct ggml_tensor  * v,
-           struct ggml_tensor  * d,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_flash_attn_back(
+           struct ggml_dadbed9_context * ctx,
+           struct ggml_dadbed9_tensor  * q,
+           struct ggml_dadbed9_tensor  * k,
+           struct ggml_dadbed9_tensor  * v,
+           struct ggml_dadbed9_tensor  * d,
            bool                  masked);
 
-    GGML_API struct ggml_tensor * ggml_flash_ff(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
-            struct ggml_tensor  * b0,
-            struct ggml_tensor  * b1,
-            struct ggml_tensor  * c0,
-            struct ggml_tensor  * c1);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_flash_ff(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
+            struct ggml_dadbed9_tensor  * b0,
+            struct ggml_dadbed9_tensor  * b1,
+            struct ggml_dadbed9_tensor  * c0,
+            struct ggml_dadbed9_tensor  * c1);
 
     // partition into non-overlapping windows with padding if needed
     // example:
@@ -1316,228 +1316,228 @@ extern "C" {
     // w:    14
     // res: 768   14   14    25
     // used in sam
-    GGML_API struct ggml_tensor * ggml_win_part(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_win_part(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   w);
 
-    // reverse of ggml_win_part
+    // reverse of ggml_dadbed9_win_part
     // used in sam
-    GGML_API struct ggml_tensor * ggml_win_unpart(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * a,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_win_unpart(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * a,
             int                   w0,
             int                   h0,
             int                   w);
 
-    GGML_API struct ggml_tensor * ggml_unary(
-            struct ggml_context * ctx,
-             struct ggml_tensor * a,
-             enum ggml_unary_op op);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_unary(
+            struct ggml_dadbed9_context * ctx,
+             struct ggml_dadbed9_tensor * a,
+             enum ggml_dadbed9_unary_op op);
 
-    GGML_API struct ggml_tensor * ggml_unary_inplace(
-        struct ggml_context * ctx,
-        struct ggml_tensor  * a,
-        enum ggml_unary_op op);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_unary_inplace(
+        struct ggml_dadbed9_context * ctx,
+        struct ggml_dadbed9_tensor  * a,
+        enum ggml_dadbed9_unary_op op);
 
     // custom operators
 
-    typedef void (*ggml_unary_op_f32_t) (const int, float *, const float *);
-    typedef void (*ggml_binary_op_f32_t)(const int, float *, const float *, const float *);
+    typedef void (*ggml_dadbed9_unary_op_f32_t) (const int, float *, const float *);
+    typedef void (*ggml_dadbed9_binary_op_f32_t)(const int, float *, const float *, const float *);
 
-    typedef void (*ggml_custom1_op_f32_t)(struct ggml_tensor *, const struct ggml_tensor *);
-    typedef void (*ggml_custom2_op_f32_t)(struct ggml_tensor *, const struct ggml_tensor *, const struct ggml_tensor *);
-    typedef void (*ggml_custom3_op_f32_t)(struct ggml_tensor *, const struct ggml_tensor *, const struct ggml_tensor *, const struct ggml_tensor *);
+    typedef void (*ggml_dadbed9_custom1_op_f32_t)(struct ggml_dadbed9_tensor *, const struct ggml_dadbed9_tensor *);
+    typedef void (*ggml_dadbed9_custom2_op_f32_t)(struct ggml_dadbed9_tensor *, const struct ggml_dadbed9_tensor *, const struct ggml_dadbed9_tensor *);
+    typedef void (*ggml_dadbed9_custom3_op_f32_t)(struct ggml_dadbed9_tensor *, const struct ggml_dadbed9_tensor *, const struct ggml_dadbed9_tensor *, const struct ggml_dadbed9_tensor *);
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_unary_f32(
-            struct ggml_context        * ctx,
-            struct ggml_tensor         * a,
-                   ggml_unary_op_f32_t   fun),
-        "use ggml_map_custom1 instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_unary_f32(
+            struct ggml_dadbed9_context        * ctx,
+            struct ggml_dadbed9_tensor         * a,
+                   ggml_dadbed9_unary_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom1 instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_unary_inplace_f32(
-            struct ggml_context        * ctx,
-            struct ggml_tensor         * a,
-                   ggml_unary_op_f32_t   fun),
-        "use ggml_map_custom1_inplace instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_unary_inplace_f32(
+            struct ggml_dadbed9_context        * ctx,
+            struct ggml_dadbed9_tensor         * a,
+                   ggml_dadbed9_unary_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom1_inplace instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_binary_f32(
-            struct ggml_context         * ctx,
-            struct ggml_tensor          * a,
-            struct ggml_tensor          * b,
-                   ggml_binary_op_f32_t   fun),
-        "use ggml_map_custom2 instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_binary_f32(
+            struct ggml_dadbed9_context         * ctx,
+            struct ggml_dadbed9_tensor          * a,
+            struct ggml_dadbed9_tensor          * b,
+                   ggml_dadbed9_binary_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom2 instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_binary_inplace_f32(
-            struct ggml_context         * ctx,
-            struct ggml_tensor          * a,
-            struct ggml_tensor          * b,
-                   ggml_binary_op_f32_t   fun),
-        "use ggml_map_custom2_inplace instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_binary_inplace_f32(
+            struct ggml_dadbed9_context         * ctx,
+            struct ggml_dadbed9_tensor          * a,
+            struct ggml_dadbed9_tensor          * b,
+                   ggml_dadbed9_binary_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom2_inplace instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_custom1_f32(
-            struct ggml_context          * ctx,
-            struct ggml_tensor           * a,
-                   ggml_custom1_op_f32_t   fun),
-        "use ggml_map_custom1 instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom1_f32(
+            struct ggml_dadbed9_context          * ctx,
+            struct ggml_dadbed9_tensor           * a,
+                   ggml_dadbed9_custom1_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom1 instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_custom1_inplace_f32(
-            struct ggml_context          * ctx,
-            struct ggml_tensor           * a,
-                   ggml_custom1_op_f32_t   fun),
-        "use ggml_map_custom1_inplace instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom1_inplace_f32(
+            struct ggml_dadbed9_context          * ctx,
+            struct ggml_dadbed9_tensor           * a,
+                   ggml_dadbed9_custom1_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom1_inplace instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_custom2_f32(
-            struct ggml_context          * ctx,
-            struct ggml_tensor           * a,
-            struct ggml_tensor           * b,
-                   ggml_custom2_op_f32_t   fun),
-        "use ggml_map_custom2 instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom2_f32(
+            struct ggml_dadbed9_context          * ctx,
+            struct ggml_dadbed9_tensor           * a,
+            struct ggml_dadbed9_tensor           * b,
+                   ggml_dadbed9_custom2_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom2 instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_custom2_inplace_f32(
-            struct ggml_context          * ctx,
-            struct ggml_tensor           * a,
-            struct ggml_tensor           * b,
-                   ggml_custom2_op_f32_t   fun),
-        "use ggml_map_custom2_inplace instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom2_inplace_f32(
+            struct ggml_dadbed9_context          * ctx,
+            struct ggml_dadbed9_tensor           * a,
+            struct ggml_dadbed9_tensor           * b,
+                   ggml_dadbed9_custom2_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom2_inplace instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_custom3_f32(
-            struct ggml_context          * ctx,
-            struct ggml_tensor           * a,
-            struct ggml_tensor           * b,
-            struct ggml_tensor           * c,
-                   ggml_custom3_op_f32_t   fun),
-        "use ggml_map_custom3 instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom3_f32(
+            struct ggml_dadbed9_context          * ctx,
+            struct ggml_dadbed9_tensor           * a,
+            struct ggml_dadbed9_tensor           * b,
+            struct ggml_dadbed9_tensor           * c,
+                   ggml_dadbed9_custom3_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom3 instead");
 
-    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_map_custom3_inplace_f32(
-            struct ggml_context          * ctx,
-            struct ggml_tensor           * a,
-            struct ggml_tensor           * b,
-            struct ggml_tensor           * c,
-                   ggml_custom3_op_f32_t   fun),
-        "use ggml_map_custom3_inplace instead");
+    GGML_DEPRECATED(GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom3_inplace_f32(
+            struct ggml_dadbed9_context          * ctx,
+            struct ggml_dadbed9_tensor           * a,
+            struct ggml_dadbed9_tensor           * b,
+            struct ggml_dadbed9_tensor           * c,
+                   ggml_dadbed9_custom3_op_f32_t   fun),
+        "use ggml_dadbed9_map_custom3_inplace instead");
 
     // custom operators v2
 
-    typedef void (*ggml_custom1_op_t)(struct ggml_tensor * dst , const struct ggml_tensor * a, int ith, int nth, void * userdata);
-    typedef void (*ggml_custom2_op_t)(struct ggml_tensor * dst , const struct ggml_tensor * a, const struct ggml_tensor * b, int ith, int nth, void * userdata);
-    typedef void (*ggml_custom3_op_t)(struct ggml_tensor * dst , const struct ggml_tensor * a, const struct ggml_tensor * b, const struct ggml_tensor * c, int ith, int nth, void * userdata);
+    typedef void (*ggml_dadbed9_custom1_op_t)(struct ggml_dadbed9_tensor * dst , const struct ggml_dadbed9_tensor * a, int ith, int nth, void * userdata);
+    typedef void (*ggml_dadbed9_custom2_op_t)(struct ggml_dadbed9_tensor * dst , const struct ggml_dadbed9_tensor * a, const struct ggml_dadbed9_tensor * b, int ith, int nth, void * userdata);
+    typedef void (*ggml_dadbed9_custom3_op_t)(struct ggml_dadbed9_tensor * dst , const struct ggml_dadbed9_tensor * a, const struct ggml_dadbed9_tensor * b, const struct ggml_dadbed9_tensor * c, int ith, int nth, void * userdata);
 
     #define GGML_N_TASKS_MAX -1
 
-    GGML_API struct ggml_tensor * ggml_map_custom1(
-            struct ggml_context   * ctx,
-            struct ggml_tensor    * a,
-            ggml_custom1_op_t       fun,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom1(
+            struct ggml_dadbed9_context   * ctx,
+            struct ggml_dadbed9_tensor    * a,
+            ggml_dadbed9_custom1_op_t       fun,
             int                     n_tasks,
             void                  * userdata);
 
-    GGML_API struct ggml_tensor * ggml_map_custom1_inplace(
-            struct ggml_context   * ctx,
-            struct ggml_tensor    * a,
-            ggml_custom1_op_t       fun,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom1_inplace(
+            struct ggml_dadbed9_context   * ctx,
+            struct ggml_dadbed9_tensor    * a,
+            ggml_dadbed9_custom1_op_t       fun,
             int                     n_tasks,
             void                  * userdata);
 
-    GGML_API struct ggml_tensor * ggml_map_custom2(
-            struct ggml_context   * ctx,
-            struct ggml_tensor    * a,
-            struct ggml_tensor    * b,
-            ggml_custom2_op_t       fun,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom2(
+            struct ggml_dadbed9_context   * ctx,
+            struct ggml_dadbed9_tensor    * a,
+            struct ggml_dadbed9_tensor    * b,
+            ggml_dadbed9_custom2_op_t       fun,
             int                     n_tasks,
             void                  * userdata);
 
-    GGML_API struct ggml_tensor * ggml_map_custom2_inplace(
-            struct ggml_context   * ctx,
-            struct ggml_tensor    * a,
-            struct ggml_tensor    * b,
-            ggml_custom2_op_t       fun,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom2_inplace(
+            struct ggml_dadbed9_context   * ctx,
+            struct ggml_dadbed9_tensor    * a,
+            struct ggml_dadbed9_tensor    * b,
+            ggml_dadbed9_custom2_op_t       fun,
             int                     n_tasks,
             void                  * userdata);
 
-    GGML_API struct ggml_tensor * ggml_map_custom3(
-            struct ggml_context   * ctx,
-            struct ggml_tensor    * a,
-            struct ggml_tensor    * b,
-            struct ggml_tensor    * c,
-            ggml_custom3_op_t       fun,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom3(
+            struct ggml_dadbed9_context   * ctx,
+            struct ggml_dadbed9_tensor    * a,
+            struct ggml_dadbed9_tensor    * b,
+            struct ggml_dadbed9_tensor    * c,
+            ggml_dadbed9_custom3_op_t       fun,
             int                     n_tasks,
             void                  * userdata);
 
-    GGML_API struct ggml_tensor * ggml_map_custom3_inplace(
-            struct ggml_context   * ctx,
-            struct ggml_tensor    * a,
-            struct ggml_tensor    * b,
-            struct ggml_tensor    * c,
-            ggml_custom3_op_t       fun,
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_map_custom3_inplace(
+            struct ggml_dadbed9_context   * ctx,
+            struct ggml_dadbed9_tensor    * a,
+            struct ggml_dadbed9_tensor    * b,
+            struct ggml_dadbed9_tensor    * c,
+            ggml_dadbed9_custom3_op_t       fun,
             int                     n_tasks,
             void                  * userdata);
 
     // loss function
 
-    GGML_API struct ggml_tensor * ggml_cross_entropy_loss(
-            struct ggml_context         * ctx,
-            struct ggml_tensor          * a,
-            struct ggml_tensor          * b);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_cross_entropy_loss(
+            struct ggml_dadbed9_context         * ctx,
+            struct ggml_dadbed9_tensor          * a,
+            struct ggml_dadbed9_tensor          * b);
 
-    GGML_API struct ggml_tensor * ggml_cross_entropy_loss_back(
-            struct ggml_context         * ctx,
-            struct ggml_tensor          * a,
-            struct ggml_tensor          * b,
-            struct ggml_tensor          * c);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_cross_entropy_loss_back(
+            struct ggml_dadbed9_context         * ctx,
+            struct ggml_dadbed9_tensor          * a,
+            struct ggml_dadbed9_tensor          * b,
+            struct ggml_dadbed9_tensor          * c);
 
     //
     // automatic differentiation
     //
 
-    GGML_API void ggml_set_param(
-            struct ggml_context * ctx,
-            struct ggml_tensor  * tensor);
+    GGML_API void ggml_dadbed9_set_param(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_tensor  * tensor);
 
 
-    GGML_API void ggml_build_forward_expand(struct ggml_cgraph * cgraph, struct ggml_tensor * tensor);
+    GGML_API void ggml_dadbed9_build_forward_expand(struct ggml_dadbed9_cgraph * cgraph, struct ggml_dadbed9_tensor * tensor);
 
-    GGML_API struct ggml_cgraph ggml_build_forward (struct ggml_tensor * tensor);
-    GGML_API struct ggml_cgraph ggml_build_backward(struct ggml_context * ctx, struct ggml_cgraph * gf, bool keep);
+    GGML_API struct ggml_dadbed9_cgraph ggml_dadbed9_build_forward (struct ggml_dadbed9_tensor * tensor);
+    GGML_API struct ggml_dadbed9_cgraph ggml_dadbed9_build_backward(struct ggml_dadbed9_context * ctx, struct ggml_dadbed9_cgraph * gf, bool keep);
 
     // graph allocation in a context
-    GGML_API struct ggml_cgraph * ggml_new_graph        (struct ggml_context * ctx);
-    GGML_API struct ggml_cgraph * ggml_build_forward_ctx(struct ggml_context * ctx, struct ggml_tensor * tensor);
-    GGML_API size_t ggml_graph_overhead(void);
+    GGML_API struct ggml_dadbed9_cgraph * ggml_dadbed9_new_graph        (struct ggml_dadbed9_context * ctx);
+    GGML_API struct ggml_dadbed9_cgraph * ggml_dadbed9_build_forward_ctx(struct ggml_dadbed9_context * ctx, struct ggml_dadbed9_tensor * tensor);
+    GGML_API size_t ggml_dadbed9_graph_overhead(void);
 
-    // ggml_graph_plan() has to be called before ggml_graph_compute()
+    // ggml_dadbed9_graph_plan() has to be called before ggml_dadbed9_graph_compute()
     // when plan.work_size > 0, caller must allocate memory for plan.work_data
-    GGML_API struct ggml_cplan ggml_graph_plan   (struct ggml_cgraph * cgraph, int n_threads /*= GGML_DEFAULT_N_THREADS*/);
-    GGML_API               int ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan);
-    GGML_API              void ggml_graph_reset  (struct ggml_cgraph * cgraph);
+    GGML_API struct ggml_dadbed9_cplan ggml_dadbed9_graph_plan   (struct ggml_dadbed9_cgraph * cgraph, int n_threads /*= GGML_DEFAULT_N_THREADS*/);
+    GGML_API               int ggml_dadbed9_graph_compute(struct ggml_dadbed9_cgraph * cgraph, struct ggml_dadbed9_cplan * cplan);
+    GGML_API              void ggml_dadbed9_graph_reset  (struct ggml_dadbed9_cgraph * cgraph);
 
-    // same as ggml_graph_compute() but the work data is allocated as a part of the context
+    // same as ggml_dadbed9_graph_compute() but the work data is allocated as a part of the context
     // note: the drawback of this API is that you must have ensured that the context has enough memory for the work data
-    GGML_API void ggml_graph_compute_with_ctx(struct ggml_context * ctx, struct ggml_cgraph * cgraph, int n_threads);
+    GGML_API void ggml_dadbed9_graph_compute_with_ctx(struct ggml_dadbed9_context * ctx, struct ggml_dadbed9_cgraph * cgraph, int n_threads);
 
-    GGML_API struct ggml_tensor * ggml_graph_get_tensor(struct ggml_cgraph * cgraph, const char * name);
+    GGML_API struct ggml_dadbed9_tensor * ggml_dadbed9_graph_get_tensor(struct ggml_dadbed9_cgraph * cgraph, const char * name);
 
-    GGML_API void               ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname);
-    GGML_API struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** ctx_data, struct ggml_context ** ctx_eval);
+    GGML_API void               ggml_dadbed9_graph_export(const struct ggml_dadbed9_cgraph * cgraph, const char * fname);
+    GGML_API struct ggml_dadbed9_cgraph ggml_dadbed9_graph_import(const char * fname, struct ggml_dadbed9_context ** ctx_data, struct ggml_dadbed9_context ** ctx_eval);
 
     // print info and performance information for the graph
-    GGML_API void ggml_graph_print(const struct ggml_cgraph * cgraph);
+    GGML_API void ggml_dadbed9_graph_print(const struct ggml_dadbed9_cgraph * cgraph);
 
     // dump the graph into a file using the dot format
-    GGML_API void ggml_graph_dump_dot(const struct ggml_cgraph * gb, const struct ggml_cgraph * gf, const char * filename);
+    GGML_API void ggml_dadbed9_graph_dump_dot(const struct ggml_dadbed9_cgraph * gb, const struct ggml_dadbed9_cgraph * gf, const char * filename);
 
     //
     // optimization
     //
 
     // optimization methods
-    enum ggml_opt_type {
+    enum ggml_dadbed9_opt_type {
         GGML_OPT_ADAM,
         GGML_OPT_LBFGS,
     };
 
     // linesearch methods
-    enum ggml_linesearch {
+    enum ggml_dadbed9_linesearch {
         GGML_LINESEARCH_DEFAULT = 1,
 
         GGML_LINESEARCH_BACKTRACKING_ARMIJO       = 0,
@@ -1546,7 +1546,7 @@ extern "C" {
     };
 
     // optimization return values
-    enum ggml_opt_result {
+    enum ggml_dadbed9_opt_result {
         GGML_OPT_OK = 0,
         GGML_OPT_DID_NOT_CONVERGE,
         GGML_OPT_NO_CONTEXT,
@@ -1562,10 +1562,10 @@ extern "C" {
 
     // optimization parameters
     //
-    //   see ggml.c (ggml_opt_default_params) for default values
+    //   see ggml.c (ggml_dadbed9_opt_default_params) for default values
     //
-    struct ggml_opt_params {
-        enum ggml_opt_type type;
+    struct ggml_dadbed9_opt_params {
+        enum ggml_dadbed9_opt_type type;
 
         int n_threads;
 
@@ -1615,13 +1615,13 @@ extern "C" {
             float min_step;
             float max_step;
 
-            enum ggml_linesearch linesearch;
+            enum ggml_dadbed9_linesearch linesearch;
         } lbfgs;
     };
 
-    struct ggml_opt_context {
-        struct ggml_context * ctx;
-        struct ggml_opt_params params;
+    struct ggml_dadbed9_opt_context {
+        struct ggml_dadbed9_context * ctx;
+        struct ggml_dadbed9_opt_params params;
 
         int iter;
         int64_t nx; // number of parameter elements
@@ -1629,30 +1629,30 @@ extern "C" {
         bool just_initialized;
 
         struct {
-            struct ggml_tensor * x;  // view of the parameters
-            struct ggml_tensor * g1; // gradient
-            struct ggml_tensor * g2; // gradient squared
-            struct ggml_tensor * m;  // first moment
-            struct ggml_tensor * v;  // second moment
-            struct ggml_tensor * mh; // first moment hat
-            struct ggml_tensor * vh; // second moment hat
-            struct ggml_tensor * pf; // past function values
+            struct ggml_dadbed9_tensor * x;  // view of the parameters
+            struct ggml_dadbed9_tensor * g1; // gradient
+            struct ggml_dadbed9_tensor * g2; // gradient squared
+            struct ggml_dadbed9_tensor * m;  // first moment
+            struct ggml_dadbed9_tensor * v;  // second moment
+            struct ggml_dadbed9_tensor * mh; // first moment hat
+            struct ggml_dadbed9_tensor * vh; // second moment hat
+            struct ggml_dadbed9_tensor * pf; // past function values
             float fx_best;
             float fx_prev;
             int n_no_improvement;
         } adam;
 
         struct {
-            struct ggml_tensor * x;    // current parameters
-            struct ggml_tensor * xp;   // previous parameters
-            struct ggml_tensor * g;    // current gradient
-            struct ggml_tensor * gp;   // previous gradient
-            struct ggml_tensor * d;    // search direction
-            struct ggml_tensor * pf;   // past function values
-            struct ggml_tensor * lmal; // the L-BFGS memory alpha
-            struct ggml_tensor * lmys; // the L-BFGS memory ys
-            struct ggml_tensor * lms;  // the L-BFGS memory s
-            struct ggml_tensor * lmy;  // the L-BFGS memory y
+            struct ggml_dadbed9_tensor * x;    // current parameters
+            struct ggml_dadbed9_tensor * xp;   // previous parameters
+            struct ggml_dadbed9_tensor * g;    // current gradient
+            struct ggml_dadbed9_tensor * gp;   // previous gradient
+            struct ggml_dadbed9_tensor * d;    // search direction
+            struct ggml_dadbed9_tensor * pf;   // past function values
+            struct ggml_dadbed9_tensor * lmal; // the L-BFGS memory alpha
+            struct ggml_dadbed9_tensor * lmys; // the L-BFGS memory ys
+            struct ggml_dadbed9_tensor * lms;  // the L-BFGS memory s
+            struct ggml_dadbed9_tensor * lmy;  // the L-BFGS memory y
             float fx_best;
             float step;
             int j;
@@ -1662,68 +1662,68 @@ extern "C" {
         } lbfgs;
     };
 
-    GGML_API struct ggml_opt_params ggml_opt_default_params(enum ggml_opt_type type);
+    GGML_API struct ggml_dadbed9_opt_params ggml_dadbed9_opt_default_params(enum ggml_dadbed9_opt_type type);
 
     // optimize the function defined by the tensor f
-    GGML_API enum ggml_opt_result ggml_opt(
-            struct ggml_context * ctx,
-            struct ggml_opt_params params,
-            struct ggml_tensor * f);
+    GGML_API enum ggml_dadbed9_opt_result ggml_dadbed9_opt(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_opt_params params,
+            struct ggml_dadbed9_tensor * f);
 
     // initialize optimizer context
-    GGML_API void ggml_opt_init(
-            struct ggml_context * ctx,
-            struct ggml_opt_context * opt,
-            struct ggml_opt_params params,
+    GGML_API void ggml_dadbed9_opt_init(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_opt_context * opt,
+            struct ggml_dadbed9_opt_params params,
             int64_t nx);
 
     // continue optimizing the function defined by the tensor f
-    GGML_API enum ggml_opt_result ggml_opt_resume(
-            struct ggml_context * ctx,
-            struct ggml_opt_context * opt,
-            struct ggml_tensor * f);
+    GGML_API enum ggml_dadbed9_opt_result ggml_dadbed9_opt_resume(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_opt_context * opt,
+            struct ggml_dadbed9_tensor * f);
 
     // continue optimizing the function defined by the tensor f
-    GGML_API enum ggml_opt_result ggml_opt_resume_g(
-            struct ggml_context * ctx,
-            struct ggml_opt_context * opt,
-            struct ggml_tensor * f,
-            struct ggml_cgraph * gf,
-            struct ggml_cgraph * gb);
+    GGML_API enum ggml_dadbed9_opt_result ggml_dadbed9_opt_resume_g(
+            struct ggml_dadbed9_context * ctx,
+            struct ggml_dadbed9_opt_context * opt,
+            struct ggml_dadbed9_tensor * f,
+            struct ggml_dadbed9_cgraph * gf,
+            struct ggml_dadbed9_cgraph * gb);
 
     //
     // quantization
     //
 
-    GGML_API size_t ggml_quantize_q4_0(const float * src, void * dst, int n, int k, int64_t * hist);
-    GGML_API size_t ggml_quantize_q4_1(const float * src, void * dst, int n, int k, int64_t * hist);
-    GGML_API size_t ggml_quantize_q5_0(const float * src, void * dst, int n, int k, int64_t * hist);
-    GGML_API size_t ggml_quantize_q5_1(const float * src, void * dst, int n, int k, int64_t * hist);
-    GGML_API size_t ggml_quantize_q8_0(const float * src, void * dst, int n, int k, int64_t * hist);
+    GGML_API size_t ggml_dadbed9_quantize_q4_0(const float * src, void * dst, int n, int k, int64_t * hist);
+    GGML_API size_t ggml_dadbed9_quantize_q4_1(const float * src, void * dst, int n, int k, int64_t * hist);
+    GGML_API size_t ggml_dadbed9_quantize_q5_0(const float * src, void * dst, int n, int k, int64_t * hist);
+    GGML_API size_t ggml_dadbed9_quantize_q5_1(const float * src, void * dst, int n, int k, int64_t * hist);
+    GGML_API size_t ggml_dadbed9_quantize_q8_0(const float * src, void * dst, int n, int k, int64_t * hist);
 
-    GGML_API size_t ggml_quantize_chunk(enum ggml_type type, const float * src, void * dst, int start, int n, int64_t * hist);
+    GGML_API size_t ggml_dadbed9_quantize_chunk(enum ggml_dadbed9_type type, const float * src, void * dst, int start, int n, int64_t * hist);
 
     //
     // system info
     //
 
-    GGML_API int ggml_cpu_has_avx        (void);
-    GGML_API int ggml_cpu_has_avx2       (void);
-    GGML_API int ggml_cpu_has_avx512     (void);
-    GGML_API int ggml_cpu_has_avx512_vbmi(void);
-    GGML_API int ggml_cpu_has_avx512_vnni(void);
-    GGML_API int ggml_cpu_has_fma        (void);
-    GGML_API int ggml_cpu_has_neon       (void);
-    GGML_API int ggml_cpu_has_arm_fma    (void);
-    GGML_API int ggml_cpu_has_f16c       (void);
-    GGML_API int ggml_cpu_has_fp16_va    (void);
-    GGML_API int ggml_cpu_has_wasm_simd  (void);
-    GGML_API int ggml_cpu_has_blas       (void);
-    GGML_API int ggml_cpu_has_cublas     (void);
-    GGML_API int ggml_cpu_has_clblast    (void);
-    GGML_API int ggml_cpu_has_gpublas    (void);
-    GGML_API int ggml_cpu_has_sse3       (void);
-    GGML_API int ggml_cpu_has_vsx        (void);
+    GGML_API int ggml_dadbed9_cpu_has_avx        (void);
+    GGML_API int ggml_dadbed9_cpu_has_avx2       (void);
+    GGML_API int ggml_dadbed9_cpu_has_avx512     (void);
+    GGML_API int ggml_dadbed9_cpu_has_avx512_vbmi(void);
+    GGML_API int ggml_dadbed9_cpu_has_avx512_vnni(void);
+    GGML_API int ggml_dadbed9_cpu_has_fma        (void);
+    GGML_API int ggml_dadbed9_cpu_has_neon       (void);
+    GGML_API int ggml_dadbed9_cpu_has_arm_fma    (void);
+    GGML_API int ggml_dadbed9_cpu_has_f16c       (void);
+    GGML_API int ggml_dadbed9_cpu_has_fp16_va    (void);
+    GGML_API int ggml_dadbed9_cpu_has_wasm_simd  (void);
+    GGML_API int ggml_dadbed9_cpu_has_blas       (void);
+    GGML_API int ggml_dadbed9_cpu_has_cublas     (void);
+    GGML_API int ggml_dadbed9_cpu_has_clblast    (void);
+    GGML_API int ggml_dadbed9_cpu_has_gpublas    (void);
+    GGML_API int ggml_dadbed9_cpu_has_sse3       (void);
+    GGML_API int ggml_dadbed9_cpu_has_vsx        (void);
 
     //
     // Internal types and functions exposed for tests and benchmarks
@@ -1735,23 +1735,23 @@ extern "C" {
 #else
 #define GGML_RESTRICT restrict
 #endif
-    typedef void (*ggml_to_float_t)  (const void  * GGML_RESTRICT x, float * GGML_RESTRICT y, int k);
-    typedef void (*ggml_from_float_t)(const float * GGML_RESTRICT x, void  * GGML_RESTRICT y, int k);
-    typedef void (*ggml_vec_dot_t)   (const int n, float * GGML_RESTRICT s, const void * GGML_RESTRICT x, const void * GGML_RESTRICT y);
+    typedef void (*ggml_dadbed9_to_float_t)  (const void  * GGML_RESTRICT x, float * GGML_RESTRICT y, int k);
+    typedef void (*ggml_dadbed9_from_float_t)(const float * GGML_RESTRICT x, void  * GGML_RESTRICT y, int k);
+    typedef void (*ggml_dadbed9_vec_dot_t)   (const int n, float * GGML_RESTRICT s, const void * GGML_RESTRICT x, const void * GGML_RESTRICT y);
 
     typedef struct {
         const char      * type_name;
         int               blck_size;
         size_t            type_size;
         bool              is_quantized;
-        ggml_to_float_t   to_float;
-        ggml_from_float_t from_float;
-        ggml_from_float_t from_float_reference;
-        ggml_vec_dot_t    vec_dot;
-        enum ggml_type    vec_dot_type;
-    } ggml_type_traits_t;
+        ggml_dadbed9_to_float_t   to_float;
+        ggml_dadbed9_from_float_t from_float;
+        ggml_dadbed9_from_float_t from_float_reference;
+        ggml_dadbed9_vec_dot_t    vec_dot;
+        enum ggml_dadbed9_type    vec_dot_type;
+    } ggml_dadbed9_type_traits_t;
 
-    ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type type);
+    ggml_dadbed9_type_traits_t ggml_dadbed9_internal_get_type_traits(enum ggml_dadbed9_type type);
 
 #ifdef  __cplusplus
 }

@@ -29,20 +29,20 @@ const char * print_system_info(void) {
     static std::string s;
 
     s  = "";
-    s += "AVX = "         + std::to_string(ggml_cpu_has_avx())         + " | ";
-    s += "AVX2 = "        + std::to_string(ggml_cpu_has_avx2())        + " | ";
-    s += "AVX512 = "      + std::to_string(ggml_cpu_has_avx512())      + " | ";
-    s += "AVX512_VBMI = " + std::to_string(ggml_cpu_has_avx512_vbmi()) + " | ";
-    s += "AVX512_VNNI = " + std::to_string(ggml_cpu_has_avx512_vnni()) + " | ";
-    s += "FMA = "         + std::to_string(ggml_cpu_has_fma())         + " | ";
-    s += "NEON = "        + std::to_string(ggml_cpu_has_neon())        + " | ";
-    s += "ARM_FMA = "     + std::to_string(ggml_cpu_has_arm_fma())     + " | ";
-    s += "F16C = "        + std::to_string(ggml_cpu_has_f16c())        + " | ";
-    s += "FP16_VA = "     + std::to_string(ggml_cpu_has_fp16_va())     + " | ";
-    s += "WASM_SIMD = "   + std::to_string(ggml_cpu_has_wasm_simd())   + " | ";
-    s += "BLAS = "        + std::to_string(ggml_cpu_has_blas())        + " | ";
-    s += "SSE3 = "        + std::to_string(ggml_cpu_has_sse3())        + " | ";
-    s += "VSX = "         + std::to_string(ggml_cpu_has_vsx())         + " | ";
+    s += "AVX = "         + std::to_string(ggml_dadbed9_cpu_has_avx())         + " | ";
+    s += "AVX2 = "        + std::to_string(ggml_dadbed9_cpu_has_avx2())        + " | ";
+    s += "AVX512 = "      + std::to_string(ggml_dadbed9_cpu_has_avx512())      + " | ";
+    s += "AVX512_VBMI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vbmi()) + " | ";
+    s += "AVX512_VNNI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vnni()) + " | ";
+    s += "FMA = "         + std::to_string(ggml_dadbed9_cpu_has_fma())         + " | ";
+    s += "NEON = "        + std::to_string(ggml_dadbed9_cpu_has_neon())        + " | ";
+    s += "ARM_FMA = "     + std::to_string(ggml_dadbed9_cpu_has_arm_fma())     + " | ";
+    s += "F16C = "        + std::to_string(ggml_dadbed9_cpu_has_f16c())        + " | ";
+    s += "FP16_VA = "     + std::to_string(ggml_dadbed9_cpu_has_fp16_va())     + " | ";
+    s += "WASM_SIMD = "   + std::to_string(ggml_dadbed9_cpu_has_wasm_simd())   + " | ";
+    s += "BLAS = "        + std::to_string(ggml_dadbed9_cpu_has_blas())        + " | ";
+    s += "SSE3 = "        + std::to_string(ggml_dadbed9_cpu_has_sse3())        + " | ";
+    s += "VSX = "         + std::to_string(ggml_dadbed9_cpu_has_vsx())         + " | ";
 
     return s.c_str();
 }
@@ -130,7 +130,7 @@ void gpt_base_shift_kv_cache(struct gpt_base_context * ctx, int n) {
     for(int il = 0; il < n_layer; il++) {
         // K: Embeddings are in regular order so moving them is easy as copying the memory
         {
-            int elem_byte_size = ggml_element_size(kv_self.k);
+            int elem_byte_size = ggml_dadbed9_element_size(kv_self.k);
             uint8_t * dst_ptr = ((uint8_t *)kv_self.k->data) + (elem_byte_size * n_embd * (il * n_ctx));
             uint8_t * src_ptr = ((uint8_t *)kv_self.k->data) + (elem_byte_size * n_embd * (il * n_ctx + n));
             memcpy(dst_ptr, src_ptr, elem_byte_size * n_embd * (n_ctx - n));
@@ -138,7 +138,7 @@ void gpt_base_shift_kv_cache(struct gpt_base_context * ctx, int n) {
         
         // V: Embeddings are transposed so each embedding element must be copied separately
         {
-            int elem_byte_size = ggml_element_size(kv_self.v);
+            int elem_byte_size = ggml_dadbed9_element_size(kv_self.v);
             for(int i = 0; i < n_embd; i++) {
                 uint8_t * dst_ptr = ((uint8_t *)kv_self.v->data) + (elem_byte_size * (il * n_ctx * i));
                 uint8_t * src_ptr = ((uint8_t *)kv_self.v->data) + (elem_byte_size * (il * n_ctx * i + n));
@@ -151,11 +151,11 @@ void gpt_base_shift_kv_cache(struct gpt_base_context * ctx, int n) {
 
 
 int32_t gpt_base_sample(struct gpt_base_context * ctx, int top_k, float top_p, float temp) {
-    const int64_t t_start_sample_us = ggml_time_us();
+    const int64_t t_start_sample_us = ggml_dadbed9_time_us();
     int n_logits = ctx->vocab.id_to_token.size();
     gpt_vocab::id smpl = gpt_sample_top_k_top_p(n_logits, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()), top_k, top_p, temp, ctx->rng);
     if (ctx) {
-        ctx->t_sample_us += ggml_time_us() - t_start_sample_us;
+        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
     }
     return  smpl;
 }
@@ -167,7 +167,7 @@ int32_t gpt_base_sample_repeat(struct gpt_base_context * ctx,
                                int top_k, float top_p, float temp,
                                int repeat_last_n,
                                float repeat_penalty) {
-    const int64_t t_start_sample_us = ggml_time_us();
+    const int64_t t_start_sample_us = ggml_dadbed9_time_us();
     int n_logits = ctx->vocab.id_to_token.size();
     gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(n_logits, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()),
                                                        last_n_tokens_data,last_n_tokens_data_size,
@@ -175,7 +175,7 @@ int32_t gpt_base_sample_repeat(struct gpt_base_context * ctx,
                                                        repeat_last_n,repeat_penalty,
                                                        ctx->rng);
     if (ctx) {
-        ctx->t_sample_us += ggml_time_us() - t_start_sample_us;
+        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
     }
     return  smpl;
 }

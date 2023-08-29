@@ -34,10 +34,10 @@
 typedef struct {
     uint8_t scales[QK_K/16]; // scales and mins, quantized with 4 bits
     uint8_t qs[QK_K/4];      // quants
-    ggml_fp16_t d;           // super-block scale for quantized scales
-    ggml_fp16_t dmin;        // super-block scale for quantized mins
+    ggml_dadbed9_fp16_t d;           // super-block scale for quantized scales
+    ggml_dadbed9_fp16_t dmin;        // super-block scale for quantized mins
 } block_q2_K;
-static_assert(sizeof(block_q2_K) == 2*sizeof(ggml_fp16_t) + QK_K/16 + QK_K/4, "wrong q2_K block size/padding");
+static_assert(sizeof(block_q2_K) == 2*sizeof(ggml_dadbed9_fp16_t) + QK_K/16 + QK_K/4, "wrong q2_K block size/padding");
 
 // 3-bit quantization
 // weight is represented as x = a * q
@@ -48,17 +48,17 @@ typedef struct {
     uint8_t hmask[QK_K/8];     // quants - high bit
     uint8_t qs[QK_K/4];        // quants - low 2 bits
     uint8_t scales[2];
-    ggml_fp16_t d;             // super-block scale
+    ggml_dadbed9_fp16_t d;             // super-block scale
 } block_q3_K;
-static_assert(sizeof(block_q3_K) == sizeof(ggml_fp16_t) + QK_K / 4 + QK_K / 8 + 2, "wrong q3_K block size/padding");
+static_assert(sizeof(block_q3_K) == sizeof(ggml_dadbed9_fp16_t) + QK_K / 4 + QK_K / 8 + 2, "wrong q3_K block size/padding");
 #else
 typedef struct {
     uint8_t hmask[QK_K/8];     // quants - high bit
     uint8_t qs[QK_K/4];        // quants - low 2 bits
     uint8_t scales[12];        // scales, quantized with 6 bits
-    ggml_fp16_t d;             // super-block scale
+    ggml_dadbed9_fp16_t d;             // super-block scale
 } block_q3_K;
-static_assert(sizeof(block_q3_K) == sizeof(ggml_fp16_t) + QK_K / 4 + QK_K / 8 + 12, "wrong q3_K block size/padding");
+static_assert(sizeof(block_q3_K) == sizeof(ggml_dadbed9_fp16_t) + QK_K / 4 + QK_K / 8 + 12, "wrong q3_K block size/padding");
 #endif
 
 // 4-bit quantization
@@ -67,19 +67,19 @@ static_assert(sizeof(block_q3_K) == sizeof(ggml_fp16_t) + QK_K / 4 + QK_K / 8 + 
 // Effectively 4.5 bits per weight
 #ifdef GGML_QKK_64
 typedef struct {
-    ggml_fp16_t d[2];          // super-block scales/mins
+    ggml_dadbed9_fp16_t d[2];          // super-block scales/mins
     uint8_t scales[2];         // 4-bit block scales/mins
     uint8_t qs[QK_K/2];        // 4--bit quants
 } block_q4_K;
-static_assert(sizeof(block_q4_K) == 2*sizeof(ggml_fp16_t) + QK_K/2 + 2, "wrong q4_K block size/padding");
+static_assert(sizeof(block_q4_K) == 2*sizeof(ggml_dadbed9_fp16_t) + QK_K/2 + 2, "wrong q4_K block size/padding");
 #else
 typedef struct {
-    ggml_fp16_t d;             // super-block scale for quantized scales
-    ggml_fp16_t dmin;          // super-block scale for quantized mins
+    ggml_dadbed9_fp16_t d;             // super-block scale for quantized scales
+    ggml_dadbed9_fp16_t dmin;          // super-block scale for quantized mins
     uint8_t scales[K_SCALE_SIZE]; // scales and mins, quantized with 6 bits
     uint8_t qs[QK_K/2];        // 4--bit quants
 } block_q4_K;
-static_assert(sizeof(block_q4_K) == 2*sizeof(ggml_fp16_t) + K_SCALE_SIZE + QK_K/2, "wrong q4_K block size/padding");
+static_assert(sizeof(block_q4_K) == 2*sizeof(ggml_dadbed9_fp16_t) + K_SCALE_SIZE + QK_K/2, "wrong q4_K block size/padding");
 #endif
 
 // 5-bit quantization
@@ -88,21 +88,21 @@ static_assert(sizeof(block_q4_K) == 2*sizeof(ggml_fp16_t) + K_SCALE_SIZE + QK_K/
 // Effectively 5.5 bits per weight
 #ifdef GGML_QKK_64
 typedef struct {
-    ggml_fp16_t d;               // super-block scale
+    ggml_dadbed9_fp16_t d;               // super-block scale
     int8_t  scales[QK_K/16];     // 8-bit block scales
     uint8_t qh[QK_K/8];          // quants, high bit
     uint8_t qs[QK_K/2];          // quants, low 4 bits
 } block_q5_K;
-static_assert(sizeof(block_q5_K) == sizeof(ggml_fp16_t) + QK_K/2 + QK_K/8 + QK_K/16, "wrong q5_K block size/padding");
+static_assert(sizeof(block_q5_K) == sizeof(ggml_dadbed9_fp16_t) + QK_K/2 + QK_K/8 + QK_K/16, "wrong q5_K block size/padding");
 #else
 typedef struct {
-    ggml_fp16_t d;               // super-block scale for quantized scales
-    ggml_fp16_t dmin;            // super-block scale for quantized mins
+    ggml_dadbed9_fp16_t d;               // super-block scale for quantized scales
+    ggml_dadbed9_fp16_t dmin;            // super-block scale for quantized mins
     uint8_t scales[K_SCALE_SIZE];   // scales and mins, quantized with 6 bits
     uint8_t qh[QK_K/8];          // quants, high bit
     uint8_t qs[QK_K/2];          // quants, low 4 bits
 } block_q5_K;
-static_assert(sizeof(block_q5_K) == 2*sizeof(ggml_fp16_t) + K_SCALE_SIZE + QK_K/2 + QK_K/8, "wrong q5_K block size/padding");
+static_assert(sizeof(block_q5_K) == 2*sizeof(ggml_dadbed9_fp16_t) + K_SCALE_SIZE + QK_K/2 + QK_K/8, "wrong q5_K block size/padding");
 #endif
 
 // 6-bit quantization
@@ -113,9 +113,9 @@ typedef struct {
     uint8_t ql[QK_K/2];      // quants, lower 4 bits
     uint8_t qh[QK_K/4];      // quants, upper 2 bits
     int8_t  scales[QK_K/16]; // scales, quantized with 8 bits
-    ggml_fp16_t d;           // super-block scale
+    ggml_dadbed9_fp16_t d;           // super-block scale
 } block_q6_K;
-static_assert(sizeof(block_q6_K) == sizeof(ggml_fp16_t) + QK_K / 16 + 3*QK_K/4, "wrong q6_K block size/padding");
+static_assert(sizeof(block_q6_K) == sizeof(ggml_dadbed9_fp16_t) + QK_K / 16 + 3*QK_K/4, "wrong q6_K block size/padding");
 
 // This is only used for intermediate quantization and dot products
 typedef struct {
@@ -150,16 +150,16 @@ void dequantize_row_q6_K(const block_q6_K * restrict x, float * restrict y, int 
 void dequantize_row_q8_K(const block_q8_K * restrict x, float * restrict y, int k);
 
 // Dot product
-void ggml_vec_dot_q2_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-void ggml_vec_dot_q3_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-void ggml_vec_dot_q4_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-void ggml_vec_dot_q5_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+void ggml_dadbed9_vec_dot_q2_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+void ggml_dadbed9_vec_dot_q3_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+void ggml_dadbed9_vec_dot_q4_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+void ggml_dadbed9_vec_dot_q5_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+void ggml_dadbed9_vec_dot_q6_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
 
 // Quantization with histogram collection
-size_t ggml_quantize_q2_K(const float * src, void * dst, int n, int k, int64_t * hist);
-size_t ggml_quantize_q3_K(const float * src, void * dst, int n, int k, int64_t * hist);
-size_t ggml_quantize_q4_K(const float * src, void * dst, int n, int k, int64_t * hist);
-size_t ggml_quantize_q5_K(const float * src, void * dst, int n, int k, int64_t * hist);
-size_t ggml_quantize_q6_K(const float * src, void * dst, int n, int k, int64_t * hist);
+size_t ggml_dadbed9_quantize_q2_K(const float * src, void * dst, int n, int k, int64_t * hist);
+size_t ggml_dadbed9_quantize_q3_K(const float * src, void * dst, int n, int k, int64_t * hist);
+size_t ggml_dadbed9_quantize_q4_K(const float * src, void * dst, int n, int k, int64_t * hist);
+size_t ggml_dadbed9_quantize_q5_K(const float * src, void * dst, int n, int k, int64_t * hist);
+size_t ggml_dadbed9_quantize_q6_K(const float * src, void * dst, int n, int k, int64_t * hist);
 

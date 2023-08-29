@@ -15,7 +15,7 @@
 #define AT_PRINTF(...) ((void)0)
 
 struct hash_node {
-    struct ggml_tensor * t;
+    struct ggml_dadbed9_tensor * t;
     int n_children;
     int n_views;
 };
@@ -24,7 +24,7 @@ static size_t hash(void * p) {
     return (size_t)p % GGML_GRAPH_HASHTABLE_SIZE;
 }
 
-static struct hash_node * hash_get(struct hash_node hash_table[], struct ggml_tensor * t) {
+static struct hash_node * hash_get(struct hash_node hash_table[], struct ggml_dadbed9_tensor * t) {
     size_t h = hash(t);
 
     // linear probing
@@ -58,7 +58,7 @@ struct free_block {
 
 #define MAX_FREE_BLOCKS 128
 
-struct ggml_allocr {
+struct ggml_dadbed9_allocr {
     void * data;
     size_t size;
     size_t alignment;
@@ -71,12 +71,12 @@ struct ggml_allocr {
     bool has_parse_seq;
 
 #ifdef GGML_ALLOCATOR_DEBUG
-    struct ggml_tensor * allocated_tensors[1024];
+    struct ggml_dadbed9_tensor * allocated_tensors[1024];
 #endif
 };
 
 #ifdef GGML_ALLOCATOR_DEBUG
-static void add_allocated_tensor(struct ggml_allocator * alloc, struct ggml_tensor * tensor) {
+static void add_allocated_tensor(struct ggml_dadbed9_allocator * alloc, struct ggml_dadbed9_tensor * tensor) {
     for (int i = 0; i < 1024; i++) {
         if (alloc->allocated_tensors[i] == NULL) {
             alloc->allocated_tensors[i] = tensor;
@@ -85,7 +85,7 @@ static void add_allocated_tensor(struct ggml_allocator * alloc, struct ggml_tens
     }
     GGML_ASSERT(!"out of allocated_tensors");
 }
-static void remove_allocated_tensor(struct ggml_allocator * alloc, struct ggml_tensor * tensor) {
+static void remove_allocated_tensor(struct ggml_dadbed9_allocator * alloc, struct ggml_dadbed9_tensor * tensor) {
     for (int i = 0; i < 1024; i++) {
         if (alloc->allocated_tensors[i] == tensor ||
             (alloc->allocated_tensors[i] != NULL && alloc->allocated_tensors[i]->data == tensor->data)) {
@@ -99,14 +99,14 @@ static void remove_allocated_tensor(struct ggml_allocator * alloc, struct ggml_t
 #endif
 
 
-static size_t ggml_allocator_get_alloc_size(struct ggml_allocr * alloc, struct ggml_tensor * tensor) {
-    return ggml_nbytes(tensor);
+static size_t ggml_dadbed9_allocator_get_alloc_size(struct ggml_dadbed9_allocr * alloc, struct ggml_dadbed9_tensor * tensor) {
+    return ggml_dadbed9_nbytes(tensor);
 
     UNUSED(alloc);
 }
 
-void ggml_allocr_alloc(struct ggml_allocr * alloc, struct ggml_tensor * tensor) {
-    size_t size = ggml_allocator_get_alloc_size(alloc, tensor);
+void ggml_dadbed9_allocr_alloc(struct ggml_dadbed9_allocr * alloc, struct ggml_dadbed9_tensor * tensor) {
+    size_t size = ggml_dadbed9_allocator_get_alloc_size(alloc, tensor);
     size = aligned_offset(NULL, size, alloc->alignment);
 
     AT_PRINTF("%s: allocating %s (%zu bytes) - ", __func__, tensor->name, size);
@@ -161,7 +161,7 @@ void ggml_allocr_alloc(struct ggml_allocr * alloc, struct ggml_tensor * tensor) 
         printf("max_size = %.2f MB: tensors: ", cur_max / 1024.0 / 1024.0);
         for (int i = 0; i < 1024; i++) {
             if (alloc->allocated_tensors[i]) {
-                printf("%s (%.2f MB) ", alloc->allocated_tensors[i]->name, ggml_nbytes(alloc->allocated_tensors[i]) / 1024.0 / 1024.0);
+                printf("%s (%.2f MB) ", alloc->allocated_tensors[i]->name, ggml_dadbed9_nbytes(alloc->allocated_tensors[i]) / 1024.0 / 1024.0);
             }
         }
         printf("\n");
@@ -172,7 +172,7 @@ void ggml_allocr_alloc(struct ggml_allocr * alloc, struct ggml_tensor * tensor) 
 }
 
 // this is a very naive implementation, but for our case the number of free blocks should be very small
-static void ggml_allocator_free_tensor(struct ggml_allocr * alloc, struct ggml_tensor * tensor) {
+static void ggml_dadbed9_allocator_free_tensor(struct ggml_dadbed9_allocr * alloc, struct ggml_dadbed9_tensor * tensor) {
     void * ptr = tensor->data;
 
     if (ptr < alloc->data || (char*)ptr >= (char*)alloc->data + alloc->max_size) {
@@ -182,7 +182,7 @@ static void ggml_allocator_free_tensor(struct ggml_allocr * alloc, struct ggml_t
         return;
     }
 
-    size_t size = ggml_allocator_get_alloc_size(alloc, tensor);
+    size_t size = ggml_dadbed9_allocator_get_alloc_size(alloc, tensor);
     size = aligned_offset(NULL, size, alloc->alignment);
     AT_PRINTF("%s: freeing %s (%zu bytes) - n_free_blocks = %d\n", __func__, tensor->name, size, alloc->n_free_blocks);
 
@@ -238,7 +238,7 @@ static void ggml_allocator_free_tensor(struct ggml_allocr * alloc, struct ggml_t
     alloc->n_free_blocks++;
 }
 
-void ggml_allocr_set_parse_seq(struct ggml_allocr * alloc, int * list, int n) {
+void ggml_dadbed9_allocr_set_parse_seq(struct ggml_dadbed9_allocr * alloc, int * list, int n) {
     int pos = 0;
     for (int i = 0; i < n; i++) {
         if (list[i] != -1) {
@@ -249,17 +249,17 @@ void ggml_allocr_set_parse_seq(struct ggml_allocr * alloc, int * list, int n) {
     alloc->has_parse_seq = true;
 }
 
-void ggml_allocr_reset(struct ggml_allocr * alloc) {
+void ggml_dadbed9_allocr_reset(struct ggml_dadbed9_allocr * alloc) {
     alloc->n_free_blocks = 1;
     size_t align_offset = aligned_offset(alloc->data, 0, alloc->alignment);
     alloc->free_blocks[0].addr = (char *)alloc->data + align_offset;
     alloc->free_blocks[0].size = alloc->size - align_offset;
 }
 
-struct ggml_allocr * ggml_allocr_new(void * data, size_t size, size_t alignment) {
-    struct ggml_allocr * alloc = (struct ggml_allocr *)malloc(sizeof(struct ggml_allocr) /* + n_free_blocks * sizeof(struct free_block) */);
+struct ggml_dadbed9_allocr * ggml_dadbed9_allocr_new(void * data, size_t size, size_t alignment) {
+    struct ggml_dadbed9_allocr * alloc = (struct ggml_dadbed9_allocr *)malloc(sizeof(struct ggml_dadbed9_allocr) /* + n_free_blocks * sizeof(struct free_block) */);
 
-    *alloc = (struct ggml_allocr){
+    *alloc = (struct ggml_dadbed9_allocr){
         /*.data          = */ data,
         /*.size          = */ size,
         /*.alignment     = */ alignment,
@@ -275,7 +275,7 @@ struct ggml_allocr * ggml_allocr_new(void * data, size_t size, size_t alignment)
 #endif
     };
 
-    ggml_allocr_reset(alloc);
+    ggml_dadbed9_allocr_reset(alloc);
 
     return alloc;
 }
@@ -285,10 +285,10 @@ struct ggml_allocr * ggml_allocr_new(void * data, size_t size, size_t alignment)
 static void * const MEASURE_BASE_ADDR = (void *) 0x1000;
 static const size_t MEASURE_MAX_SIZE  = 1ULL<<40; // 1 TB
 
-struct ggml_allocr * ggml_allocr_new_measure(size_t alignment) {
-    struct ggml_allocr * alloc = (struct ggml_allocr *)malloc(sizeof(struct ggml_allocr) /* + n_free_blocks * sizeof(struct free_block) */);
+struct ggml_dadbed9_allocr * ggml_dadbed9_allocr_new_measure(size_t alignment) {
+    struct ggml_dadbed9_allocr * alloc = (struct ggml_dadbed9_allocr *)malloc(sizeof(struct ggml_dadbed9_allocr) /* + n_free_blocks * sizeof(struct free_block) */);
 
-    *alloc = (struct ggml_allocr){
+    *alloc = (struct ggml_dadbed9_allocr){
         /*.data          = */ MEASURE_BASE_ADDR,
         /*.size          = */ MEASURE_MAX_SIZE,
         /*.alignment     = */ alignment,
@@ -304,27 +304,27 @@ struct ggml_allocr * ggml_allocr_new_measure(size_t alignment) {
 #endif
     };
 
-    ggml_allocr_reset(alloc);
+    ggml_dadbed9_allocr_reset(alloc);
 
     return alloc;
 }
 
-void ggml_allocr_free(struct ggml_allocr * alloc) {
+void ggml_dadbed9_allocr_free(struct ggml_dadbed9_allocr * alloc) {
     free(alloc);
 }
 
-bool ggml_allocr_is_measure(struct ggml_allocr * alloc) {
+bool ggml_dadbed9_allocr_is_measure(struct ggml_dadbed9_allocr * alloc) {
     return alloc->measure;
 }
 
 //////////// compute graph allocator
 
-static bool ggml_is_view(struct ggml_tensor * t) {
+static bool ggml_dadbed9_is_view(struct ggml_dadbed9_tensor * t) {
     return t->op == GGML_OP_RESHAPE || t->op == GGML_OP_VIEW || t->op == GGML_OP_TRANSPOSE ||
            t->op == GGML_OP_PERMUTE || t->op == GGML_OP_CPY;
 }
 
-static bool ggml_are_same_layout(const struct ggml_tensor * a, const struct ggml_tensor * b) {
+static bool ggml_dadbed9_are_same_layout(const struct ggml_dadbed9_tensor * a, const struct ggml_dadbed9_tensor * b) {
     if (a->type != b->type) {
         return false;
     }
@@ -339,7 +339,7 @@ static bool ggml_are_same_layout(const struct ggml_tensor * a, const struct ggml
     return true;
 }
 
-static struct ggml_tensor * get_view_parent(struct ggml_tensor * t) {
+static struct ggml_dadbed9_tensor * get_view_parent(struct ggml_dadbed9_tensor * t) {
     switch (t->op) {
         case GGML_OP_PERMUTE:
         case GGML_OP_RESHAPE:
@@ -353,15 +353,15 @@ static struct ggml_tensor * get_view_parent(struct ggml_tensor * t) {
     }
 }
 
-static struct ggml_tensor * get_view_source(struct ggml_tensor * t) {
-    struct ggml_tensor * parent = t;
+static struct ggml_dadbed9_tensor * get_view_source(struct ggml_dadbed9_tensor * t) {
+    struct ggml_dadbed9_tensor * parent = t;
     do {
         parent = get_view_parent(parent);
-    } while (ggml_is_view(parent));
+    } while (ggml_dadbed9_is_view(parent));
     return parent;
 }
 
-static bool ggml_op_can_inplace(enum ggml_op op) {
+static bool ggml_dadbed9_op_can_inplace(enum ggml_dadbed9_op op) {
     switch (op) {
         case GGML_OP_SCALE:
         case GGML_OP_DIAG_MASK_ZERO:
@@ -388,10 +388,10 @@ static bool ggml_op_can_inplace(enum ggml_op op) {
     }
 }
 
-static void allocate_node(struct ggml_allocr * alloc, struct ggml_tensor * node) {
+static void allocate_node(struct ggml_dadbed9_allocr * alloc, struct ggml_dadbed9_tensor * node) {
     struct hash_node * ht = alloc->hash_table;
     if (node->data == NULL) {
-        if (ggml_is_view(node)) {
+        if (ggml_dadbed9_is_view(node)) {
             size_t offset;
             switch(node->op) {
                 case GGML_OP_VIEW:
@@ -412,9 +412,9 @@ static void allocate_node(struct ggml_allocr * alloc, struct ggml_tensor * node)
             }
         } else {
             // see if we can reuse a parent's buffer (inplace)
-            if (ggml_op_can_inplace(node->op)) {
+            if (ggml_dadbed9_op_can_inplace(node->op)) {
                 for (int i = 0; i < GGML_MAX_SRC; i++) {
-                    struct ggml_tensor * parent = node->src[i];
+                    struct ggml_dadbed9_tensor * parent = node->src[i];
                     if (parent == NULL) {
                         break;
                     }
@@ -427,9 +427,9 @@ static void allocate_node(struct ggml_allocr * alloc, struct ggml_tensor * node)
                     }
 
                     struct hash_node * p_hn = hash_get(ht, parent);
-                    if (parent->data != NULL && p_hn->n_children == 1 && p_hn->n_views == 0 && ggml_are_same_layout(node, parent)) {
-                        if (ggml_is_view(parent)) {
-                            struct ggml_tensor * view_src = get_view_source(parent);
+                    if (parent->data != NULL && p_hn->n_children == 1 && p_hn->n_views == 0 && ggml_dadbed9_are_same_layout(node, parent)) {
+                        if (ggml_dadbed9_is_view(parent)) {
+                            struct ggml_dadbed9_tensor * view_src = get_view_source(parent);
                             struct hash_node * view_src_hn = hash_get(ht, view_src);
                             if (view_src_hn->n_views == 1 && view_src_hn->n_children == 0 && view_src->data == parent->data) {
                                 // TODO: the offset of the view parent must be kept to ensure that the op doesn't overwrite
@@ -450,15 +450,15 @@ static void allocate_node(struct ggml_allocr * alloc, struct ggml_tensor * node)
                     }
                 }
             }
-            ggml_allocr_alloc(alloc, node);
+            ggml_dadbed9_allocr_alloc(alloc, node);
         }
     }
 }
 
-static size_t ggml_allocator_alloc_graph_tensors_n(
-    struct ggml_allocr * alloc,
-    struct ggml_cgraph ** graphs, int n_graphs,
-    struct ggml_tensor *** inputs, struct ggml_tensor *** outputs) {
+static size_t ggml_dadbed9_allocator_alloc_graph_tensors_n(
+    struct ggml_dadbed9_allocr * alloc,
+    struct ggml_dadbed9_cgraph ** graphs, int n_graphs,
+    struct ggml_dadbed9_tensor *** inputs, struct ggml_dadbed9_tensor *** outputs) {
 
     // reset hash table
     struct hash_node * ht = alloc->hash_table;
@@ -466,17 +466,17 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
 
     // count number of children and views
     for (int g = 0; g < n_graphs; g++) {
-        struct ggml_cgraph * gf = graphs[g];
+        struct ggml_dadbed9_cgraph * gf = graphs[g];
         for (int i = 0; i < gf->n_nodes; i++) {
-            struct ggml_tensor * node = gf->nodes[i];
+            struct ggml_dadbed9_tensor * node = gf->nodes[i];
 
-            if (ggml_is_view(node)) {
-                struct ggml_tensor * view_src = get_view_source(node);
+            if (ggml_dadbed9_is_view(node)) {
+                struct ggml_dadbed9_tensor * view_src = get_view_source(node);
                 hash_get(ht, view_src)->n_views += 1;
             }
 
             for (int j = 0; j < GGML_MAX_SRC; j++) {
-                struct ggml_tensor * parent = node->src[j];
+                struct ggml_dadbed9_tensor * parent = node->src[j];
                 if (parent == NULL) {
                     break;
                 }
@@ -487,12 +487,12 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
 
     // allocate tensors
     for (int g = 0; g < n_graphs; g++) {
-        struct ggml_cgraph * gf = graphs[g];
+        struct ggml_dadbed9_cgraph * gf = graphs[g];
         AT_PRINTF("####### graph %d/%d\n", g, n_graphs);
         // graph inputs are allocated first to ensure that they are not overwritten by each other
         if (inputs != NULL && inputs[g] != NULL) {
             for (int i = 0; inputs[g][i] != NULL; i++) {
-                struct ggml_tensor * input = inputs[g][i];
+                struct ggml_dadbed9_tensor * input = inputs[g][i];
                 AT_PRINTF("input: %s\n", input->name);
                 allocate_node(alloc, input);
             }
@@ -504,11 +504,11 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
             } else {
                 i = ind;
             }
-            struct ggml_tensor * node = gf->nodes[i];
+            struct ggml_dadbed9_tensor * node = gf->nodes[i];
 
             // allocate parents (leafs)
             for (int j = 0; j < GGML_MAX_SRC; j++) {
-                struct ggml_tensor * parent = node->src[j];
+                struct ggml_dadbed9_tensor * parent = node->src[j];
                 if (parent == NULL) {
                     break;
                 }
@@ -518,9 +518,9 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
             // allocate node
             allocate_node(alloc, node);
 
-            AT_PRINTF("exec: %s (%s) <= ", ggml_op_name(node->op), node->name);
+            AT_PRINTF("exec: %s (%s) <= ", ggml_dadbed9_op_name(node->op), node->name);
             for (int j = 0; j < GGML_MAX_SRC; j++) {
-                struct ggml_tensor * parent = node->src[j];
+                struct ggml_dadbed9_tensor * parent = node->src[j];
                 if (parent == NULL) {
                     break;
                 }
@@ -533,7 +533,7 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
 
             // update parents
             for (int j = 0; j < GGML_MAX_SRC; j++) {
-                struct ggml_tensor * parent = node->src[j];
+                struct ggml_dadbed9_tensor * parent = node->src[j];
                 if (parent == NULL) {
                     break;
                 }
@@ -543,18 +543,18 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
                 //AT_PRINTF("parent %s: %d children, %d views\n", parent->name, parent->n_children, parent->n_views);
 
                 if (p_hn->n_children == 0 && p_hn->n_views == 0) {
-                    if (ggml_is_view(parent)) {
-                        struct ggml_tensor * view_src = get_view_source(parent);
+                    if (ggml_dadbed9_is_view(parent)) {
+                        struct ggml_dadbed9_tensor * view_src = get_view_source(parent);
                         struct hash_node * view_src_hn = hash_get(ht, view_src);
                         view_src_hn->n_views -= 1;
                         AT_PRINTF("view_src %s: %d children, %d views\n", view_src->name, view_src->n_children, view_src->n_views);
                         if (view_src_hn->n_views == 0 && view_src_hn->n_children == 0 && view_src->data != node->data) {
-                            ggml_allocator_free_tensor(alloc, view_src);
+                            ggml_dadbed9_allocator_free_tensor(alloc, view_src);
                         }
                     }
                     else {
                         if (parent->data != node->data) {
-                            ggml_allocator_free_tensor(alloc, parent);
+                            ggml_dadbed9_allocator_free_tensor(alloc, parent);
                         }
                     }
                 }
@@ -564,9 +564,9 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
         // free graph outputs here that wouldn't be freed otherwise because they have no children
         if (outputs != NULL && outputs[g] != NULL) {
             for (int i = 0; outputs[g][i] != NULL; i++) {
-                struct ggml_tensor * output = outputs[g][i];
+                struct ggml_dadbed9_tensor * output = outputs[g][i];
                 AT_PRINTF("output: %s\n", output->name);
-                ggml_allocator_free_tensor(alloc, output);
+                ggml_dadbed9_allocator_free_tensor(alloc, output);
             }
         }
     }
@@ -574,6 +574,6 @@ static size_t ggml_allocator_alloc_graph_tensors_n(
     return alloc->max_size;
 }
 
-size_t ggml_allocr_alloc_graph(struct ggml_allocr * alloc, struct ggml_cgraph * graph) {
-    return ggml_allocator_alloc_graph_tensors_n(alloc, &graph, 1, NULL, NULL);
+size_t ggml_dadbed9_allocr_alloc_graph(struct ggml_dadbed9_allocr * alloc, struct ggml_dadbed9_cgraph * graph) {
+    return ggml_dadbed9_allocator_alloc_graph_tensors_n(alloc, &graph, 1, NULL, NULL);
 }
