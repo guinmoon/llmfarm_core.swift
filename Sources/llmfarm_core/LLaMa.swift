@@ -8,10 +8,10 @@
 import Foundation 
 import llmfarm_core_cpp
 
-public class LLaMa: GPTBase {
+public class LLaMa: LLMBase {
 
     
-    public override func load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var params = llama_context_default_params()
         params.n_ctx = contextParams.context
 //        params.n_parts = contextParams.parts
@@ -32,22 +32,22 @@ public class LLaMa: GPTBase {
         llama_free(context)
     }
     
-    override func gpt_n_vocab(_ ctx: OpaquePointer!) -> Int32{
+    override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
         return llama_n_vocab(ctx)
     }
     
-    override func gpt_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
+    override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
         return llama_get_logits(ctx);
     }
 
-    public override func gpt_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         if llama_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
             throw ModelError.failedToEval
         }
         return true
     }
     
-    public override func gpt_token_to_str(outputToken:Int32) -> String? {
+    public override func llm_token_to_str(outputToken:Int32) -> String? {
 //        var cStringPtr: UnsafeMutablePointer<CChar>? = nil
 //        var cStr_len: Int32 = 0;
 //        llama_token_to_str(context, outputToken,cStringPtr,cStr_len)
@@ -60,17 +60,17 @@ public class LLaMa: GPTBase {
         return nil
     }
     
-    public override func gpt_token_nl() -> ModelToken{
+    public override func llm_token_nl() -> ModelToken{
 //        return llama_token_nl(self.context)
         return llama_token_nl()
     }
 
-    public override func gpt_token_bos() -> ModelToken{
+    public override func llm_token_bos() -> ModelToken{
 //        return llama_token_bos(self.context)
         return llama_token_bos()
     }
     
-    public override func gpt_token_eos() -> ModelToken{
+    public override func llm_token_eos() -> ModelToken{
 //        return llama_token_eos(self.context)
         return llama_token_eos()
     }

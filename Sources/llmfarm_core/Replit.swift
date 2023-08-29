@@ -8,9 +8,9 @@
 import Foundation
 import llmfarm_core_cpp
 
-public class Replit: GPTBase {
+public class Replit: LLMBase {
 
-    public override func load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         self.context = replit_init_from_file(path, params)
         self.promptFormat = .None
         return true
@@ -20,7 +20,7 @@ public class Replit: GPTBase {
         replit_free(context)
     }
     
-    public override func gpt_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         if replit_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
             throw ModelError.failedToEval
         }
@@ -65,11 +65,11 @@ public class Replit: GPTBase {
 //        
 //    }
     
-    override func gpt_n_vocab(_ ctx: OpaquePointer!) -> Int32{
+    override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
         return replit_n_logits(ctx)
     }
     
-    public override func gpt_token_to_str(outputToken:Int32) -> String? {
+    public override func llm_token_to_str(outputToken:Int32) -> String? {
         if let cStr = replit_token_to_str(context, outputToken){
             return String(cString: cStr)
         }

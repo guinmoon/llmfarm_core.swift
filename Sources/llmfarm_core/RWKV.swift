@@ -8,7 +8,7 @@
 import Foundation
 import llmfarm_core_cpp
 
-public class RWKV: GPTBase {
+public class RWKV: LLMBase {
 
     public var tokenizer:Tokenizer
     public var pointerToLogits:UnsafeMutablePointer<Float>? = nil
@@ -28,7 +28,7 @@ public class RWKV: GPTBase {
         
     }
     
-    public override func load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         self.context = rwkv_init_from_file(path, UInt32(contextParams.numberOfThreads))
         self.promptFormat = .None
         
@@ -39,7 +39,7 @@ public class RWKV: GPTBase {
         rwkv_free(context)
     }
     
-    public override func gpt_init_logits() throws -> Bool {
+    public override func llm_init_logits() throws -> Bool {
         do{
             if self.contextParams.warm_prompt.count<1{
                 self.contextParams.warm_prompt = "\n\n\n"
@@ -51,7 +51,7 @@ public class RWKV: GPTBase {
 //            self.pointerToStateOut = UnsafeMutablePointer<Float>.allocate(capacity: n_state)
             rwkv_init_state(self.context, pointerToStateIn);
             let inputs = llm_tokenize(self.contextParams.warm_prompt)
-            if try gpt_eval(inputBatch: inputs) == false {
+            if try llm_eval(inputBatch: inputs) == false {
                 throw ModelError.failedToEval
             }
             return true
@@ -62,7 +62,7 @@ public class RWKV: GPTBase {
         return false
     }
     
-    public override func gpt_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         for token in inputBatch{
             rwkv_eval(self.context, UInt32(token), self.pointerToStateIn,self.pointerToStateIn, self.pointerToLogits)
         }
@@ -70,17 +70,17 @@ public class RWKV: GPTBase {
     }
     
     
-    override func gpt_n_vocab(_ ctx: OpaquePointer!) -> Int32{
+    override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
         return Int32(rwkv_get_logits_len(self.context))
     }
     
-    override func gpt_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
+    override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
         return self.pointerToLogits;
     }
    
     
     
-    public override func gpt_token_to_str(outputToken:Int32) -> String? {
+    public override func llm_token_to_str(outputToken:Int32) -> String? {
         return tokenizer.decode(tokens: [outputToken])
     }
     

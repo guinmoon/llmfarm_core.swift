@@ -8,8 +8,12 @@
 import Foundation
 import llmfarm_core_cpp
 
-public class GPTBase: Model {
+public class LLMBase: Model {
     
+    // Used to keep old context until it needs to be rotated or purge out for new tokens
+    var past: [[ModelToken]] = [] // Will house both queries and responses in order
+    //var n_history: Int32 = 0
+    var nPast: Int32 = 0
     
     
     public override init(path: String, contextParams: ModelContextParams = .default) throws {
@@ -35,35 +39,46 @@ public class GPTBase: Model {
         // Load model at path
         //        self.context = gptneox_init_from_file(path, params)
         //        let test = test_fn()
-        try load_model(path:path,contextParams:contextParams,params: params)
+        try llm_load_model(path:path,contextParams:contextParams,params: params)
         
         print("%s: seed = %d\n", params.seed);
         
         print(String(cString: print_system_info()))
-        try gpt_init_logits()
+        try llm_init_logits()
         print("Logits inited.")
     }
-    
-    public override func load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
-        return false
-    }
-    
-    
     
     deinit {
         
     }
     
-    func gpt_n_vocab(_ ctx: OpaquePointer!) -> Int32{
+    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+        return false
+    }
+    
+    
+    public func llm_token_nl() -> ModelToken{
+        return 13
+    }
+    
+    public func llm_token_bos() -> ModelToken{
+        return gpt_base_token_bos()
+    }
+    
+    public func llm_token_eos() -> ModelToken{
+        return gpt_base_token_eos()
+    }
+    
+    func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
         return gpt_base_n_vocab(ctx)
     }
     
-    func gpt_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
+    func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
         return gpt_base_get_logits(ctx);
     }
     
     // Simple topK, topP, temp sampling, with repeat penalty
-    func sample(ctx: OpaquePointer!,
+    func llm_sample(ctx: OpaquePointer!,
                 last_n_tokens: inout [ModelToken],
                 temp: Float32,
                 top_k: Int32,
@@ -83,12 +98,12 @@ public class GPTBase: Model {
         
         // Auto params
         
-        let top_k = top_k <= 0 ? gpt_n_vocab(ctx) : top_k
+        let top_k = top_k <= 0 ? llm_n_vocab(ctx) : top_k
         let repeat_last_n = repeat_last_n < 0 ? n_ctx : repeat_last_n
         
         //
-        let vocabSize = gpt_n_vocab(ctx)
-        guard let logits = gpt_get_logits(ctx) else {
+        let vocabSize = llm_n_vocab(ctx)
+        guard let logits = llm_get_logits(ctx) else {
             print("GPT sample error logits nil")
             return 0
         }
@@ -99,7 +114,7 @@ public class GPTBase: Model {
         var candidates_p = llama_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
         
         // Apply penalties
-        let nl_token = Int(gpt_token_nl())
+        let nl_token = Int(llm_token_nl())
         let nl_logit = logits[nl_token]
         let last_n_repeat = min(min(Int32(last_n_tokens.count), repeat_last_n), n_ctx)
         
@@ -149,23 +164,19 @@ public class GPTBase: Model {
 
     }
     
-    // Used to keep old context until it needs to be rotated or purge out for new tokens
-    var past: [[ModelToken]] = [] // Will house both queries and responses in order
-    //var n_history: Int32 = 0
-    var nPast: Int32 = 0
+
     
-    
-    public func gpt_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         return false
     }
     
-    public func gpt_init_logits() throws -> Bool {
+    public func llm_init_logits() throws -> Bool {
         do{
             if self.contextParams.warm_prompt.count<1{
                 self.contextParams.warm_prompt = "\n\n\n"
             }
             let inputs = llm_tokenize(self.contextParams.warm_prompt)
-            if try gpt_eval(inputBatch: inputs) == false {
+            if try llm_eval(inputBatch: inputs) == false {
                 throw ModelError.failedToEval
             }
             return true
@@ -176,24 +187,14 @@ public class GPTBase: Model {
         return false
     }
     
-    public func gpt_token_to_str(outputToken:Int32) -> String? {
+    public func llm_token_to_str(outputToken:Int32) -> String? {
         if let cStr = gpt_base_token_to_str(context, outputToken){
             return String(cString: cStr)
         }
         return nil
     }
     
-    public func gpt_token_nl() -> ModelToken{
-        return 13
-    }
     
-    public func gpt_token_bos() -> ModelToken{
-        return gpt_base_token_bos()
-    }
-    
-    public func gpt_token_eos() -> ModelToken{
-        return gpt_base_token_eos()
-    }
     
     public override func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
         // Sample parameters
@@ -211,7 +212,7 @@ public class GPTBase: Model {
         if inputTokensCount > contextLength {
             throw ModelError.inputTooLong
         }
-        var totalLength = nPast + Int32(inputTokensCount)
+//        var totalLength = nPast + Int32(inputTokensCount)
 //        while totalLength > contextLength {
 //            // Not enough room to predict even a single token so purge
 //            let forgetCount = Int32(past.first!.count)
@@ -221,7 +222,7 @@ public class GPTBase: Model {
 //            nPast -= forgetCount
 //            totalLength -= forgetCount
 //            // Print how many tokens are purged
-//            print("💾 \(forgetCount) tokens purged from context memory")
+//            print("\(forgetCount) tokens purged from context memory")
 //        }
         // Input
         var inputBatch: [ModelToken] = []
@@ -242,7 +243,7 @@ public class GPTBase: Model {
             //            if gpt_neox_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
             //                throw ModelError.failedToEval
             //            }
-            try gpt_eval(inputBatch: inputBatch)
+            _ = try llm_eval(inputBatch: inputBatch)
             // Increment past count
             nPast += Int32(evalCount)
         }
@@ -254,7 +255,7 @@ public class GPTBase: Model {
         var outputEnabled = true
         while outputEnabled {
             // Pull a generation from context
-            let outputToken = sample(
+            let outputToken = llm_sample(
                 ctx: context,
                 last_n_tokens: &outputRepeatTokens,
                 temp: params.temp,
@@ -279,19 +280,19 @@ public class GPTBase: Model {
                 outputRepeatTokens.removeFirst()
             }
             // Check for eos - end early - check eos before bos in case they are the same
-            if outputToken == gpt_token_eos() {
+            if outputToken == llm_token_eos() {
                 outputEnabled = false
-                print("🤖 [EOS]")
+                print("[EOS]")
                 break
             }
             // Check for bos, skip callback if so, bos = eos for most gptneox so this should typically never occur
             var skipCallback = false
-            if outputToken == gpt_token_bos()  {
-                print("🤖 [BOS]")
+            if outputToken == llm_token_bos()  {
+                print("[BOS]")
                 skipCallback = true
             }
             // Convert token to string and callback
-            if !skipCallback, let str = gpt_token_to_str(outputToken: outputToken){
+            if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
                 output.append(str)
                 // Per token callback
                 let (output, time) = Utils.time {
@@ -311,7 +312,7 @@ public class GPTBase: Model {
                 //                if gpt_neox_eval(context, [outputToken], 1, nPast, contextParams.numberOfThreads) != 0 {
                 //                    throw ModelError.failedToEval
                 //                }
-                try gpt_eval(inputBatch: [outputToken])
+                _ = try llm_eval(inputBatch: [outputToken])
                 // Increment past count
                 nPast += 1
                 //                 Check to see if we need to forget (create space in context)
@@ -349,7 +350,7 @@ public class GPTBase: Model {
             return []
         }
         
-        try gpt_eval(inputBatch: inputs)
+        _ = try llm_eval(inputBatch: inputs)
         
         let embeddingsCount = Int(gpt_base_n_embd(context))
         guard let embeddings = gpt_base_get_embeddings(context) else {

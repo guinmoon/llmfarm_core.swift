@@ -204,7 +204,7 @@ public class Model {
         self.context = nil
     }
     
-    public func load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         return false
     }
     
