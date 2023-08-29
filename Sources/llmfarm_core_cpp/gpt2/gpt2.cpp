@@ -3,10 +3,10 @@
 #include "../gpt_helpers.h"
 #include "../spm-headers/gpt_spm.h"
 
-#include "../ggml_dadbed9.h"
+#include "../ggml/ggml_dadbed9.h"
 
-#include "../common.h"
-#include "../common-ggml.h"
+#include "../ggml/common.h"
+#include "../ggml/common-ggml.h"
 
 
 #include <cassert>

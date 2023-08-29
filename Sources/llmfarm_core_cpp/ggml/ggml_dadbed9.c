@@ -4,7 +4,7 @@
 #include "ggml_dadbed9.h"
 
 #ifdef GGML_USE_K_QUANTS
-#include "k_quants.h"
+#include "k_quants_dadbed9.h"
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)

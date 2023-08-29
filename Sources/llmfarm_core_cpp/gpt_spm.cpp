@@ -2,7 +2,7 @@
 #include "gpt_helpers.h"
 #include "../spm-headers/llama.h"
 #include "../spm-headers/rwkv.h"
-#include "ggml_dadbed9.h"
+#include "ggml/ggml_dadbed9.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>

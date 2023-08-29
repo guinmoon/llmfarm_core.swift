@@ -1,5 +1,5 @@
 #include "../spm-headers/rwkv.h"
-#include "../ggml_a1d0ea7.h"
+#include "../ggml/ggml_a1d0ea7.h"
 #include "../gpt_helpers.h"
 #include "../spm-headers/gpt_spm.h"
 
