@@ -77,6 +77,10 @@ public class LLMBase: Model {
         return gpt_base_get_logits(ctx);
     }
     
+    func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
+        return gpt_base_n_ctx(ctx)
+    }
+    
     // Simple topK, topP, temp sampling, with repeat penalty
     func llm_sample(ctx: OpaquePointer!,
                 last_n_tokens: inout [ModelToken],
@@ -94,7 +98,7 @@ public class LLMBase: Model {
                 mirostat_eta: Float32,
                 penalize_nl: Bool) -> ModelToken {
         // Model input context size
-        let n_ctx = gpt_base_n_ctx(ctx)
+        let n_ctx = llm_get_n_ctx(ctx: ctx)
         
         // Auto params
         
@@ -197,12 +201,10 @@ public class LLMBase: Model {
     
     
     public override func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
-        // Sample parameters
         let params = sampleParams
-        // Debug shorter contextLength to purge faster
         let contextLength = Int32(contextParams.context)
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
-        // Tokenize with prompt style
+        // Tokenize with prompt format
         var inputTokens = tokenizePrompt(input, promptFormat)
         let inputTokensCount = inputTokens.count
         print("Input tokens: \(inputTokens)")
@@ -213,17 +215,6 @@ public class LLMBase: Model {
             throw ModelError.inputTooLong
         }
 //        var totalLength = nPast + Int32(inputTokensCount)
-//        while totalLength > contextLength {
-//            // Not enough room to predict even a single token so purge
-//            let forgetCount = Int32(past.first!.count)
-//            past.removeFirst()
-//            gpt_base_shift_kv_cache(context, forgetCount)
-//            // Update count vars
-//            nPast -= forgetCount
-//            totalLength -= forgetCount
-//            // Print how many tokens are purged
-//            print("\(forgetCount) tokens purged from context memory")
-//        }
         // Input
         var inputBatch: [ModelToken] = []
         // Inputs tokens eval, input token will not be included in output
@@ -232,19 +223,14 @@ public class LLMBase: Model {
         //        }
         
         while inputTokens.count > 0 {
-            // Clear input batch
             inputBatch.removeAll()
             // See how many to eval (up to batch size??? or can we feed the entire input)
-            let evalCount = min(inputTokens.count, Int(params.n_batch))
             // Move tokens to batch
+            let evalCount = min(inputTokens.count, Int(params.n_batch))
             inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
+            
             inputTokens.removeFirst(evalCount)
-            // Eval batch, "past_key_values" should be internally kept by eval and dictated by nPast
-            //            if gpt_neox_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
-            //                throw ModelError.failedToEval
-            //            }
             _ = try llm_eval(inputBatch: inputBatch)
-            // Increment past count
             nPast += Int32(evalCount)
         }
         // Output
@@ -309,29 +295,9 @@ public class LLMBase: Model {
             // Check if we need to run another response eval
             if outputEnabled {
                 // Send generated token back into model for next generation
-                //                if gpt_neox_eval(context, [outputToken], 1, nPast, contextParams.numberOfThreads) != 0 {
-                //                    throw ModelError.failedToEval
-                //                }
                 _ = try llm_eval(inputBatch: [outputToken])
                 // Increment past count
                 nPast += 1
-                //                 Check to see if we need to forget (create space in context)
-                if nPast > contextLength {
-                    // Not enough room to predict even a single token so purge oldest from past and kv cache
-                    // If nothing in past to purge so simply remove tokens from the beginning of the response
-                    // Remove a batch of 8 or 16 tokens from beginning of response if no past, this helps reduce the frequency of shifts, but will make the model forget quicker if the forget batch size is too high
-                    // In theory, the model can continue to build a response infinitely
-//                    var forgetCount: Int32 = 16 //8 //1
-//                    if let first = past.first {
-//                        forgetCount = Int32(first.count)
-//                        past.removeFirst()
-//                    }
-//                    gpt_base_shift_kv_cache(context, forgetCount)
-//                    // Update nPast from purge
-//                    nPast -= forgetCount
-//                    // Print how many tokens are purged
-//                    print("💾 \(forgetCount) tokens purged from context memory")
-                }
             }
         }
         // Update past with most recent response
@@ -342,22 +308,22 @@ public class LLMBase: Model {
         return output.joined()
     }
     
-    public func embeddings(_ input: String) throws -> [Float] {
-        // Tokenize the prompt
-        let inputs = llm_tokenize(input)
-        
-        guard inputs.count > 0 else {
-            return []
-        }
-        
-        _ = try llm_eval(inputBatch: inputs)
-        
-        let embeddingsCount = Int(gpt_base_n_embd(context))
-        guard let embeddings = gpt_base_get_embeddings(context) else {
-            return []
-        }
-        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
-    }
+//    public func embeddings(_ input: String) throws -> [Float] {
+//        // Tokenize the prompt
+//        let inputs = llm_tokenize(input)
+//        
+//        guard inputs.count > 0 else {
+//            return []
+//        }
+//        
+//        _ = try llm_eval(inputBatch: inputs)
+//        
+//        let embeddingsCount = Int(gpt_base_n_embd(context))
+//        guard let embeddings = gpt_base_get_embeddings(context) else {
+//            return []
+//        }
+//        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
+//    }
     
     public override func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
         if input.count == 0 {
@@ -374,6 +340,39 @@ public class LLMBase: Model {
         }
         
         return embeddings
+    }
+    
+    public override func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) -> [ModelToken] {
+        switch style {
+        case .None:
+            return llm_tokenize(input)
+        case .Custom:
+            var formated_input = self.custom_prompt_format.replacingOccurrences(of: "{{prompt}}", with: input)
+            formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
+            return llm_tokenize(formated_input, bos: true)
+        case .ChatBase:
+            return llm_tokenize("<human>: " + input + "\n<bot>:")
+        case .OpenAssistant:
+            let inputTokens = llm_tokenize("<|prompter|>" + input + "<|endoftext|>" + "<|assistant|>")
+            return inputTokens
+        case .RedPajama_chat:
+            return llm_tokenize("<human>:\n" + input + "\n<bot>:")
+        case .Dolly_b3:
+            let  INSTRUCTION_KEY = "### Instruction:";
+            let  RESPONSE_KEY    = "### Response:";
+            let  INTRO_BLURB     = "Below is an instruction that describes a task. Write a response that appropriately completes the request.";
+            let inputTokens = llm_tokenize(INTRO_BLURB + INSTRUCTION_KEY + input + RESPONSE_KEY)
+            return inputTokens
+        case .StableLM_Tuned:
+            let inputTokens = llm_tokenize("<|USER|>" + input + "<|ASSISTANT|>")
+            return inputTokens
+        case .LLaMa:
+            let input = " " + input
+            return llm_tokenize(input, bos: true)
+        case .LLaMa_QA:
+            let input = "Question: " + input + "\n\nAnswer: "
+            return llm_tokenize(input, bos: true)
+        }
     }
 }
 

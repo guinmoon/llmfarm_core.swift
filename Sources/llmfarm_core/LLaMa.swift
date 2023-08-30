@@ -75,27 +75,6 @@ public class LLaMa: LLMBase {
         return llama_token_eos()
     }
     
-    public override func embeddings(_ input: String) throws -> [Float] {
-        // Add a space in front of the first character to match OG llama tokenizer behavior
-        let input = " " + input
-
-        // tokenize the prompt
-        let inputs = llm_tokenize(input)
-
-        guard inputs.count > 0 else {
-            return []
-        }
-
-        if llama_eval(context, inputs, Int32(inputs.count), Int32(0), contextParams.numberOfThreads) != 0 {
-            throw ModelError.failedToEval
-        }
-
-        let embeddingsCount = Int(llama_n_embd(context))
-        guard let embeddings = llama_get_embeddings(context) else {
-            return []
-        }
-        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
-    }
 
     public override func llm_tokenize(_ input: String, bos: Bool = true, eos: Bool = false) -> [ModelToken] {
         if input.count == 0 {

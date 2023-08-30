@@ -78,7 +78,9 @@ public class RWKV: LLMBase {
         return self.pointerToLogits;
     }
    
-    
+    override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
+        return 4096
+    }
     
     public override func llm_token_to_str(outputToken:Int32) -> String? {
         return tokenizer.decode(tokens: [outputToken])
