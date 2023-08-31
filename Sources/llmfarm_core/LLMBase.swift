@@ -174,12 +174,9 @@ public class LLMBase: Model {
         return false
     }
     
-    public func llm_init_logits() throws -> Bool {
+    func llm_init_logits() throws -> Bool {
         do{
-            if self.contextParams.warm_prompt.count<1{
-                self.contextParams.warm_prompt = "\n\n\n"
-            }
-            let inputs = llm_tokenize(self.contextParams.warm_prompt)
+            let inputs = [llm_token_bos()]
             if try llm_eval(inputBatch: inputs) == false {
                 throw ModelError.failedToEval
             }
@@ -190,6 +187,23 @@ public class LLMBase: Model {
         }
         return false
     }
+    
+//    public func llm_init_logits() throws -> Bool {
+//        do{
+//            if self.contextParams.warm_prompt.count<1{
+//                self.contextParams.warm_prompt = "\n\n\n"
+//            }
+//            let inputs = llm_tokenize(self.contextParams.warm_prompt)
+//            if try llm_eval(inputBatch: inputs) == false {
+//                throw ModelError.failedToEval
+//            }
+//            return true
+//        }
+//        catch{
+//            print(error)
+//        }
+//        return false
+//    }
     
     public func llm_token_to_str(outputToken:Int32) -> String? {
         if let cStr = gpt_base_token_to_str(context, outputToken){
