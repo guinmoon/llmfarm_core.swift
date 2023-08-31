@@ -111,21 +111,21 @@ public class LLMBase: Model {
             print("GPT sample error logits nil")
             return 0
         }
-        var candidates = Array<llama_token_data>()
+        var candidates = Array<llama_dadbed9_token_data>()
         for i in 0 ..< vocabSize {
-            candidates.append(llama_token_data(id: i, logit: logits[Int(i)], p: 0.0))
+            candidates.append(llama_dadbed9_token_data(id: i, logit: logits[Int(i)], p: 0.0))
         }
-        var candidates_p = llama_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
+        var candidates_p = llama_dadbed9_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
         
         // Apply penalties
         let nl_token = Int(llm_token_nl())
         let nl_logit = logits[nl_token]
         let last_n_repeat = min(min(Int32(last_n_tokens.count), repeat_last_n), n_ctx)
         
-        llama_sample_repetition_penalty(ctx, &candidates_p,
+        llama_dadbed9_sample_repetition_penalty(ctx, &candidates_p,
                     last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
                     Int(repeat_last_n), repeat_penalty)
-        llama_sample_frequency_and_presence_penalties(ctx, &candidates_p,
+        llama_dadbed9_sample_frequency_and_presence_penalties(ctx, &candidates_p,
                     last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
                     Int(last_n_repeat), alpha_frequency, alpha_presence)
         if(!penalize_nl) {
@@ -133,25 +133,25 @@ public class LLMBase: Model {
         }
         if(temp <= 0) {
             // Greedy sampling
-            return llama_sample_token_greedy(ctx, &candidates_p)
+            return llama_dadbed9_sample_token_greedy(ctx, &candidates_p)
         } else {
             if(mirostat == 1) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 let mirostat_m = 100
-                llama_sample_temperature(ctx, &candidates_p, temp)
-                return llama_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
+                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
+                return llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
-                llama_sample_temperature(ctx, &candidates_p, temp)
-                return llama_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
+                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
+                return llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
             } else {
                 // Temperature sampling
-                llama_sample_top_k(ctx, &candidates_p, top_k, 1)
-                llama_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
-                llama_sample_typical(ctx, &candidates_p, typical_p, 1)
-                llama_sample_top_p(ctx, &candidates_p, top_p, 1)
-                llama_sample_temperature(ctx, &candidates_p, temp)
-                return llama_sample_token(ctx, &candidates_p)
+                llama_dadbed9_sample_top_k(ctx, &candidates_p, top_k, 1)
+                llama_dadbed9_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
+                llama_dadbed9_sample_typical(ctx, &candidates_p, typical_p, 1)
+                llama_dadbed9_sample_top_p(ctx, &candidates_p, top_p, 1)
+                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
+                return llama_dadbed9_sample_token(ctx, &candidates_p)
             }
         }
 //        if (last_n_tokens.count>0){

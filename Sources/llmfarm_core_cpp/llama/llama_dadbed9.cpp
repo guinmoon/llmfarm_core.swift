@@ -6,8 +6,8 @@
 #include <cstdio>
 #endif
 
-#include "llama-util.h"
-#include "llama.h"
+#include "llama-util_dadbed9.h"
+#include "llama_dadbed9.h"
 
 #include "../ggml/ggml_dadbed9.h"
 #ifdef GGML_USE_CUBLAS
@@ -56,11 +56,11 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-static void llama_log_internal(llama_log_level level, const char* format, ...);
-static void llama_log_callback_default(llama_log_level level, const char * text, void * user_data);
-#define LLAMA_LOG_INFO(...)  llama_log_internal(LLAMA_LOG_LEVEL_INFO , __VA_ARGS__)
-#define LLAMA_LOG_WARN(...)  llama_log_internal(LLAMA_LOG_LEVEL_WARN , __VA_ARGS__)
-#define LLAMA_LOG_ERROR(...) llama_log_internal(LLAMA_LOG_LEVEL_ERROR, __VA_ARGS__)
+static void llama_dadbed9_log_internal(llama_dadbed9_log_level level, const char* format, ...);
+static void llama_dadbed9_log_callback_default(llama_dadbed9_log_level level, const char * text, void * user_data);
+#define LLAMA_LOG_INFO(...)  llama_dadbed9_log_internal(LLAMA_LOG_LEVEL_INFO , __VA_ARGS__)
+#define LLAMA_LOG_WARN(...)  llama_dadbed9_log_internal(LLAMA_LOG_LEVEL_WARN , __VA_ARGS__)
+#define LLAMA_LOG_ERROR(...) llama_dadbed9_log_internal(LLAMA_LOG_LEVEL_ERROR, __VA_ARGS__)
 
 
 #if !defined(GGML_USE_CUBLAS)
@@ -92,7 +92,7 @@ static const size_t MB = 1024*1024;
 
 typedef void (*offload_func_t)(struct ggml_dadbed9_tensor * tensor);
 
-void llama_nop(struct ggml_dadbed9_tensor * tensor) { // don't offload by default
+void llama_dadbed9_nop(struct ggml_dadbed9_tensor * tensor) { // don't offload by default
     (void) tensor;
 }
 
@@ -186,7 +186,7 @@ static const std::map<e_model, size_t> & VRAM_REQ_SCRATCH_PER_CONTEXT()
 }
 
 // default hparams (LLaMA 7B)
-struct llama_hparams {
+struct llama_dadbed9_hparams {
     uint32_t n_vocab   = 32000;
     uint32_t n_ctx     = 512;   // this is provided as user input?
     uint32_t n_embd    = 4096;
@@ -204,10 +204,10 @@ struct llama_hparams {
     float rope_freq_base  = 10000.0f;
     float rope_freq_scale = 1.0f;
 
-    enum llama_ftype ftype = LLAMA_FTYPE_MOSTLY_F16;
+    enum llama_dadbed9_ftype ftype = LLAMA_FTYPE_MOSTLY_F16;
 
-    bool operator!=(const llama_hparams & other) const {
-        return static_cast<bool>(memcmp(this, &other, sizeof(llama_hparams))); // NOLINT
+    bool operator!=(const llama_dadbed9_hparams & other) const {
+        return static_cast<bool>(memcmp(this, &other, sizeof(llama_dadbed9_hparams))); // NOLINT
     }
 
     uint32_t n_gqa() const {
@@ -232,7 +232,7 @@ struct llama_hparams {
     }
 };
 
-struct llama_layer {
+struct llama_dadbed9_layer {
     // normalization
     struct ggml_dadbed9_tensor * attention_norm;
 
@@ -251,17 +251,17 @@ struct llama_layer {
     struct ggml_dadbed9_tensor * w3;
 };
 
-struct llama_kv_cache {
+struct llama_dadbed9_kv_cache {
     struct ggml_dadbed9_tensor * k = NULL;
     struct ggml_dadbed9_tensor * v = NULL;
 
     struct ggml_dadbed9_context * ctx = NULL;
 
-    llama_ctx_buffer buf;
+    llama_dadbed9_ctx_buffer buf;
 
     int n; // number of tokens currently in the cache
 
-    ~llama_kv_cache() {
+    ~llama_dadbed9_kv_cache() {
         if (ctx) {
             ggml_dadbed9_free(ctx);
         }
@@ -273,7 +273,7 @@ struct llama_kv_cache {
     }
 };
 
-struct llama_vocab {
+struct llama_dadbed9_vocab {
     using id    = int32_t;
     using token = std::string;
 
@@ -286,31 +286,31 @@ struct llama_vocab {
     std::vector<token_score> id_to_token;
 };
 
-struct llama_model {
+struct llama_dadbed9_model {
     e_model type = MODEL_UNKNOWN;
 
-    llama_hparams hparams;
+    llama_dadbed9_hparams hparams;
 
     struct ggml_dadbed9_tensor * tok_embeddings;
 
     struct ggml_dadbed9_tensor * norm;
     struct ggml_dadbed9_tensor * output;
 
-    std::vector<llama_layer> layers;
+    std::vector<llama_dadbed9_layer> layers;
     int n_gpu_layers;
 
     // context
     struct ggml_dadbed9_context * ctx = NULL;
 
     // the model memory buffer
-    llama_ctx_buffer buf;
+    llama_dadbed9_ctx_buffer buf;
 
     // model memory mapped file
-    std::unique_ptr<llama_mmap> mapping;
+    std::unique_ptr<llama_dadbed9_mmap> mapping;
 
     // objects representing data potentially being locked in memory
-    llama_mlock mlock_buf;
-    llama_mlock mlock_mmap;
+    llama_dadbed9_mlock mlock_buf;
+    llama_dadbed9_mlock mlock_mmap;
 
     // for quantize-stats only
     std::vector<std::pair<std::string, struct ggml_dadbed9_tensor *>> tensors_by_name;
@@ -318,9 +318,9 @@ struct llama_model {
     int64_t t_load_us = 0;
     int64_t t_start_us = 0;
 
-    llama_vocab vocab;
+    llama_dadbed9_vocab vocab;
 
-    ~llama_model() {
+    ~llama_dadbed9_model() {
         if (ctx) {
             ggml_dadbed9_free(ctx);
         }
@@ -338,9 +338,9 @@ struct llama_model {
     }
 };
 
-struct llama_context {
-    llama_context(const llama_model & model) : model(model), t_load_us(model.t_load_us), t_start_us(model.t_start_us) {}
-    ~llama_context() {
+struct llama_dadbed9_context {
+    llama_dadbed9_context(const llama_dadbed9_model & model) : model(model), t_load_us(model.t_load_us), t_start_us(model.t_start_us) {}
+    ~llama_dadbed9_context() {
         if (model_owner) {
             delete &model;
         }
@@ -368,7 +368,7 @@ struct llama_context {
     int32_t n_eval   = 0; // number of eval calls
     int32_t n_p_eval = 0; // number of tokens in eval calls for the prompt (with batch size > 1)
 
-    const llama_model & model;
+    const llama_dadbed9_model & model;
 
     bool model_owner = false;
 
@@ -376,7 +376,7 @@ struct llama_context {
     int64_t t_start_us;
 
     // key + value cache for the self attention
-    struct llama_kv_cache kv_self;
+    struct llama_dadbed9_kv_cache kv_self;
 
     size_t mem_per_token = 0;
 
@@ -391,16 +391,16 @@ struct llama_context {
     std::vector<uint8_t> work_buffer;
 
     // memory buffers used to evaluate the model
-    // TODO: move in llama_state
-    llama_ctx_buffer buf_compute;
+    // TODO: move in llama_dadbed9_state
+    llama_dadbed9_ctx_buffer buf_compute;
 
 #ifdef LLAMA_USE_ALLOCATOR
-    llama_ctx_buffer buf_alloc;
+    llama_dadbed9_ctx_buffer buf_alloc;
     ggml_dadbed9_allocr * alloc = NULL;
 #endif
 
 #ifdef LLAMA_USE_SCRATCH
-    llama_ctx_buffer buf_scratch[LLAMA_MAX_SCRATCH_BUFFERS];
+    llama_dadbed9_ctx_buffer buf_scratch[LLAMA_MAX_SCRATCH_BUFFERS];
     int    buf_last = 0;
     size_t buf_max_size[LLAMA_MAX_SCRATCH_BUFFERS] = { 0 };
 #endif
@@ -445,13 +445,13 @@ struct llama_context {
     }
 };
 
-struct llama_state {
+struct llama_dadbed9_state {
     // We save the log callback globally
-    llama_log_callback log_callback = llama_log_callback_default;
+    llama_dadbed9_log_callback log_callback = llama_dadbed9_log_callback_default;
     void * log_callback_user_data = nullptr;
 };
 // global state
-static llama_state g_state;
+static llama_dadbed9_state g_state;
 
 template <typename T>
 static T checked_mul(T a, T b) {
@@ -470,7 +470,7 @@ static size_t checked_div(size_t a, size_t b) {
     return a / b;
 }
 
-static std::string llama_format_tensor_shape(const std::vector<uint32_t> & ne) {
+static std::string llama_dadbed9_format_tensor_shape(const std::vector<uint32_t> & ne) {
     char buf[256];
     snprintf(buf, sizeof(buf), "%5u", ne.at(0));
     for (size_t i = 1; i < ne.size(); i++) {
@@ -479,7 +479,7 @@ static std::string llama_format_tensor_shape(const std::vector<uint32_t> & ne) {
     return buf;
 }
 
-static size_t llama_calc_tensor_size(const std::vector<uint32_t> & ne, enum ggml_dadbed9_type type) {
+static size_t llama_dadbed9_calc_tensor_size(const std::vector<uint32_t> & ne, enum ggml_dadbed9_type type) {
     size_t size = ggml_dadbed9_type_size(type);
     for (uint32_t dim : ne) {
         size = checked_mul<size_t>(size, dim);
@@ -487,7 +487,7 @@ static size_t llama_calc_tensor_size(const std::vector<uint32_t> & ne, enum ggml
     return size / ggml_dadbed9_blck_size(type);
 }
 
-struct llama_load_tensor {
+struct llama_dadbed9_load_tensor {
     std::string name;
     enum ggml_dadbed9_type type = GGML_TYPE_F32;
     std::vector<uint32_t> ne;
@@ -497,13 +497,13 @@ struct llama_load_tensor {
     uint8_t * data;
 };
 
-struct llama_load_tensors_map {
+struct llama_dadbed9_load_tensors_map {
     // tensors is kept in a separate vector to preserve file order
-    std::vector<llama_load_tensor> tensors;
+    std::vector<llama_dadbed9_load_tensor> tensors;
     std::unordered_map<std::string, size_t> name_to_idx;
 };
 
-enum llama_file_version {
+enum llama_dadbed9_file_version {
     LLAMA_FILE_VERSION_GGML,
     LLAMA_FILE_VERSION_GGMF_V1, // added version field and scores in vocab
     LLAMA_FILE_VERSION_GGJT_V1, // added padding
@@ -511,13 +511,13 @@ enum llama_file_version {
     LLAMA_FILE_VERSION_GGJT_V3, // changed Q4 and Q8 quantization format
 };
 
-struct llama_file_loader {
-    llama_file file;
-    llama_file_version file_version;
-    llama_hparams hparams;
-    llama_vocab vocab;
+struct llama_dadbed9_file_loader {
+    llama_dadbed9_file file;
+    llama_dadbed9_file_version file_version;
+    llama_dadbed9_hparams hparams;
+    llama_dadbed9_vocab vocab;
 
-    llama_file_loader(const char * fname, llama_load_tensors_map & tensors_map)
+    llama_dadbed9_file_loader(const char * fname, llama_dadbed9_load_tensors_map & tensors_map)
         : file(fname, "rb") {
         LLAMA_LOG_INFO("llama.cpp: loading model from %s\n", fname);
         read_magic();
@@ -559,7 +559,7 @@ struct llama_file_loader {
         hparams.n_head  = file.read_u32();
         hparams.n_layer = file.read_u32();
         hparams.n_rot   = file.read_u32();
-        hparams.ftype   = (enum llama_ftype) file.read_u32();
+        hparams.ftype   = (enum llama_dadbed9_ftype) file.read_u32();
 
         // LLaMAv2
         // TODO: read from header
@@ -582,9 +582,9 @@ struct llama_file_loader {
             tok_score.score = score;
         }
     }
-    void read_tensor_metadata(llama_load_tensors_map & tensors_map) {
+    void read_tensor_metadata(llama_dadbed9_load_tensors_map & tensors_map) {
         while (file.tell() < file.size) {
-            llama_load_tensor tensor;
+            llama_dadbed9_load_tensor tensor;
             uint32_t n_dims = file.read_u32();
             uint32_t name_len = file.read_u32();
             tensor.type = (enum ggml_dadbed9_type) file.read_u32();
@@ -620,7 +620,7 @@ struct llama_file_loader {
 
             tensor.file_off = file.tell();
             tensor.name = name;
-            tensor.size = llama_calc_tensor_size(tensor.ne, tensor.type);
+            tensor.size = llama_dadbed9_calc_tensor_size(tensor.ne, tensor.type);
             file.seek(tensor.size, SEEK_CUR);
 
             tensors_map.tensors.push_back(tensor);
@@ -629,10 +629,10 @@ struct llama_file_loader {
     }
 };
 
-struct llama_file_saver {
-    llama_file file;
-    llama_file_loader * any_file_loader;
-    llama_file_saver(const char * fname, llama_file_loader * any_file_loader, enum llama_ftype new_ftype)
+struct llama_dadbed9_file_saver {
+    llama_dadbed9_file file;
+    llama_dadbed9_file_loader * any_file_loader;
+    llama_dadbed9_file_saver(const char * fname, llama_dadbed9_file_loader * any_file_loader, enum llama_dadbed9_ftype new_ftype)
         : file(fname, "wb"), any_file_loader(any_file_loader) {
         LLAMA_LOG_INFO("llama.cpp: saving model to %s\n", fname);
         write_magic();
@@ -643,8 +643,8 @@ struct llama_file_saver {
         file.write_u32(LLAMA_FILE_MAGIC);   // magic
         file.write_u32(LLAMA_FILE_VERSION); // version
     }
-    void write_hparams(enum llama_ftype new_ftype) {
-        const llama_hparams & hparams = any_file_loader->hparams;
+    void write_hparams(enum llama_dadbed9_ftype new_ftype) {
+        const llama_dadbed9_hparams & hparams = any_file_loader->hparams;
         file.write_u32(hparams.n_vocab);
         file.write_u32(hparams.n_embd);
         file.write_u32(hparams.n_mult);
@@ -665,7 +665,7 @@ struct llama_file_saver {
             file.write_raw(&token_score.score, sizeof(token_score.score));
         }
     }
-    void write_tensor(llama_load_tensor & tensor, enum ggml_dadbed9_type new_type, const void * new_data, size_t new_size) {
+    void write_tensor(llama_dadbed9_load_tensor & tensor, enum ggml_dadbed9_type new_type, const void * new_data, size_t new_size) {
         switch (new_type) {
             case GGML_TYPE_F32:
             case GGML_TYPE_F16:
@@ -688,22 +688,22 @@ struct llama_file_saver {
         file.write_raw(tensor.ne.data(), sizeof(tensor.ne[0]) * tensor.ne.size());
         file.write_raw(tensor.name.data(), tensor.name.size());
         file.seek(-static_cast<ptrdiff_t>(file.tell()) & 31, SEEK_CUR);
-        LLAMA_ASSERT(new_size == llama_calc_tensor_size(tensor.ne, new_type));
+        LLAMA_ASSERT(new_size == llama_dadbed9_calc_tensor_size(tensor.ne, new_type));
         file.write_raw(new_data, new_size);
     }
 };
 
-struct llama_model_loader {
-    std::unique_ptr<llama_file_loader> file_loader;
-    llama_load_tensors_map tensors_map;
+struct llama_dadbed9_model_loader {
+    std::unique_ptr<llama_dadbed9_file_loader> file_loader;
+    llama_dadbed9_load_tensors_map tensors_map;
     bool use_mmap;
     size_t num_ggml_dadbed9_tensors_created = 0;
     struct ggml_dadbed9_context * ggml_dadbed9_ctx = NULL;
-    std::unique_ptr<llama_mmap> mapping;
+    std::unique_ptr<llama_dadbed9_mmap> mapping;
 
-    llama_model_loader(const std::string & fname_base, bool use_mmap) {
-        file_loader = std::unique_ptr<llama_file_loader>(new llama_file_loader(fname_base.c_str(), tensors_map));
-        if (!llama_mmap::SUPPORTED) {
+    llama_dadbed9_model_loader(const std::string & fname_base, bool use_mmap) {
+        file_loader = std::unique_ptr<llama_dadbed9_file_loader>(new llama_dadbed9_file_loader(fname_base.c_str(), tensors_map));
+        if (!llama_dadbed9_mmap::SUPPORTED) {
             use_mmap = false;
         }
         this->use_mmap = use_mmap;
@@ -711,7 +711,7 @@ struct llama_model_loader {
 
     void calc_sizes(size_t * ctx_size_p, size_t * mmapped_size_p) const {
         *ctx_size_p = *mmapped_size_p = 0;
-        for (const llama_load_tensor & lt : tensors_map.tensors) {
+        for (const llama_dadbed9_load_tensor & lt : tensors_map.tensors) {
             *ctx_size_p += sizeof(struct ggml_dadbed9_tensor) + GGML_OBJECT_SIZE;
             *(use_mmap ? mmapped_size_p : ctx_size_p) += lt.size + 16;
         }
@@ -722,16 +722,16 @@ struct llama_model_loader {
         if (it == tensors_map.name_to_idx.end()) {
             throw std::runtime_error(std::runtime_error(format("llama.cpp: tensor '%s' is missing from model", name.c_str())));
         }
-        llama_load_tensor & lt = tensors_map.tensors.at(it->second);
+        llama_dadbed9_load_tensor & lt = tensors_map.tensors.at(it->second);
         if (lt.ne != ne) {
             throw std::runtime_error(format("llama.cpp: tensor '%s' has wrong shape; expected %s, got %s",
-                         name.c_str(), llama_format_tensor_shape(ne).c_str(), llama_format_tensor_shape(lt.ne).c_str()));
+                         name.c_str(), llama_dadbed9_format_tensor_shape(ne).c_str(), llama_dadbed9_format_tensor_shape(lt.ne).c_str()));
         }
 
         return get_tensor_for(lt, backend);
     }
 
-    struct ggml_dadbed9_tensor * get_tensor_for(llama_load_tensor & lt, ggml_dadbed9_backend backend) {
+    struct ggml_dadbed9_tensor * get_tensor_for(llama_dadbed9_load_tensor & lt, ggml_dadbed9_backend backend) {
         struct ggml_dadbed9_tensor * tensor;
         if (backend != GGML_BACKEND_CPU) {
             ggml_dadbed9_set_no_alloc(ggml_dadbed9_ctx, true);
@@ -760,11 +760,11 @@ struct llama_model_loader {
         }
     }
 
-    void load_all_data(llama_progress_callback progress_callback, void *  progress_callback_user_data, llama_mlock * lmlock) {
+    void load_all_data(llama_dadbed9_progress_callback progress_callback, void *  progress_callback_user_data, llama_dadbed9_mlock * lmlock) {
         size_t data_size = 0;
         size_t prefetch_size = file_loader->file.size;
         size_t lock_size = 0;
-        for (const llama_load_tensor & lt : tensors_map.tensors) {
+        for (const llama_dadbed9_load_tensor & lt : tensors_map.tensors) {
             data_size += lt.size;
             if (lt.ggml_dadbed9_tensor->backend != GGML_BACKEND_CPU) {
                 prefetch_size -= lt.size;
@@ -772,14 +772,14 @@ struct llama_model_loader {
         }
 
         if (use_mmap) {
-            mapping.reset(new llama_mmap(&file_loader->file, prefetch_size, ggml_dadbed9_is_numa()));
+            mapping.reset(new llama_dadbed9_mmap(&file_loader->file, prefetch_size, ggml_dadbed9_is_numa()));
             if (lmlock) {
                 lmlock->init(mapping->addr);
             }
         }
 
         size_t done_size = 0;
-        for (llama_load_tensor & lt : tensors_map.tensors) {
+        for (llama_dadbed9_load_tensor & lt : tensors_map.tensors) {
             if (progress_callback) {
                 progress_callback((float) done_size / data_size, progress_callback_user_data);
             }
@@ -826,11 +826,11 @@ struct llama_model_loader {
         }
     }
 
-    void load_data_for(llama_load_tensor & lt) {
+    void load_data_for(llama_dadbed9_load_tensor & lt) {
         if (use_mmap) {
             lt.data = (uint8_t *) mapping->addr + lt.file_off;
         } else {
-            llama_file & file = file_loader->file;
+            llama_dadbed9_file & file = file_loader->file;
             file.seek(lt.file_off, SEEK_SET);
             file.read_raw(lt.data, lt.size);
         }
@@ -840,14 +840,14 @@ struct llama_model_loader {
         }
     }
 
-    static void print_checksum(llama_load_tensor & lt) {
+    static void print_checksum(llama_dadbed9_load_tensor & lt) {
         uint32_t sum = 0;
         for (size_t i = 0; i < lt.size; i++) {
             uint8_t byte = lt.data[i];
             sum = byte + (sum << 6) + (sum << 16) - sum; // sdbm hash
         }
         LLAMA_LOG_INFO("%s checksum: %#08x (%s, size %zu)\n", lt.name.c_str(), sum,
-                llama_format_tensor_shape(lt.ne).c_str(), lt.size);
+                llama_dadbed9_format_tensor_shape(lt.ne).c_str(), lt.size);
     }
 
 };
@@ -857,8 +857,8 @@ struct llama_model_loader {
 //
 
 static bool kv_cache_init(
-        const struct llama_hparams & hparams,
-             struct llama_kv_cache & cache,
+        const struct llama_dadbed9_hparams & hparams,
+             struct llama_dadbed9_kv_cache & cache,
                          ggml_dadbed9_type   wtype,
                                int   n_ctx,
                                int   n_gpu_layers) {
@@ -901,8 +901,8 @@ static bool kv_cache_init(
     return true;
 }
 
-struct llama_context_params llama_context_default_params() {
-    struct llama_context_params result = {
+struct llama_dadbed9_context_params llama_dadbed9_context_default_params() {
+    struct llama_dadbed9_context_params result = {
         /*.seed                        =*/ LLAMA_DEFAULT_SEED,
         /*.n_ctx                       =*/ 512,
         /*.n_batch                     =*/ 512,
@@ -928,8 +928,8 @@ struct llama_context_params llama_context_default_params() {
     return result;
 }
 
-struct llama_model_quantize_params llama_model_quantize_default_params() {
-    struct llama_model_quantize_params result = {
+struct llama_dadbed9_model_quantize_params llama_dadbed9_model_quantize_default_params() {
+    struct llama_dadbed9_model_quantize_params result = {
         /*.nthread                     =*/ 0,
         /*.ftype                       =*/ LLAMA_FTYPE_MOSTLY_Q5_1,
         /*.allow_requantize            =*/ false,
@@ -939,19 +939,19 @@ struct llama_model_quantize_params llama_model_quantize_default_params() {
     return result;
 }
 
-int llama_max_devices() {
+int llama_dadbed9_max_devices() {
     return LLAMA_MAX_DEVICES;
 }
 
-bool llama_mmap_supported() {
-    return llama_mmap::SUPPORTED;
+bool llama_dadbed9_mmap_supported() {
+    return llama_dadbed9_mmap::SUPPORTED;
 }
 
-bool llama_mlock_supported() {
-    return llama_mlock::SUPPORTED;
+bool llama_dadbed9_mlock_supported() {
+    return llama_dadbed9_mlock::SUPPORTED;
 }
 
-void llama_backend_init(bool numa) {
+void llama_dadbed9_backend_init(bool numa) {
     ggml_dadbed9_time_init();
 
     // needed to initialize f16 tables
@@ -970,13 +970,13 @@ void llama_backend_init(bool numa) {
 #endif
 }
 
-void llama_backend_free() {
+void llama_dadbed9_backend_free() {
 #ifdef GGML_USE_MPI
     ggml_dadbed9_mpi_backend_free();
 #endif
 }
 
-int64_t llama_time_us() {
+int64_t llama_dadbed9_time_us() {
     return ggml_dadbed9_time_us();
 }
 
@@ -984,7 +984,7 @@ int64_t llama_time_us() {
 // model loading
 //
 
-static const char * llama_file_version_name(llama_file_version version) {
+static const char * llama_dadbed9_file_version_name(llama_dadbed9_file_version version) {
     switch (version) {
         case LLAMA_FILE_VERSION_GGML: return "'ggml' (old version with low tokenizer quality and no mmap support)";
         case LLAMA_FILE_VERSION_GGMF_V1: return "ggmf v1 (old version with no mmap support)";
@@ -996,7 +996,7 @@ static const char * llama_file_version_name(llama_file_version version) {
     return "unknown";
 }
 
-const char * llama_ftype_name(enum llama_ftype ftype) {
+const char * llama_dadbed9_ftype_name(enum llama_dadbed9_ftype ftype) {
     switch (ftype) {
         case LLAMA_FTYPE_ALL_F32:     return "all F32";
         case LLAMA_FTYPE_MOSTLY_F16:  return "mostly F16";
@@ -1021,7 +1021,7 @@ const char * llama_ftype_name(enum llama_ftype ftype) {
     }
 }
 
-static const char * llama_model_type_name(e_model type) {
+static const char * llama_dadbed9_model_type_name(e_model type) {
     switch (type) {
         case MODEL_3B: return "3B";
         case MODEL_7B: return "7B";
@@ -1033,10 +1033,10 @@ static const char * llama_model_type_name(e_model type) {
     }
 }
 
-static void llama_model_load_internal(
+static void llama_dadbed9_model_load_internal(
         const std::string & fname,
-        llama_model & model,
-        llama_vocab & vocab,
+        llama_dadbed9_model & model,
+        llama_dadbed9_vocab & vocab,
         int n_ctx,
         int n_batch,
         int n_gqa,
@@ -1052,17 +1052,17 @@ static void llama_model_load_internal(
         bool use_mmap,
         bool use_mlock,
         bool vocab_only,
-        llama_progress_callback progress_callback,
+        llama_dadbed9_progress_callback progress_callback,
         void * progress_callback_user_data) {
 
     model.t_start_us = ggml_dadbed9_time_us();
 
-    std::unique_ptr<llama_model_loader> ml(new llama_model_loader(fname, use_mmap));
+    std::unique_ptr<llama_dadbed9_model_loader> ml(new llama_dadbed9_model_loader(fname, use_mmap));
 
     vocab = std::move(ml->file_loader->vocab);
     model.hparams = ml->file_loader->hparams;
     model.n_gpu_layers = n_gpu_layers;
-    llama_file_version file_version = ml->file_loader->file_version;
+    llama_dadbed9_file_version file_version = ml->file_loader->file_version;
 
     auto & hparams = model.hparams;
 
@@ -1107,7 +1107,7 @@ static void llama_model_load_internal(
     //const uint32_t n_ff = 28672;
 
     {
-        LLAMA_LOG_INFO("%s: format     = %s\n",   __func__, llama_file_version_name(file_version));
+        LLAMA_LOG_INFO("%s: format     = %s\n",   __func__, llama_dadbed9_file_version_name(file_version));
         LLAMA_LOG_INFO("%s: n_vocab    = %u\n",   __func__, hparams.n_vocab);
         LLAMA_LOG_INFO("%s: n_ctx      = %u\n",   __func__, hparams.n_ctx);
         LLAMA_LOG_INFO("%s: n_embd     = %u\n",   __func__, hparams.n_embd);
@@ -1121,8 +1121,8 @@ static void llama_model_load_internal(
         LLAMA_LOG_INFO("%s: n_ff       = %u\n",   __func__, n_ff);
         LLAMA_LOG_INFO("%s: freq_base  = %.1f\n", __func__, hparams.rope_freq_base);
         LLAMA_LOG_INFO("%s: freq_scale = %g\n",   __func__, hparams.rope_freq_scale);
-        LLAMA_LOG_INFO("%s: ftype      = %u (%s)\n", __func__, hparams.ftype, llama_ftype_name(hparams.ftype));
-        LLAMA_LOG_INFO("%s: model size = %s\n",   __func__, llama_model_type_name(model.type));
+        LLAMA_LOG_INFO("%s: ftype      = %u (%s)\n", __func__, hparams.ftype, llama_dadbed9_ftype_name(hparams.ftype));
+        LLAMA_LOG_INFO("%s: model size = %s\n",   __func__, llama_dadbed9_model_type_name(model.type));
     }
 
     if (file_version < LLAMA_FILE_VERSION_GGJT_V2) {
@@ -1282,7 +1282,7 @@ static void llama_model_load_internal(
             MEM_REQ_EVAL().at(model.type);
 #endif
 
-        // this is the memory required by one llama_state
+        // this is the memory required by one llama_dadbed9_state
         const size_t mem_required_state =
             scale*hparams.kv_size();
 
@@ -1351,7 +1351,7 @@ static void llama_model_load_internal(
     }
 
     // populate `tensors_by_name`
-    for (llama_load_tensor & lt : ml->tensors_map.tensors) {
+    for (llama_dadbed9_load_tensor & lt : ml->tensors_map.tensors) {
         model.tensors_by_name.emplace_back(lt.name, lt.ggml_dadbed9_tensor);
     }
 
@@ -1375,10 +1375,10 @@ static void llama_model_load_internal(
     model.t_load_us = ggml_dadbed9_time_us() - model.t_start_us;
 }
 
-static bool llama_model_load(
+static bool llama_dadbed9_model_load(
         const std::string & fname,
-        llama_model & model,
-        llama_vocab & vocab,
+        llama_dadbed9_model & model,
+        llama_dadbed9_vocab & vocab,
         int n_ctx,
         int n_batch,
         int n_gqa,
@@ -1394,10 +1394,10 @@ static bool llama_model_load(
         bool use_mmap,
         bool use_mlock,
         bool vocab_only,
-        llama_progress_callback progress_callback,
+        llama_dadbed9_progress_callback progress_callback,
         void *progress_callback_user_data) {
     try {
-        llama_model_load_internal(fname, model, vocab, n_ctx, n_batch, n_gqa, rms_norm_eps, n_gpu_layers,
+        llama_dadbed9_model_load_internal(fname, model, vocab, n_ctx, n_batch, n_gqa, rms_norm_eps, n_gpu_layers,
                                   main_gpu, tensor_split, mul_mat_q, rope_freq_base, rope_freq_scale, low_vram, memory_type,
                                   use_mmap, use_mlock, vocab_only, progress_callback, progress_callback_user_data);
         return true;
@@ -1407,9 +1407,9 @@ static bool llama_model_load(
     }
 }
 
-static struct ggml_dadbed9_cgraph * llama_build_graph(
-         llama_context & lctx,
-     const llama_token * tokens,
+static struct ggml_dadbed9_cgraph * llama_dadbed9_build_graph(
+         llama_dadbed9_context & lctx,
+     const llama_dadbed9_token * tokens,
            const float * embd,
                    int   n_tokens,
                    int   n_past) {
@@ -1499,11 +1499,11 @@ static struct ggml_dadbed9_cgraph * llama_build_graph(
     // offload functions set the tensor output backend to GPU
     // tensors are GPU-accelerated if any input or the output has been offloaded
     //
-    // with the low VRAM option VRAM scratch is disabled in llama_load_model_internal
+    // with the low VRAM option VRAM scratch is disabled in llama_dadbed9_load_model_internal
     // in that case ggml_dadbed9_cuda_assign_buffers has no effect
-    offload_func_t offload_func_nr = llama_nop; // nr = non-repeating
-    offload_func_t offload_func_kq = llama_nop;
-    offload_func_t offload_func_v  = llama_nop;
+    offload_func_t offload_func_nr = llama_dadbed9_nop; // nr = non-repeating
+    offload_func_t offload_func_kq = llama_dadbed9_nop;
+    offload_func_t offload_func_v  = llama_dadbed9_nop;
 
 #ifdef GGML_USE_CUBLAS
     if (n_gpu_layers > n_layer) {
@@ -1531,7 +1531,7 @@ static struct ggml_dadbed9_cgraph * llama_build_graph(
     for (int il = 0; il < n_layer; ++il) {
         ggml_dadbed9_format_name(inpL, "layer_inp_%d", il);
 
-        offload_func_t offload_func = llama_nop;
+        offload_func_t offload_func = llama_dadbed9_nop;
 
 #ifdef GGML_USE_CUBLAS
         if (il >= i_gpu_start) {
@@ -1788,9 +1788,9 @@ static struct ggml_dadbed9_cgraph * llama_build_graph(
 //   - n_past:    the context size so far
 //   - n_threads: number of threads to use
 //
-static bool llama_eval_internal(
-         llama_context & lctx,
-     const llama_token * tokens,
+static bool llama_dadbed9_eval_internal(
+         llama_dadbed9_context & lctx,
+     const llama_dadbed9_token * tokens,
            const float * embd,
                    int   n_tokens,
                    int   n_past,
@@ -1828,7 +1828,7 @@ static bool llama_eval_internal(
     ggml_dadbed9_allocr_reset(lctx.alloc);
 #endif
 
-    ggml_dadbed9_cgraph * gf = llama_build_graph(lctx, tokens, embd, n_tokens, n_past);
+    ggml_dadbed9_cgraph * gf = llama_dadbed9_build_graph(lctx, tokens, embd, n_tokens, n_past);
 
 #ifdef LLAMA_USE_ALLOCATOR
     ggml_dadbed9_allocr_alloc_graph(lctx.alloc, gf);
@@ -1933,7 +1933,7 @@ static size_t utf8_len(char src) {
     return lookup[highbits];
 }
 
-struct llama_sp_symbol {
+struct llama_dadbed9_sp_symbol {
     using index = int;
     index prev;
     index next;
@@ -1941,33 +1941,33 @@ struct llama_sp_symbol {
     size_t n;
 };
 
-static_assert(std::is_trivially_copyable<llama_sp_symbol>::value, "llama_sp_symbol is not trivially copyable");
+static_assert(std::is_trivially_copyable<llama_dadbed9_sp_symbol>::value, "llama_dadbed9_sp_symbol is not trivially copyable");
 
-struct llama_sp_bigram {
+struct llama_dadbed9_sp_bigram {
     struct comparator {
-        bool operator()(llama_sp_bigram & l, llama_sp_bigram & r) {
+        bool operator()(llama_dadbed9_sp_bigram & l, llama_dadbed9_sp_bigram & r) {
             return (l.score < r.score) || (l.score == r.score && l.left > r.left);
         }
     };
-    using queue_storage = std::vector<llama_sp_bigram>;
-    using queue = std::priority_queue<llama_sp_bigram, queue_storage, comparator>;
-    llama_sp_symbol::index left;
-    llama_sp_symbol::index right;
+    using queue_storage = std::vector<llama_dadbed9_sp_bigram>;
+    using queue = std::priority_queue<llama_dadbed9_sp_bigram, queue_storage, comparator>;
+    llama_dadbed9_sp_symbol::index left;
+    llama_dadbed9_sp_symbol::index right;
     float score;
     size_t size;
 };
 
 // original implementation:
 // https://github.com/ggerganov/llama.cpp/commit/074bea2eb1f1349a0118239c4152914aecaa1be4
-struct llama_tokenizer {
-    llama_tokenizer(const llama_vocab & vocab): vocab_(vocab) {}
+struct llama_dadbed9_tokenizer {
+    llama_dadbed9_tokenizer(const llama_dadbed9_vocab & vocab): vocab_(vocab) {}
 
-    void tokenize(const std::string & text, std::vector<llama_vocab::id> & output) {
+    void tokenize(const std::string & text, std::vector<llama_dadbed9_vocab::id> & output) {
         // split string into utf8 chars
         int index = 0;
         size_t offs = 0;
         while (offs < text.size()) {
-            llama_sp_symbol sym;
+            llama_dadbed9_sp_symbol sym;
             size_t char_len = std::min(text.size() - offs, utf8_len(text[offs]));
             sym.text = text.c_str() + offs;
             sym.n = char_len;
@@ -2022,8 +2022,8 @@ struct llama_tokenizer {
                 // output any symbols that did not form tokens as bytes.
                 for (int j = 0; j < (int) symbol.n; ++j) {
                     // NOTE: old version, before #2420 - not sure what are the implications of this
-                    //llama_vocab::id token_id = static_cast<uint8_t>(symbol.text[j]) + 3;
-                    llama_vocab::id token_id = vocab_.token_to_id.at(std::string(1, symbol.text[j]));
+                    //llama_dadbed9_vocab::id token_id = static_cast<uint8_t>(symbol.text[j]) + 3;
+                    llama_dadbed9_vocab::id token_id = vocab_.token_to_id.at(std::string(1, symbol.text[j]));
                     output.push_back(token_id);
                 }
             } else {
@@ -2051,7 +2051,7 @@ private:
 
         const auto &tok_score = vocab_.id_to_token[(*token).second];
 
-        llama_sp_bigram bigram;
+        llama_dadbed9_sp_bigram bigram;
         bigram.left = left;
         bigram.right = right;
         bigram.score = tok_score.score;
@@ -2059,21 +2059,21 @@ private:
         work_queue_.push(bigram);
     }
 
-    const llama_vocab & vocab_;
-    std::vector<llama_sp_symbol> symbols_;
-    llama_sp_bigram::queue work_queue_;
+    const llama_dadbed9_vocab & vocab_;
+    std::vector<llama_dadbed9_sp_symbol> symbols_;
+    llama_dadbed9_sp_bigram::queue work_queue_;
 };
 
-static std::vector<llama_vocab::id> llama_tokenize(const llama_vocab & vocab, const std::string & text, bool bos) {
-    llama_tokenizer tokenizer(vocab);
-    std::vector<llama_vocab::id> output;
+static std::vector<llama_dadbed9_vocab::id> llama_dadbed9_tokenize(const llama_dadbed9_vocab & vocab, const std::string & text, bool bos) {
+    llama_dadbed9_tokenizer tokenizer(vocab);
+    std::vector<llama_dadbed9_vocab::id> output;
 
     if (text.empty()) {
         return output;
     }
 
     if (bos) {
-        output.push_back(llama_token_bos());
+        output.push_back(llama_dadbed9_token_bos());
     }
 
     tokenizer.tokenize(text, output);
@@ -2084,30 +2084,30 @@ static std::vector<llama_vocab::id> llama_tokenize(const llama_vocab & vocab, co
 // grammar - internal
 //
 
-struct llama_partial_utf8 {
+struct llama_dadbed9_partial_utf8 {
     uint32_t value;    // bit value so far (unshifted)
     int      n_remain; // num bytes remaining; -1 indicates invalid sequence
 };
 
-struct llama_grammar {
-    const std::vector<std::vector<llama_grammar_element>>   rules;
-    std::vector<std::vector<const llama_grammar_element *>> stacks;
+struct llama_dadbed9_grammar {
+    const std::vector<std::vector<llama_dadbed9_grammar_element>>   rules;
+    std::vector<std::vector<const llama_dadbed9_grammar_element *>> stacks;
 
     // buffer for partially generated UTF-8 sequence from accepted tokens
-    llama_partial_utf8                                      partial_utf8;
+    llama_dadbed9_partial_utf8                                      partial_utf8;
 };
 
-struct llama_grammar_candidate {
+struct llama_dadbed9_grammar_candidate {
     size_t               index;
     const uint32_t     * code_points;
-    llama_partial_utf8   partial_utf8;
+    llama_dadbed9_partial_utf8   partial_utf8;
 };
 
 // Decodes a UTF-8 string which may end in an incomplete sequence. Adds a terminating 0 for use as
-// pointer. If an invalid sequence is encountered, returns `llama_partial_utf8.n_remain == -1`.
-std::pair<std::vector<uint32_t>, llama_partial_utf8> decode_utf8(
+// pointer. If an invalid sequence is encountered, returns `llama_dadbed9_partial_utf8.n_remain == -1`.
+std::pair<std::vector<uint32_t>, llama_dadbed9_partial_utf8> decode_utf8(
         const char         * src,
-        llama_partial_utf8   partial_start) {
+        llama_dadbed9_partial_utf8   partial_start) {
     static const int      lookup[] = { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 2, 2, 3, 4 };
     const char          * pos      = src;
     std::vector<uint32_t> code_points;
@@ -2120,7 +2120,7 @@ std::pair<std::vector<uint32_t>, llama_partial_utf8> decode_utf8(
         if ((next_byte >> 6) != 2) {
             // invalid sequence, abort
             code_points.push_back(0);
-            return std::make_pair(std::move(code_points), llama_partial_utf8{ 0, -1 });
+            return std::make_pair(std::move(code_points), llama_dadbed9_partial_utf8{ 0, -1 });
         }
         value = (value << 6) + (next_byte & 0x3F);
         ++pos;
@@ -2141,7 +2141,7 @@ std::pair<std::vector<uint32_t>, llama_partial_utf8> decode_utf8(
             // invalid sequence, abort
             code_points.clear();
             code_points.push_back(0);
-            return std::make_pair(std::move(code_points), llama_partial_utf8{ 0, n_remain });
+            return std::make_pair(std::move(code_points), llama_dadbed9_partial_utf8{ 0, n_remain });
         }
 
         uint8_t  mask       = (1 << (7 - n_remain)) - 1;
@@ -2158,11 +2158,11 @@ std::pair<std::vector<uint32_t>, llama_partial_utf8> decode_utf8(
     }
     code_points.push_back(0);
 
-    return std::make_pair(std::move(code_points), llama_partial_utf8{ value, n_remain });
+    return std::make_pair(std::move(code_points), llama_dadbed9_partial_utf8{ value, n_remain });
 }
 
 // returns true iff pos points to the end of one of the definitions of a rule
-static bool llama_grammar_is_end_of_sequence(const llama_grammar_element * pos) {
+static bool llama_dadbed9_grammar_is_end_of_sequence(const llama_dadbed9_grammar_element * pos) {
     switch (pos->type) {
         case LLAMA_GRETYPE_END: return true;
         case LLAMA_GRETYPE_ALT: return true;
@@ -2172,8 +2172,8 @@ static bool llama_grammar_is_end_of_sequence(const llama_grammar_element * pos) 
 
 // returns true iff chr satisfies the char range at pos (regular or inverse range)
 // asserts that pos is pointing to a char range element
-static std::pair<bool, const llama_grammar_element *> llama_grammar_match_char(
-        const llama_grammar_element * pos,
+static std::pair<bool, const llama_dadbed9_grammar_element *> llama_dadbed9_grammar_match_char(
+        const llama_dadbed9_grammar_element * pos,
         const uint32_t                chr) {
 
     bool found            = false;
@@ -2198,9 +2198,9 @@ static std::pair<bool, const llama_grammar_element *> llama_grammar_match_char(
 // returns true iff some continuation of the given partial UTF-8 sequence could satisfy the char
 // range at pos (regular or inverse range)
 // asserts that pos is pointing to a char range element
-static bool llama_grammar_match_partial_char(
-        const llama_grammar_element * pos,
-        const llama_partial_utf8      partial_utf8) {
+static bool llama_dadbed9_grammar_match_partial_char(
+        const llama_dadbed9_grammar_element * pos,
+        const llama_dadbed9_partial_utf8      partial_utf8) {
 
     bool is_positive_char = pos->type == LLAMA_GRETYPE_CHAR;
     LLAMA_ASSERT(is_positive_char || pos->type == LLAMA_GRETYPE_CHAR_NOT);
@@ -2247,35 +2247,35 @@ static bool llama_grammar_match_partial_char(
 
 // transforms a grammar pushdown stack into N possible stacks, all ending
 // at a character range (terminal element)
-static void llama_grammar_advance_stack(
-        const std::vector<std::vector<llama_grammar_element>>   & rules,
-        const std::vector<const llama_grammar_element *>        & stack,
-        std::vector<std::vector<const llama_grammar_element *>> & new_stacks) {
+static void llama_dadbed9_grammar_advance_stack(
+        const std::vector<std::vector<llama_dadbed9_grammar_element>>   & rules,
+        const std::vector<const llama_dadbed9_grammar_element *>        & stack,
+        std::vector<std::vector<const llama_dadbed9_grammar_element *>> & new_stacks) {
 
     if (stack.empty()) {
         new_stacks.push_back(stack);
         return;
     }
 
-    const llama_grammar_element * pos = stack.back();
+    const llama_dadbed9_grammar_element * pos = stack.back();
 
     switch (pos->type) {
         case LLAMA_GRETYPE_RULE_REF: {
             const size_t                  rule_id = static_cast<size_t>(pos->value);
-            const llama_grammar_element * subpos  = rules[rule_id].data();
+            const llama_dadbed9_grammar_element * subpos  = rules[rule_id].data();
             do {
                 // init new stack without the top (pos)
-                std::vector<const llama_grammar_element *> new_stack(stack.begin(), stack.end() - 1);
-                if (!llama_grammar_is_end_of_sequence(pos + 1)) {
+                std::vector<const llama_dadbed9_grammar_element *> new_stack(stack.begin(), stack.end() - 1);
+                if (!llama_dadbed9_grammar_is_end_of_sequence(pos + 1)) {
                     // if this rule ref is followed by another element, add that to stack
                     new_stack.push_back(pos + 1);
                 }
-                if (!llama_grammar_is_end_of_sequence(subpos)) {
+                if (!llama_dadbed9_grammar_is_end_of_sequence(subpos)) {
                     // if alternate is nonempty, add to stack
                     new_stack.push_back(subpos);
                 }
-                llama_grammar_advance_stack(rules, new_stack, new_stacks);
-                while (!llama_grammar_is_end_of_sequence(subpos)) {
+                llama_dadbed9_grammar_advance_stack(rules, new_stack, new_stacks);
+                while (!llama_dadbed9_grammar_is_end_of_sequence(subpos)) {
                     // scan to end of alternate def
                     subpos++;
                 }
@@ -2301,48 +2301,48 @@ static void llama_grammar_advance_stack(
 }
 
 // takes a set of possible pushdown stacks on a grammar, which are required to
-// be positioned at a character range (see `llama_grammar_advance_stack`), and
+// be positioned at a character range (see `llama_dadbed9_grammar_advance_stack`), and
 // produces the N possible stacks if the given char is accepted at those
 // positions
-static std::vector<std::vector<const llama_grammar_element *>> llama_grammar_accept(
-        const std::vector<std::vector<llama_grammar_element>>         & rules,
-        const std::vector<std::vector<const llama_grammar_element *>> & stacks,
+static std::vector<std::vector<const llama_dadbed9_grammar_element *>> llama_dadbed9_grammar_accept(
+        const std::vector<std::vector<llama_dadbed9_grammar_element>>         & rules,
+        const std::vector<std::vector<const llama_dadbed9_grammar_element *>> & stacks,
         const uint32_t                                                  chr) {
 
-    std::vector<std::vector<const llama_grammar_element *>> new_stacks;
+    std::vector<std::vector<const llama_dadbed9_grammar_element *>> new_stacks;
 
     for (const auto & stack : stacks) {
         if (stack.empty()) {
             continue;
         }
 
-        auto match = llama_grammar_match_char(stack.back(), chr);
+        auto match = llama_dadbed9_grammar_match_char(stack.back(), chr);
         if (match.first) {
-            const llama_grammar_element * pos = match.second;
+            const llama_dadbed9_grammar_element * pos = match.second;
 
             // update top of stack to next element, if any
-            std::vector<const llama_grammar_element *> new_stack(stack.begin(), stack.end() - 1);
-            if (!llama_grammar_is_end_of_sequence(pos)) {
+            std::vector<const llama_dadbed9_grammar_element *> new_stack(stack.begin(), stack.end() - 1);
+            if (!llama_dadbed9_grammar_is_end_of_sequence(pos)) {
                 new_stack.push_back(pos);
             }
-            llama_grammar_advance_stack(rules, new_stack, new_stacks);
+            llama_dadbed9_grammar_advance_stack(rules, new_stack, new_stacks);
         }
     }
 
     return new_stacks;
 }
 
-static std::vector<llama_grammar_candidate> llama_grammar_reject_candidates(
-        const std::vector<std::vector<llama_grammar_element>>         & rules,
-        const std::vector<std::vector<const llama_grammar_element *>> & stacks,
-        const std::vector<llama_grammar_candidate>                    & candidates);
+static std::vector<llama_dadbed9_grammar_candidate> llama_dadbed9_grammar_reject_candidates(
+        const std::vector<std::vector<llama_dadbed9_grammar_element>>         & rules,
+        const std::vector<std::vector<const llama_dadbed9_grammar_element *>> & stacks,
+        const std::vector<llama_dadbed9_grammar_candidate>                    & candidates);
 
-static std::vector<llama_grammar_candidate> llama_grammar_reject_candidates_for_stack(
-        const std::vector<std::vector<llama_grammar_element>> & rules,
-        const std::vector<const llama_grammar_element *>      & stack,
-        const std::vector<llama_grammar_candidate>            & candidates) {
+static std::vector<llama_dadbed9_grammar_candidate> llama_dadbed9_grammar_reject_candidates_for_stack(
+        const std::vector<std::vector<llama_dadbed9_grammar_element>> & rules,
+        const std::vector<const llama_dadbed9_grammar_element *>      & stack,
+        const std::vector<llama_dadbed9_grammar_candidate>            & candidates) {
 
-    std::vector<llama_grammar_candidate> rejects;
+    std::vector<llama_dadbed9_grammar_candidate> rejects;
 
     if (stack.empty()) {
         for (auto tok : candidates) {
@@ -2353,35 +2353,35 @@ static std::vector<llama_grammar_candidate> llama_grammar_reject_candidates_for_
         return rejects;
     }
 
-    const llama_grammar_element * stack_pos = stack.back();
+    const llama_dadbed9_grammar_element * stack_pos = stack.back();
 
-    std::vector<llama_grammar_candidate> next_candidates;
+    std::vector<llama_dadbed9_grammar_candidate> next_candidates;
     for (auto tok : candidates) {
         if (*tok.code_points == 0) {
             // reached end of full codepoints in token, reject iff it ended in a partial sequence
             // that cannot satisfy this position in grammar
             if (tok.partial_utf8.n_remain != 0 &&
-                    !llama_grammar_match_partial_char(stack_pos, tok.partial_utf8)) {
+                    !llama_dadbed9_grammar_match_partial_char(stack_pos, tok.partial_utf8)) {
                 rejects.push_back(tok);
             }
-        } else if (llama_grammar_match_char(stack_pos, *tok.code_points).first) {
+        } else if (llama_dadbed9_grammar_match_char(stack_pos, *tok.code_points).first) {
             next_candidates.push_back({ tok.index, tok.code_points + 1, tok.partial_utf8 });
         } else {
             rejects.push_back(tok);
         }
     }
 
-    auto stack_pos_after = llama_grammar_match_char(stack_pos, 0).second;
+    auto stack_pos_after = llama_dadbed9_grammar_match_char(stack_pos, 0).second;
 
     // update top of stack to next element, if any
-    std::vector<const llama_grammar_element *> stack_after(stack.begin(), stack.end() - 1);
-    if (!llama_grammar_is_end_of_sequence(stack_pos_after)) {
+    std::vector<const llama_dadbed9_grammar_element *> stack_after(stack.begin(), stack.end() - 1);
+    if (!llama_dadbed9_grammar_is_end_of_sequence(stack_pos_after)) {
         stack_after.push_back(stack_pos_after);
     }
-    std::vector<std::vector<const llama_grammar_element *>> next_stacks;
-    llama_grammar_advance_stack(rules, stack_after, next_stacks);
+    std::vector<std::vector<const llama_dadbed9_grammar_element *>> next_stacks;
+    llama_dadbed9_grammar_advance_stack(rules, stack_after, next_stacks);
 
-    auto next_rejects = llama_grammar_reject_candidates(rules, next_stacks, next_candidates);
+    auto next_rejects = llama_dadbed9_grammar_reject_candidates(rules, next_stacks, next_candidates);
     for (auto tok : next_rejects) {
         rejects.push_back({ tok.index, tok.code_points - 1, tok.partial_utf8 });
     }
@@ -2389,20 +2389,20 @@ static std::vector<llama_grammar_candidate> llama_grammar_reject_candidates_for_
     return rejects;
 }
 
-static std::vector<llama_grammar_candidate> llama_grammar_reject_candidates(
-        const std::vector<std::vector<llama_grammar_element>>         & rules,
-        const std::vector<std::vector<const llama_grammar_element *>> & stacks,
-        const std::vector<llama_grammar_candidate>                    & candidates) {
+static std::vector<llama_dadbed9_grammar_candidate> llama_dadbed9_grammar_reject_candidates(
+        const std::vector<std::vector<llama_dadbed9_grammar_element>>         & rules,
+        const std::vector<std::vector<const llama_dadbed9_grammar_element *>> & stacks,
+        const std::vector<llama_dadbed9_grammar_candidate>                    & candidates) {
     LLAMA_ASSERT(!stacks.empty()); // REVIEW
 
     if (candidates.empty()) {
-        return std::vector<llama_grammar_candidate>();
+        return std::vector<llama_dadbed9_grammar_candidate>();
     }
 
-    auto rejects = llama_grammar_reject_candidates_for_stack(rules, stacks.front(), candidates);
+    auto rejects = llama_dadbed9_grammar_reject_candidates_for_stack(rules, stacks.front(), candidates);
 
     for (size_t i = 1, size = stacks.size(); i < size; ++i) {
-        rejects = llama_grammar_reject_candidates_for_stack(rules, stacks[i], rejects);
+        rejects = llama_dadbed9_grammar_reject_candidates_for_stack(rules, stacks[i], rejects);
     }
     return rejects;
 }
@@ -2411,14 +2411,14 @@ static std::vector<llama_grammar_candidate> llama_grammar_reject_candidates(
 // grammar - external
 //
 
-struct llama_grammar * llama_grammar_init(
-            const llama_grammar_element ** rules,
+struct llama_dadbed9_grammar * llama_dadbed9_grammar_init(
+            const llama_dadbed9_grammar_element ** rules,
                                  size_t    n_rules,
                                  size_t    start_rule_index) {
-    const llama_grammar_element * pos;
+    const llama_dadbed9_grammar_element * pos;
 
     // copy rule definitions into vectors
-    std::vector<std::vector<llama_grammar_element>> vec_rules(n_rules);
+    std::vector<std::vector<llama_dadbed9_grammar_element>> vec_rules(n_rules);
     for (size_t i = 0; i < n_rules; i++) {
         for (pos = rules[i]; pos->type != LLAMA_GRETYPE_END; pos++) {
             vec_rules[i].push_back(*pos);
@@ -2427,16 +2427,16 @@ struct llama_grammar * llama_grammar_init(
     }
 
     // loop over alternates of start rule to build initial stacks
-    std::vector<std::vector<const llama_grammar_element *>> stacks;
+    std::vector<std::vector<const llama_dadbed9_grammar_element *>> stacks;
     pos = rules[start_rule_index];
     do {
-        std::vector<const llama_grammar_element *> stack;
-        if (!llama_grammar_is_end_of_sequence(pos)) {
+        std::vector<const llama_dadbed9_grammar_element *> stack;
+        if (!llama_dadbed9_grammar_is_end_of_sequence(pos)) {
             // if alternate is nonempty, add to stack
             stack.push_back(pos);
         }
-        llama_grammar_advance_stack(vec_rules, stack, stacks);
-        while (!llama_grammar_is_end_of_sequence(pos)) {
+        llama_dadbed9_grammar_advance_stack(vec_rules, stack, stacks);
+        while (!llama_dadbed9_grammar_is_end_of_sequence(pos)) {
             // scan to end of alternate def
             pos++;
         }
@@ -2448,10 +2448,10 @@ struct llama_grammar * llama_grammar_init(
         }
     } while (true);
 
-    return new llama_grammar{ std::move(vec_rules), std::move(stacks), {} };
+    return new llama_dadbed9_grammar{ std::move(vec_rules), std::move(stacks), {} };
 }
 
-void llama_grammar_free(struct llama_grammar * grammar) {
+void llama_dadbed9_grammar_free(struct llama_dadbed9_grammar * grammar) {
     delete grammar;
 }
 
@@ -2459,14 +2459,14 @@ void llama_grammar_free(struct llama_grammar * grammar) {
 // sampling
 //
 
-void llama_sample_softmax(struct llama_context * ctx, llama_token_data_array * candidates) {
+void llama_dadbed9_sample_softmax(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates) {
     assert(candidates->size > 0);
 
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     // Sort the logits in descending order
     if (!candidates->sorted) {
-        std::sort(candidates->data, candidates->data + candidates->size, [](const llama_token_data & a, const llama_token_data & b) {
+        std::sort(candidates->data, candidates->data + candidates->size, [](const llama_dadbed9_token_data & a, const llama_dadbed9_token_data & b) {
             return a.logit > b.logit;
         });
         candidates->sorted = true;
@@ -2488,7 +2488,7 @@ void llama_sample_softmax(struct llama_context * ctx, llama_token_data_array * c
     }
 }
 
-void llama_sample_top_k(struct llama_context * ctx, llama_token_data_array * candidates, int k, size_t min_keep) {
+void llama_dadbed9_sample_top_k(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, int k, size_t min_keep) {
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     k = std::max(k, (int) min_keep);
@@ -2496,7 +2496,7 @@ void llama_sample_top_k(struct llama_context * ctx, llama_token_data_array * can
 
     // Sort scores in descending order
     if (!candidates->sorted) {
-        auto comp = [](const llama_token_data & a, const llama_token_data & b) {
+        auto comp = [](const llama_dadbed9_token_data & a, const llama_dadbed9_token_data & b) {
             return a.logit > b.logit;
         };
         if (k == (int) candidates->size) {
@@ -2513,12 +2513,12 @@ void llama_sample_top_k(struct llama_context * ctx, llama_token_data_array * can
     }
 }
 
-void llama_sample_top_p(struct llama_context * ctx, llama_token_data_array * candidates, float p, size_t min_keep) {
+void llama_dadbed9_sample_top_p(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float p, size_t min_keep) {
     if (p >= 1.0f) {
         return;
     }
 
-    llama_sample_softmax(ctx, candidates);
+    llama_dadbed9_sample_softmax(ctx, candidates);
 
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
@@ -2545,12 +2545,12 @@ void llama_sample_top_p(struct llama_context * ctx, llama_token_data_array * can
     }
 }
 
-void llama_sample_tail_free(struct llama_context * ctx, llama_token_data_array * candidates, float z, size_t min_keep) {
+void llama_dadbed9_sample_tail_free(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float z, size_t min_keep) {
     if (z >= 1.0f || candidates->size <= 2) {
         return;
     }
 
-    llama_sample_softmax(nullptr, candidates);
+    llama_dadbed9_sample_softmax(nullptr, candidates);
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     // Compute the first and second derivatives
@@ -2605,7 +2605,7 @@ void llama_sample_tail_free(struct llama_context * ctx, llama_token_data_array *
 }
 
 
-void llama_sample_typical(struct llama_context * ctx, llama_token_data_array * candidates, float p, size_t min_keep) {
+void llama_dadbed9_sample_typical(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float p, size_t min_keep) {
     // Reference implementation:
     // https://github.com/huggingface/transformers/compare/main...cimeister:typical-sampling:typical-pr
     if (p >= 1.0f) {
@@ -2613,7 +2613,7 @@ void llama_sample_typical(struct llama_context * ctx, llama_token_data_array * c
     }
 
     // Compute the softmax of logits and calculate entropy
-    llama_sample_softmax(nullptr, candidates);
+    llama_dadbed9_sample_softmax(nullptr, candidates);
 
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
@@ -2653,7 +2653,7 @@ void llama_sample_typical(struct llama_context * ctx, llama_token_data_array * c
     }
 
     // Resize the output vector to keep only the locally typical tokens
-    std::vector<llama_token_data> new_candidates;
+    std::vector<llama_dadbed9_token_data> new_candidates;
     for (size_t i = 0; i < last_idx; ++i) {
         size_t idx = indices[i];
         new_candidates.push_back(candidates->data[idx]);
@@ -2668,7 +2668,7 @@ void llama_sample_typical(struct llama_context * ctx, llama_token_data_array * c
     }
 }
 
-void llama_sample_temperature(struct llama_context * ctx, llama_token_data_array * candidates_p, float temp) {
+void llama_dadbed9_sample_temperature(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates_p, float temp) {
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     for (size_t i = 0; i < candidates_p->size; ++i) {
@@ -2680,7 +2680,7 @@ void llama_sample_temperature(struct llama_context * ctx, llama_token_data_array
     }
 }
 
-void llama_sample_repetition_penalty(struct llama_context * ctx, llama_token_data_array * candidates, const llama_token * last_tokens, size_t last_tokens_size, float penalty) {
+void llama_dadbed9_sample_repetition_penalty(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const llama_dadbed9_token * last_tokens, size_t last_tokens_size, float penalty) {
     if (last_tokens_size == 0 || penalty == 1.0f) {
         return;
     }
@@ -2709,7 +2709,7 @@ void llama_sample_repetition_penalty(struct llama_context * ctx, llama_token_dat
     }
 }
 
-void llama_sample_frequency_and_presence_penalties(struct llama_context * ctx, llama_token_data_array * candidates, const llama_token * last_tokens_p, size_t last_tokens_size, float alpha_frequency, float alpha_presence) {
+void llama_dadbed9_sample_frequency_and_presence_penalties(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const llama_dadbed9_token * last_tokens_p, size_t last_tokens_size, float alpha_frequency, float alpha_presence) {
     if (last_tokens_size == 0 || (alpha_frequency == 0.0f && alpha_presence == 0.0f)) {
         return;
     }
@@ -2717,7 +2717,7 @@ void llama_sample_frequency_and_presence_penalties(struct llama_context * ctx, l
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     // Create a frequency map to count occurrences of each token in last_tokens
-    std::unordered_map<llama_token, int> token_count;
+    std::unordered_map<llama_dadbed9_token, int> token_count;
     for (size_t i = 0; i < last_tokens_size; ++i) {
         token_count[last_tokens_p[i]]++;
     }
@@ -2740,7 +2740,7 @@ void llama_sample_frequency_and_presence_penalties(struct llama_context * ctx, l
     }
 }
 
-void llama_sample_grammar(struct llama_context * ctx, llama_token_data_array * candidates, const struct llama_grammar * grammar) {
+void llama_dadbed9_sample_grammar(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_dadbed9_grammar * grammar) {
     assert(ctx);
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
@@ -2752,14 +2752,14 @@ void llama_sample_grammar(struct llama_context * ctx, llama_token_data_array * c
         }
     }
 
-    const llama_token eos = llama_token_eos();
+    const llama_dadbed9_token eos = llama_dadbed9_token_eos();
 
-    std::vector<std::pair<std::vector<uint32_t>, llama_partial_utf8>> candidates_decoded;
-    std::vector<llama_grammar_candidate>                              candidates_grammar;
+    std::vector<std::pair<std::vector<uint32_t>, llama_dadbed9_partial_utf8>> candidates_decoded;
+    std::vector<llama_dadbed9_grammar_candidate>                              candidates_grammar;
 
     for (size_t i = 0; i < candidates->size; ++i) {
-        const llama_token id  = candidates->data[i].id;
-        const char *      str = llama_token_to_str(ctx, id);
+        const llama_dadbed9_token id  = candidates->data[i].id;
+        const char *      str = llama_dadbed9_token_to_str(ctx, id);
         if (id == eos) {
             if (!allow_eos) {
                 candidates->data[i].logit = -INFINITY;
@@ -2775,7 +2775,7 @@ void llama_sample_grammar(struct llama_context * ctx, llama_token_data_array * c
     }
 
     const auto rejects =
-        llama_grammar_reject_candidates(grammar->rules, grammar->stacks, candidates_grammar);
+        llama_dadbed9_grammar_reject_candidates(grammar->rules, grammar->stacks, candidates_grammar);
     for (auto & reject : rejects) {
         candidates->data[reject.index].logit = -INFINITY;
     }
@@ -2783,7 +2783,7 @@ void llama_sample_grammar(struct llama_context * ctx, llama_token_data_array * c
     ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
 }
 
-static void llama_log_softmax(float * array, size_t size) {
+static void llama_dadbed9_log_softmax(float * array, size_t size) {
     float max_l = *std::max_element(array, array + size);
     float sum = 0.f;
     for (size_t i = 0; i < size; ++i) {
@@ -2797,15 +2797,15 @@ static void llama_log_softmax(float * array, size_t size) {
     }
 }
 
-void llama_sample_classifier_free_guidance(
-          struct llama_context * ctx,
-        llama_token_data_array * candidates,
-          struct llama_context * guidance_ctx,
+void llama_dadbed9_sample_classifier_free_guidance(
+          struct llama_dadbed9_context * ctx,
+        llama_dadbed9_token_data_array * candidates,
+          struct llama_dadbed9_context * guidance_ctx,
                          float   scale) {
     int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     assert(ctx);
-    auto n_vocab = llama_n_vocab(ctx);
+    auto n_vocab = llama_dadbed9_n_vocab(ctx);
     assert(n_vocab == (int)candidates->size);
     assert(!candidates->sorted);
 
@@ -2814,10 +2814,10 @@ void llama_sample_classifier_free_guidance(
     for (size_t i = 0; i < candidates->size; ++i) {
         logits_base.push_back(candidates->data[i].logit);
     }
-    llama_log_softmax(logits_base.data(), candidates->size);
+    llama_dadbed9_log_softmax(logits_base.data(), candidates->size);
 
-    float* logits_guidance = llama_get_logits(guidance_ctx);
-    llama_log_softmax(logits_guidance, n_vocab);
+    float* logits_guidance = llama_dadbed9_get_logits(guidance_ctx);
+    llama_dadbed9_log_softmax(logits_guidance, n_vocab);
 
     for (int i = 0; i < n_vocab; ++i) {
         float logit_guidance = logits_guidance[i];
@@ -2830,13 +2830,13 @@ void llama_sample_classifier_free_guidance(
     }
 }
 
-llama_token llama_sample_token_mirostat(struct llama_context * ctx, llama_token_data_array * candidates, float tau, float eta, int m, float * mu) {
+llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float tau, float eta, int m, float * mu) {
     assert(ctx);
-    auto N = float(llama_n_vocab(ctx));
+    auto N = float(llama_dadbed9_n_vocab(ctx));
     int64_t t_start_sample_us;
     t_start_sample_us = ggml_dadbed9_time_us();
 
-    llama_sample_softmax(nullptr, candidates);
+    llama_dadbed9_sample_softmax(nullptr, candidates);
 
     // Estimate s_hat using the most probable m tokens
     float s_hat = 0.0;
@@ -2855,15 +2855,15 @@ llama_token llama_sample_token_mirostat(struct llama_context * ctx, llama_token_
     float k = powf((epsilon_hat * powf(2, *mu)) / (1 - powf(N, -epsilon_hat)), 1 / s_hat);
 
     // Sample the next word X using top-k sampling
-    llama_sample_top_k(nullptr, candidates, int(k), 1);
+    llama_dadbed9_sample_top_k(nullptr, candidates, int(k), 1);
     if (ctx) {
         ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
     }
-    llama_token X = llama_sample_token(ctx, candidates);
+    llama_dadbed9_token X = llama_dadbed9_sample_token(ctx, candidates);
     t_start_sample_us = ggml_dadbed9_time_us();
 
     // Compute error as the difference between observed surprise and target surprise value
-    size_t X_idx = std::distance(candidates->data, std::find_if(candidates->data, candidates->data + candidates->size, [&](const llama_token_data & candidate) {
+    size_t X_idx = std::distance(candidates->data, std::find_if(candidates->data, candidates->data + candidates->size, [&](const llama_dadbed9_token_data & candidate) {
         return candidate.id == X;
     }));
     float observed_surprise = -log2f(candidates->data[X_idx].p);
@@ -2878,14 +2878,14 @@ llama_token llama_sample_token_mirostat(struct llama_context * ctx, llama_token_
     return X;
 }
 
-llama_token llama_sample_token_mirostat_v2(struct llama_context * ctx, llama_token_data_array * candidates, float tau, float eta, float * mu) {
+llama_dadbed9_token llama_dadbed9_sample_token_mirostat_v2(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float tau, float eta, float * mu) {
     int64_t t_start_sample_us;
     t_start_sample_us = ggml_dadbed9_time_us();
 
-    llama_sample_softmax(ctx, candidates);
+    llama_dadbed9_sample_softmax(ctx, candidates);
 
     // Truncate the words with surprise values greater than mu
-    candidates->size = std::distance(candidates->data, std::find_if(candidates->data, candidates->data + candidates->size, [&](const llama_token_data & candidate) {
+    candidates->size = std::distance(candidates->data, std::find_if(candidates->data, candidates->data + candidates->size, [&](const llama_dadbed9_token_data & candidate) {
         return -log2f(candidate.p) > *mu;
     }));
 
@@ -2898,14 +2898,14 @@ llama_token llama_sample_token_mirostat_v2(struct llama_context * ctx, llama_tok
     }
 
     // Normalize the probabilities of the remaining words
-    llama_sample_softmax(ctx, candidates);
+    llama_dadbed9_sample_softmax(ctx, candidates);
 
     // Sample the next word X from the remaining words
-    llama_token X = llama_sample_token(ctx, candidates);
+    llama_dadbed9_token X = llama_dadbed9_sample_token(ctx, candidates);
     t_start_sample_us = ggml_dadbed9_time_us();
 
     // Compute error as the difference between observed surprise and target surprise value
-    size_t X_idx = std::distance(candidates->data, std::find_if(candidates->data, candidates->data + candidates->size, [&](const llama_token_data & candidate) {
+    size_t X_idx = std::distance(candidates->data, std::find_if(candidates->data, candidates->data + candidates->size, [&](const llama_dadbed9_token_data & candidate) {
         return candidate.id == X;
     }));
     float observed_surprise = -log2f(candidates->data[X_idx].p);
@@ -2920,15 +2920,15 @@ llama_token llama_sample_token_mirostat_v2(struct llama_context * ctx, llama_tok
     return X;
 }
 
-llama_token llama_sample_token_greedy(struct llama_context * ctx, llama_token_data_array * candidates) {
+llama_dadbed9_token llama_dadbed9_sample_token_greedy(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates) {
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
     // Find max element
-    auto * max_iter = std::max_element(candidates->data, candidates->data + candidates->size, [](const llama_token_data & a, const llama_token_data & b) {
+    auto * max_iter = std::max_element(candidates->data, candidates->data + candidates->size, [](const llama_dadbed9_token_data & a, const llama_dadbed9_token_data & b) {
         return a.logit < b.logit;
     });
 
-    llama_token result = max_iter->id;
+    llama_dadbed9_token result = max_iter->id;
     if (ctx) {
         ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
         ctx->n_sample++;
@@ -2936,10 +2936,10 @@ llama_token llama_sample_token_greedy(struct llama_context * ctx, llama_token_da
     return result;
 }
 
-llama_token llama_sample_token(struct llama_context * ctx, llama_token_data_array * candidates) {
+llama_dadbed9_token llama_dadbed9_sample_token(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates) {
     assert(ctx);
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
-    llama_sample_softmax(nullptr, candidates);
+    llama_dadbed9_sample_softmax(nullptr, candidates);
 
     std::vector<float> probs;
     probs.reserve(candidates->size);
@@ -2951,17 +2951,17 @@ llama_token llama_sample_token(struct llama_context * ctx, llama_token_data_arra
     auto & rng = ctx->rng;
     int idx = dist(rng);
 
-    llama_token result = candidates->data[idx].id;
+    llama_dadbed9_token result = candidates->data[idx].id;
 
     ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
     ctx->n_sample++;
     return result;
 }
 
-void llama_grammar_accept_token(struct llama_context * ctx, struct llama_grammar * grammar, llama_token token) {
+void llama_dadbed9_grammar_accept_token(struct llama_dadbed9_context * ctx, struct llama_dadbed9_grammar * grammar, llama_dadbed9_token token) {
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
 
-    if (token == llama_token_eos()) {
+    if (token == llama_dadbed9_token_eos()) {
         for (const auto & stack : grammar->stacks) {
             if (stack.empty()) {
                 return;
@@ -2970,13 +2970,13 @@ void llama_grammar_accept_token(struct llama_context * ctx, struct llama_grammar
         LLAMA_ASSERT(false);
     }
 
-    const char * str = llama_token_to_str(ctx, token);
+    const char * str = llama_dadbed9_token_to_str(ctx, token);
 
     // Note terminating 0 in decoded string
     const auto   decoded     = decode_utf8(str, grammar->partial_utf8);
     const auto & code_points = decoded.first;
     for (auto it = code_points.begin(), end = code_points.end() - 1; it != end; ++it) {
-        grammar->stacks = llama_grammar_accept(grammar->rules, grammar->stacks, *it);
+        grammar->stacks = llama_dadbed9_grammar_accept(grammar->rules, grammar->stacks, *it);
     }
     grammar->partial_utf8 = decoded.second;
     LLAMA_ASSERT(!grammar->stacks.empty());
@@ -2988,7 +2988,7 @@ void llama_grammar_accept_token(struct llama_context * ctx, struct llama_grammar
 // quantization
 //
 
-static void llama_convert_tensor_internal(const llama_load_tensor & tensor, llama_buffer & output, const int nelements, const int nthread) {
+static void llama_dadbed9_convert_tensor_internal(const llama_dadbed9_load_tensor & tensor, llama_dadbed9_buffer & output, const int nelements, const int nthread) {
     if (output.size < nelements * sizeof(float)) {
         output.resize(nelements * sizeof(float));
     }
@@ -3046,9 +3046,9 @@ static void llama_convert_tensor_internal(const llama_load_tensor & tensor, llam
 
 }
 
-static void llama_model_quantize_internal(const std::string & fname_inp, const std::string & fname_out, const llama_model_quantize_params * params) {
+static void llama_dadbed9_model_quantize_internal(const std::string & fname_inp, const std::string & fname_out, const llama_dadbed9_model_quantize_params * params) {
     ggml_dadbed9_type quantized_type;
-    llama_ftype ftype = params->ftype;
+    llama_dadbed9_ftype ftype = params->ftype;
     int nthread = params->nthread;
 
     switch (params->ftype) {
@@ -3079,8 +3079,8 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
         nthread = std::thread::hardware_concurrency();
     }
 
-    std::unique_ptr<llama_model_loader> model_loader(new llama_model_loader(fname_inp, /*use_mmap*/ false));
-    llama_file_saver file_saver(fname_out.c_str(), model_loader->file_loader.get(), params->ftype);
+    std::unique_ptr<llama_dadbed9_model_loader> model_loader(new llama_dadbed9_model_loader(fname_inp, /*use_mmap*/ false));
+    llama_dadbed9_file_saver file_saver(fname_out.c_str(), model_loader->file_loader.get(), params->ftype);
 
 #ifdef GGML_USE_K_QUANTS
     int n_attention_wv    = 0;
@@ -3110,15 +3110,15 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
     };
 
     size_t idx = 0;
-    for (llama_load_tensor & tensor : model_loader->tensors_map.tensors) {
-        llama_buffer read_data;
+    for (llama_dadbed9_load_tensor & tensor : model_loader->tensors_map.tensors) {
+        llama_dadbed9_buffer read_data;
         read_data.resize(tensor.size);
         tensor.data = read_data.addr;
         model_loader->load_data_for(tensor);
 
         LLAMA_LOG_INFO("[%4zu/%4zu] %36s - %16s, type = %6s, ",
                ++idx, model_loader->tensors_map.tensors.size(),
-               tensor.name.c_str(), llama_format_tensor_shape(tensor.ne).c_str(),
+               tensor.name.c_str(), llama_dadbed9_format_tensor_shape(tensor.ne).c_str(),
                ggml_dadbed9_type_name(tensor.type));
 
         // This used to be a regex, but <regex> has an extreme cost to compile times.
@@ -3132,7 +3132,7 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
         enum ggml_dadbed9_type new_type;
         void * new_data;
         size_t new_size;
-        llama_buffer work;
+        llama_dadbed9_buffer work;
 
         if (!quantize) {
             new_type = tensor.type;
@@ -3192,14 +3192,14 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
 
             float * f32_data;
             size_t nelements = tensor.ne.at(0) * tensor.ne.at(1);
-            llama_buffer f32_conv_buf;
+            llama_dadbed9_buffer f32_conv_buf;
 
             if (tensor.type == GGML_TYPE_F32) {
                 f32_data = (float *) tensor.data;
             } else if (ggml_dadbed9_is_quantized(tensor.type) && !params->allow_requantize) {
                 throw std::runtime_error(format("requantizing from type %s is disabled", ggml_dadbed9_type_name(tensor.type)));
             } else {
-                llama_convert_tensor_internal(tensor, f32_conv_buf, nelements, nthread);
+                llama_dadbed9_convert_tensor_internal(tensor, f32_conv_buf, nelements, nthread);
                 f32_data = (float *) f32_conv_buf.addr;
             }
 
@@ -3297,16 +3297,16 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
 // interface implementation
 //
 
-struct llama_model * llama_load_model_from_file(
+struct llama_dadbed9_model * llama_dadbed9_load_model_from_file(
                              const char * path_model,
-            struct llama_context_params   params) {
+            struct llama_dadbed9_context_params   params) {
     ggml_dadbed9_time_init();
 
-    llama_model * model = new llama_model;
+    llama_dadbed9_model * model = new llama_dadbed9_model;
 
     ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
 
-    if (!llama_model_load(path_model, *model, model->vocab, params.n_ctx, params.n_batch, params.n_gqa, params.rms_norm_eps, params.n_gpu_layers,
+    if (!llama_dadbed9_model_load(path_model, *model, model->vocab, params.n_ctx, params.n_batch, params.n_gqa, params.rms_norm_eps, params.n_gpu_layers,
                 params.main_gpu, params.tensor_split, params.mul_mat_q, params.rope_freq_base, params.rope_freq_scale,params.low_vram,
                 memory_type, params.use_mmap, params.use_mlock, params.vocab_only, params.progress_callback,
                 params.progress_callback_user_data)) {
@@ -3318,19 +3318,19 @@ struct llama_model * llama_load_model_from_file(
     return model;
 }
 
-void llama_free_model(struct llama_model * model) {
+void llama_dadbed9_free_model(struct llama_dadbed9_model * model) {
     delete model;
 }
 
-struct llama_context * llama_new_context_with_model(
-                 struct llama_model * model,
-        struct llama_context_params   params) {
+struct llama_dadbed9_context * llama_dadbed9_new_context_with_model(
+                 struct llama_dadbed9_model * model,
+        struct llama_dadbed9_context_params   params) {
 
     if (!model) {
         return nullptr;
     }
 
-    llama_context * ctx = new llama_context(*model);
+    llama_dadbed9_context * ctx = new llama_dadbed9_context(*model);
 
     if (params.seed == LLAMA_DEFAULT_SEED) {
         params.seed = time(NULL);
@@ -3361,7 +3361,7 @@ struct llama_context * llama_new_context_with_model(
     if (!params.vocab_only) {
         if (!kv_cache_init(ctx->model.hparams, ctx->kv_self, memory_type, ctx->model.hparams.n_ctx, params.n_gpu_layers)) {
             LLAMA_LOG_ERROR("%s: kv_cache_init() failed for self-attention cache\n", __func__);
-            llama_free(ctx);
+            llama_dadbed9_free(ctx);
             return nullptr;
         }
 
@@ -3395,14 +3395,14 @@ struct llama_context * llama_new_context_with_model(
             // build worst-case graph
             int n_tokens = std::min((int)hparams.n_ctx, params.n_batch);
             int n_past = hparams.n_ctx - n_tokens;
-            llama_token token = llama_token_bos(); // not actually used by llama_build_graph, but required to choose between token and embedding inputs graph
-            ggml_dadbed9_cgraph * gf = llama_build_graph(*ctx, &token, NULL, n_tokens, n_past);
+            llama_dadbed9_token token = llama_dadbed9_token_bos(); // not actually used by llama_dadbed9_build_graph, but required to choose between token and embedding inputs graph
+            ggml_dadbed9_cgraph * gf = llama_dadbed9_build_graph(*ctx, &token, NULL, n_tokens, n_past);
 #ifdef GGML_USE_METAL
             if (params.n_gpu_layers > 0) {
                 ctx->ctx_metal = ggml_dadbed9_metal_init(1);
                 if (!ctx->ctx_metal) {
                     LLAMA_LOG_ERROR("%s: ggml_dadbed9_metal_init() failed\n", __func__);
-                    llama_free(ctx);
+                    llama_dadbed9_free(ctx);
                     return NULL;
                 }
                 ggml_dadbed9_metal_graph_find_concurrency(ctx->ctx_metal, gf, false);
@@ -3464,7 +3464,7 @@ struct llama_context * llama_new_context_with_model(
 #define LLAMA_METAL_CHECK_BUF(result)                            \
     if (!(result)) {                                             \
         LLAMA_LOG_ERROR("%s: failed to add buffer\n", __func__); \
-        llama_free(ctx);                                         \
+        llama_dadbed9_free(ctx);                                         \
         return NULL;                                             \
     }
 
@@ -3483,9 +3483,9 @@ struct llama_context * llama_new_context_with_model(
 
     if (ggml_dadbed9_mpi_rank(ctx->ctx_mpi) > 0) {
         // Enter a blocking eval loop with dummy input, letting rank=0 drive the process
-        const std::vector<llama_token> tmp(ctx->model.hparams.n_ctx, llama_token_bos());
-        while (!llama_eval(ctx, tmp.data(), tmp.size(), 0, 0)) {};
-        llama_backend_free();
+        const std::vector<llama_dadbed9_token> tmp(ctx->model.hparams.n_ctx, llama_dadbed9_token_bos());
+        while (!llama_dadbed9_eval(ctx, tmp.data(), tmp.size(), 0, 0)) {};
+        llama_dadbed9_backend_free();
         exit(1);
     }
 #endif
@@ -3493,29 +3493,29 @@ struct llama_context * llama_new_context_with_model(
     return ctx;
 }
 
-struct llama_context * llama_init_from_file(
+struct llama_dadbed9_context * llama_dadbed9_init_from_file(
                              const char * path_model,
-            struct llama_context_params   params) {
+            struct llama_dadbed9_context_params   params) {
 
-    struct llama_model * model = llama_load_model_from_file(path_model, params);
+    struct llama_dadbed9_model * model = llama_dadbed9_load_model_from_file(path_model, params);
     if (!model) {
         return nullptr;
     }
-    struct llama_context * ctx = llama_new_context_with_model(model, params);
+    struct llama_dadbed9_context * ctx = llama_dadbed9_new_context_with_model(model, params);
     ctx->model_owner = true;
     return ctx;
 }
 
-void llama_free(struct llama_context * ctx) {
+void llama_dadbed9_free(struct llama_dadbed9_context * ctx) {
     delete ctx;
 }
 
-int llama_model_quantize(
+int llama_dadbed9_model_quantize(
         const char * fname_inp,
         const char * fname_out,
-        const llama_model_quantize_params *params) {
+        const llama_dadbed9_model_quantize_params *params) {
     try {
-        llama_model_quantize_internal(fname_inp, fname_out, params);
+        llama_dadbed9_model_quantize_internal(fname_inp, fname_out, params);
         return 0;
     } catch (const std::exception & err) {
         LLAMA_LOG_ERROR("%s: failed to quantize: %s\n", __func__, err.what());
@@ -3523,7 +3523,7 @@ int llama_model_quantize(
     }
 }
 
-int llama_apply_lora_from_file_internal(const struct llama_model & model, const char * path_lora, const char * path_base_model, int n_threads) {
+int llama_dadbed9_apply_lora_from_file_internal(const struct llama_dadbed9_model & model, const char * path_lora, const char * path_base_model, int n_threads) {
     LLAMA_LOG_INFO("%s: applying lora adapter from '%s' - please wait ...\n", __func__, path_lora);
 
     const int64_t t_start_lora_us = ggml_dadbed9_time_us();
@@ -3579,12 +3579,12 @@ int llama_apply_lora_from_file_internal(const struct llama_model & model, const 
 
 
     // load base model
-    std::unique_ptr<llama_model_loader> model_loader;
+    std::unique_ptr<llama_dadbed9_model_loader> model_loader;
     ggml_dadbed9_context * base_ctx = NULL;
-    llama_buffer base_buf;
+    llama_dadbed9_buffer base_buf;
     if (path_base_model) {
         LLAMA_LOG_INFO("%s: loading base model from '%s'\n", __func__, path_base_model);
-        model_loader.reset(new llama_model_loader(path_base_model, /*use_mmap*/ true));
+        model_loader.reset(new llama_dadbed9_model_loader(path_base_model, /*use_mmap*/ true));
 
         size_t ctx_size;
         size_t mmapped_size;
@@ -3600,9 +3600,9 @@ int llama_apply_lora_from_file_internal(const struct llama_model & model, const 
 
         model_loader->ggml_dadbed9_ctx = base_ctx;
 
-        // maybe this should in llama_model_loader
+        // maybe this should in llama_dadbed9_model_loader
         if (model_loader->use_mmap) {
-            model_loader->mapping.reset(new llama_mmap(&model_loader->file_loader->file, /* prefetch */ 0, ggml_dadbed9_is_numa()));
+            model_loader->mapping.reset(new llama_dadbed9_mmap(&model_loader->file_loader->file, /* prefetch */ 0, ggml_dadbed9_is_numa()));
         }
     }
 
@@ -3691,8 +3691,8 @@ int llama_apply_lora_from_file_internal(const struct llama_model & model, const 
 
             ggml_dadbed9_tensor * dest_t = model_tensors[base_name];
 
-            offload_func_t offload_func = llama_nop;
-            offload_func_t offload_func_force_inplace = llama_nop;
+            offload_func_t offload_func = llama_dadbed9_nop;
+            offload_func_t offload_func_force_inplace = llama_dadbed9_nop;
 
 #ifdef GGML_USE_CUBLAS
             if (dest_t->backend == GGML_BACKEND_GPU || dest_t->backend == GGML_BACKEND_GPU_SPLIT) {
@@ -3713,7 +3713,7 @@ int llama_apply_lora_from_file_internal(const struct llama_model & model, const 
                     return 1;
                 }
                 size_t idx = model_loader->tensors_map.name_to_idx[base_name];
-                llama_load_tensor & lt = model_loader->tensors_map.tensors[idx];
+                llama_dadbed9_load_tensor & lt = model_loader->tensors_map.tensors[idx];
                 base_t = model_loader->get_tensor(base_name, { (uint32_t)dest_t->ne[0], (uint32_t)dest_t->ne[1] }, GGML_BACKEND_CPU);
                 lt.data = (uint8_t *) lt.ggml_dadbed9_tensor->data;
                 model_loader->load_data_for(lt);
@@ -3803,31 +3803,31 @@ int llama_apply_lora_from_file_internal(const struct llama_model & model, const 
     return 0;
 }
 
-int llama_apply_lora_from_file(struct llama_context * ctx, const char * path_lora, const char * path_base_model, int n_threads) {
+int llama_dadbed9_apply_lora_from_file(struct llama_dadbed9_context * ctx, const char * path_lora, const char * path_base_model, int n_threads) {
     try {
-        return llama_apply_lora_from_file_internal(ctx->model, path_lora, path_base_model, n_threads);
+        return llama_dadbed9_apply_lora_from_file_internal(ctx->model, path_lora, path_base_model, n_threads);
     } catch (const std::exception & err) {
         LLAMA_LOG_ERROR("%s: failed to apply lora adapter: %s\n", __func__, err.what());
         return 1;
     }
 }
 
-int llama_model_apply_lora_from_file(const struct llama_model * model, const char * path_lora, const char * path_base_model, int n_threads) {
+int llama_dadbed9_model_apply_lora_from_file(const struct llama_dadbed9_model * model, const char * path_lora, const char * path_base_model, int n_threads) {
     try {
-        return llama_apply_lora_from_file_internal(*model, path_lora, path_base_model, n_threads);
+        return llama_dadbed9_apply_lora_from_file_internal(*model, path_lora, path_base_model, n_threads);
     } catch (const std::exception & err) {
         LLAMA_LOG_ERROR("%s: failed to apply lora adapter: %s\n", __func__, err.what());
         return 1;
     }
 }
 
-int llama_get_kv_cache_token_count(const struct llama_context * ctx) {
+int llama_dadbed9_get_kv_cache_token_count(const struct llama_dadbed9_context * ctx) {
     return ctx->kv_self.n;
 }
 
 #define LLAMA_MAX_RNG_STATE (64*1024)
 
-void llama_set_rng_seed(struct llama_context * ctx, uint32_t seed) {
+void llama_dadbed9_set_rng_seed(struct llama_dadbed9_context * ctx, uint32_t seed) {
     if (seed == LLAMA_DEFAULT_SEED) {
         seed = time(NULL);
     }
@@ -3835,7 +3835,7 @@ void llama_set_rng_seed(struct llama_context * ctx, uint32_t seed) {
 }
 
 // Returns the *maximum* size of the state
-size_t llama_get_state_size(const struct llama_context * ctx) {
+size_t llama_dadbed9_get_state_size(const struct llama_dadbed9_context * ctx) {
     // we don't know size of rng until we actually serialize it. so reserve more than enough memory for its serialized state.
     // for reference, std::mt19937(1337) serializes to 6701 bytes.
     const size_t s_rng_size        = sizeof(size_t);
@@ -3868,17 +3868,17 @@ size_t llama_get_state_size(const struct llama_context * ctx) {
 /** copy state data into either a buffer or file depending on the passed in context
  *
  * file context:
- * llama_file file("/path", "wb");
- * llama_data_file_context data_ctx(&file);
- * llama_copy_state_data(ctx, &data_ctx);
+ * llama_dadbed9_file file("/path", "wb");
+ * llama_dadbed9_data_file_context data_ctx(&file);
+ * llama_dadbed9_copy_state_data(ctx, &data_ctx);
  *
  * buffer context:
  * std::vector<uint8_t> buf(max_size, 0);
- * llama_data_buffer_context data_ctx(&buf.data());
- * llama_copy_state_data(ctx, &data_ctx);
+ * llama_dadbed9_data_buffer_context data_ctx(&buf.data());
+ * llama_dadbed9_copy_state_data(ctx, &data_ctx);
  *
 */
-void llama_copy_state_data_internal(struct llama_context * ctx, llama_data_context * data_ctx) {
+void llama_dadbed9_copy_state_data_internal(struct llama_dadbed9_context * ctx, llama_dadbed9_data_context * data_ctx) {
     // copy rng
     {
         std::stringstream rng_ss;
@@ -3934,7 +3934,7 @@ void llama_copy_state_data_internal(struct llama_context * ctx, llama_data_conte
         const int    n_ctx   = hparams.n_ctx;
 
         const size_t kv_size = kv_self.buf.size;
-        const int    kv_ntok = llama_get_kv_cache_token_count(ctx);
+        const int    kv_ntok = llama_dadbed9_get_kv_cache_token_count(ctx);
 
         data_ctx->write(&kv_size, sizeof(kv_size));
         data_ctx->write(&kv_ntok, sizeof(kv_ntok));
@@ -3975,15 +3975,15 @@ void llama_copy_state_data_internal(struct llama_context * ctx, llama_data_conte
     }
 }
 
-size_t llama_copy_state_data(struct llama_context * ctx, uint8_t * dst) {
-    llama_data_buffer_context data_ctx(dst);
-    llama_copy_state_data_internal(ctx, &data_ctx);
+size_t llama_dadbed9_copy_state_data(struct llama_dadbed9_context * ctx, uint8_t * dst) {
+    llama_dadbed9_data_buffer_context data_ctx(dst);
+    llama_dadbed9_copy_state_data_internal(ctx, &data_ctx);
 
     return data_ctx.get_size_written();
 }
 
 // Sets the state reading from the specified source address
-size_t llama_set_state_data(struct llama_context * ctx, uint8_t * src) {
+size_t llama_dadbed9_set_state_data(struct llama_dadbed9_context * ctx, uint8_t * src) {
     uint8_t * inp = src;
 
     // set rng
@@ -4082,15 +4082,15 @@ size_t llama_set_state_data(struct llama_context * ctx, uint8_t * src) {
     }
 
     const size_t nread    = inp - src;
-    const size_t max_size = llama_get_state_size(ctx);
+    const size_t max_size = llama_dadbed9_get_state_size(ctx);
 
     LLAMA_ASSERT(nread <= max_size);
 
     return nread;
 }
 
-static bool llama_load_session_file_internal(struct llama_context * ctx, const char * path_session, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
-    llama_file file(path_session, "rb");
+static bool llama_dadbed9_load_session_file_internal(struct llama_dadbed9_context * ctx, const char * path_session, llama_dadbed9_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
+    llama_dadbed9_file file(path_session, "rb");
 
     // sanity checks
     {
@@ -4102,8 +4102,8 @@ static bool llama_load_session_file_internal(struct llama_context * ctx, const c
             return false;
         }
 
-        llama_hparams session_hparams;
-        file.read_raw(&session_hparams, sizeof(llama_hparams));
+        llama_dadbed9_hparams session_hparams;
+        file.read_raw(&session_hparams, sizeof(llama_dadbed9_hparams));
 
         if (session_hparams != ctx->model.hparams) {
             LLAMA_LOG_INFO("%s : model hparams didn't match from session file!\n", __func__);
@@ -4120,14 +4120,14 @@ static bool llama_load_session_file_internal(struct llama_context * ctx, const c
             return false;
         }
 
-        file.read_raw(tokens_out, sizeof(llama_token) * n_token_count);
+        file.read_raw(tokens_out, sizeof(llama_dadbed9_token) * n_token_count);
         *n_token_count_out = n_token_count;
     }
 
     // restore the context state
     {
         const size_t n_state_size_cur = file.size - file.tell();
-        const size_t n_state_size_max = llama_get_state_size(ctx);
+        const size_t n_state_size_max = llama_dadbed9_get_state_size(ctx);
 
         if (n_state_size_cur > n_state_size_max) {
             LLAMA_LOG_ERROR("%s : the state size in session file is too big! max %zu, got %zu\n", __func__, n_state_size_max, n_state_size_cur);
@@ -4137,47 +4137,47 @@ static bool llama_load_session_file_internal(struct llama_context * ctx, const c
         std::vector<uint8_t> state_data(n_state_size_max);
         file.read_raw(state_data.data(), n_state_size_cur);
 
-        llama_set_state_data(ctx, state_data.data());
+        llama_dadbed9_set_state_data(ctx, state_data.data());
     }
 
     return true;
 }
 
-bool llama_load_session_file(struct llama_context * ctx, const char * path_session, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
+bool llama_dadbed9_load_session_file(struct llama_dadbed9_context * ctx, const char * path_session, llama_dadbed9_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
     try {
-        return llama_load_session_file_internal(ctx, path_session, tokens_out, n_token_capacity, n_token_count_out);
+        return llama_dadbed9_load_session_file_internal(ctx, path_session, tokens_out, n_token_capacity, n_token_count_out);
     } catch (const std::exception & err) {
         LLAMA_LOG_ERROR("error loading session file: %s\n", err.what());
         return false;
     }
 }
 
-bool llama_save_session_file(struct llama_context * ctx, const char * path_session, const llama_token * tokens, size_t n_token_count) {
-    llama_file file(path_session, "wb");
+bool llama_dadbed9_save_session_file(struct llama_dadbed9_context * ctx, const char * path_session, const llama_dadbed9_token * tokens, size_t n_token_count) {
+    llama_dadbed9_file file(path_session, "wb");
 
     file.write_u32(LLAMA_SESSION_MAGIC);
     file.write_u32(LLAMA_SESSION_VERSION);
 
-    file.write_raw(&ctx->model.hparams, sizeof(llama_hparams));
+    file.write_raw(&ctx->model.hparams, sizeof(llama_dadbed9_hparams));
 
     // save the prompt
     file.write_u32((uint32_t) n_token_count);
-    file.write_raw(tokens, sizeof(llama_token) * n_token_count);
+    file.write_raw(tokens, sizeof(llama_dadbed9_token) * n_token_count);
 
     // save the context state using stream saving
-    llama_data_file_context data_ctx(&file);
-    llama_copy_state_data_internal(ctx, &data_ctx);
+    llama_dadbed9_data_file_context data_ctx(&file);
+    llama_dadbed9_copy_state_data_internal(ctx, &data_ctx);
 
     return true;
 }
 
-int llama_eval(
-        struct llama_context * ctx,
-           const llama_token * tokens,
+int llama_dadbed9_eval(
+        struct llama_dadbed9_context * ctx,
+           const llama_dadbed9_token * tokens,
                          int   n_tokens,
                          int   n_past,
                          int   n_threads) {
-    if (!llama_eval_internal(*ctx, tokens, nullptr, n_tokens, n_past, n_threads, nullptr)) {
+    if (!llama_dadbed9_eval_internal(*ctx, tokens, nullptr, n_tokens, n_past, n_threads, nullptr)) {
         LLAMA_LOG_ERROR("%s: failed to eval\n", __func__);
         return 1;
     }
@@ -4193,13 +4193,13 @@ int llama_eval(
 }
 
 
-int llama_eval_embd(
-            struct llama_context * ctx,
+int llama_dadbed9_eval_embd(
+            struct llama_dadbed9_context * ctx,
                      const float * embd,
                              int   n_tokens,
                              int   n_past,
                              int   n_threads) {
-    if (!llama_eval_internal(*ctx, nullptr, embd, n_tokens, n_past, n_threads, nullptr)) {
+    if (!llama_dadbed9_eval_internal(*ctx, nullptr, embd, n_tokens, n_past, n_threads, nullptr)) {
         LLAMA_LOG_ERROR("%s: failed to eval\n", __func__);
         return 1;
     }
@@ -4214,13 +4214,13 @@ int llama_eval_embd(
     return 0;
 }
 
-int llama_eval_export(struct llama_context * ctx, const char * fname) {
+int llama_dadbed9_eval_export(struct llama_dadbed9_context * ctx, const char * fname) {
     const int n_batch = 1;
     const int n_ctx   = 512 - n_batch;
 
-    const std::vector<llama_token> tmp(n_batch, llama_token_bos());
+    const std::vector<llama_dadbed9_token> tmp(n_batch, llama_dadbed9_token_bos());
 
-    if (!llama_eval_internal(*ctx, tmp.data(), nullptr, tmp.size(), n_ctx, 1, fname)) {
+    if (!llama_dadbed9_eval_internal(*ctx, tmp.data(), nullptr, tmp.size(), n_ctx, 1, fname)) {
         LLAMA_LOG_ERROR("%s: failed to eval\n", __func__);
         return 1;
     }
@@ -4228,13 +4228,13 @@ int llama_eval_export(struct llama_context * ctx, const char * fname) {
     return 0;
 }
 
-int llama_tokenize_with_model(
-    const struct llama_model * model,
+int llama_dadbed9_tokenize_with_model(
+    const struct llama_dadbed9_model * model,
                   const char * text,
-                 llama_token * tokens,
+                 llama_dadbed9_token * tokens,
                          int   n_max_tokens,
                         bool   add_bos) {
-    auto res = llama_tokenize(model->vocab, text, add_bos);
+    auto res = llama_dadbed9_tokenize(model->vocab, text, add_bos);
 
     if (n_max_tokens < (int) res.size()) {
         LLAMA_LOG_ERROR("%s: too many tokens\n", __func__);
@@ -4248,45 +4248,45 @@ int llama_tokenize_with_model(
     return res.size();
 }
 
-int llama_tokenize(
-        struct llama_context * ctx,
+int llama_dadbed9_tokenize(
+        struct llama_dadbed9_context * ctx,
                   const char * text,
-                 llama_token * tokens,
+                 llama_dadbed9_token * tokens,
                          int   n_max_tokens,
                         bool   add_bos) {
-    return llama_tokenize_with_model(&ctx->model, text, tokens, n_max_tokens, add_bos);
+    return llama_dadbed9_tokenize_with_model(&ctx->model, text, tokens, n_max_tokens, add_bos);
 }
 
-int llama_n_vocab_from_model(const struct llama_model * model) {
+int llama_dadbed9_n_vocab_from_model(const struct llama_dadbed9_model * model) {
     return model->vocab.id_to_token.size();
 }
 
-int llama_n_ctx_from_model(const struct llama_model * model) {
+int llama_dadbed9_n_ctx_from_model(const struct llama_dadbed9_model * model) {
     return model->hparams.n_ctx;
 }
 
-int llama_n_embd_from_model(const struct llama_model * model) {
+int llama_dadbed9_n_embd_from_model(const struct llama_dadbed9_model * model) {
     return model->hparams.n_embd;
 }
 
-int llama_n_vocab(const struct llama_context * ctx) {
+int llama_dadbed9_n_vocab(const struct llama_dadbed9_context * ctx) {
     return ctx->model.vocab.id_to_token.size();
 }
 
-int llama_n_ctx(const struct llama_context * ctx) {
+int llama_dadbed9_n_ctx(const struct llama_dadbed9_context * ctx) {
     return ctx->model.hparams.n_ctx;
 }
 
-int llama_n_embd(const struct llama_context * ctx) {
+int llama_dadbed9_n_embd(const struct llama_dadbed9_context * ctx) {
     return ctx->model.hparams.n_embd;
 }
 
-int llama_model_type(const struct llama_model * model, char * buf, size_t buf_size) {
-    return snprintf(buf, buf_size, "LLaMA %s %s", llama_model_type_name(model->type), llama_ftype_name(model->hparams.ftype));
+int llama_dadbed9_model_type(const struct llama_dadbed9_model * model, char * buf, size_t buf_size) {
+    return snprintf(buf, buf_size, "LLaMA %s %s", llama_dadbed9_model_type_name(model->type), llama_dadbed9_ftype_name(model->hparams.ftype));
 }
 
-int llama_get_vocab_from_model(
-        const struct llama_model * model,
+int llama_dadbed9_get_vocab_from_model(
+        const struct llama_dadbed9_model * model,
         const char * * strings,
         float  * scores,
         int capacity) {
@@ -4298,48 +4298,48 @@ int llama_get_vocab_from_model(
     return n;
 }
 
-int llama_get_vocab(
-        const struct llama_context * ctx,
+int llama_dadbed9_get_vocab(
+        const struct llama_dadbed9_context * ctx,
         const char * * strings,
         float  * scores,
         int capacity) {
-    return llama_get_vocab_from_model(&ctx->model, strings, scores, capacity);
+    return llama_dadbed9_get_vocab_from_model(&ctx->model, strings, scores, capacity);
 }
 
-float * llama_get_logits(struct llama_context * ctx) {
+float * llama_dadbed9_get_logits(struct llama_dadbed9_context * ctx) {
     return ctx->logits.data();
 }
 
-float * llama_get_embeddings(struct llama_context * ctx) {
+float * llama_dadbed9_get_embeddings(struct llama_dadbed9_context * ctx) {
     return ctx->embedding.data();
 }
 
-const char * llama_token_to_str_with_model(const struct llama_model * model, llama_token token) {
-    if (token >= llama_n_vocab_from_model(model)) {
+const char * llama_dadbed9_token_to_str_with_model(const struct llama_dadbed9_model * model, llama_dadbed9_token token) {
+    if (token >= llama_dadbed9_n_vocab_from_model(model)) {
         return nullptr;
     }
 
     return model->vocab.id_to_token[token].tok.c_str();
 }
 
-const char * llama_token_to_str(const struct llama_context * ctx, llama_token token) {
-    return llama_token_to_str_with_model(&ctx->model, token);
+const char * llama_dadbed9_token_to_str(const struct llama_dadbed9_context * ctx, llama_dadbed9_token token) {
+    return llama_dadbed9_token_to_str_with_model(&ctx->model, token);
 }
 
-llama_token llama_token_bos() {
+llama_dadbed9_token llama_dadbed9_token_bos() {
     return 1;
 }
 
-llama_token llama_token_eos() {
+llama_dadbed9_token llama_dadbed9_token_eos() {
     return 2;
 }
 
-llama_token llama_token_nl() {
+llama_dadbed9_token llama_dadbed9_token_nl() {
     return 13;
 }
 
-struct llama_timings llama_get_timings(struct llama_context * ctx) {
-    struct llama_timings result = {
+struct llama_dadbed9_timings llama_dadbed9_get_timings(struct llama_dadbed9_context * ctx) {
+    struct llama_dadbed9_timings result = {
         /*.t_start_ms  =*/ 1e-3 * ctx->t_start_us,
         /*.t_end_ms    =*/ 1.00 * ggml_dadbed9_time_ms(),
         /*.t_load_ms   =*/ 1e-3 * ctx->t_load_us,
@@ -4355,8 +4355,8 @@ struct llama_timings llama_get_timings(struct llama_context * ctx) {
     return result;
 }
 
-void llama_print_timings(struct llama_context * ctx) {
-    const llama_timings timings = llama_get_timings(ctx);
+void llama_dadbed9_print_timings(struct llama_dadbed9_context * ctx) {
+    const llama_dadbed9_timings timings = llama_dadbed9_get_timings(ctx);
 
     LLAMA_LOG_INFO("\n");
     LLAMA_LOG_INFO("%s:        load time = %8.2f ms\n", __func__, timings.t_load_ms);
@@ -4369,14 +4369,14 @@ void llama_print_timings(struct llama_context * ctx) {
     LLAMA_LOG_INFO("%s:       total time = %8.2f ms\n", __func__, (timings.t_end_ms - timings.t_start_ms));
 }
 
-void llama_reset_timings(struct llama_context * ctx) {
+void llama_dadbed9_reset_timings(struct llama_dadbed9_context * ctx) {
     ctx->t_start_us = ggml_dadbed9_time_us();
     ctx->t_sample_us = ctx->n_sample = 0;
     ctx->t_eval_us   = ctx->n_eval   = 0;
     ctx->t_p_eval_us = ctx->n_p_eval = 0;
 }
 
-const char * llama_print_system_info(void) {
+const char * llama_dadbed9_print_system_info(void) {
     static std::string s;
 
     s  = "";
@@ -4399,13 +4399,13 @@ const char * llama_print_system_info(void) {
 }
 
 // For internal test use
-const std::vector<std::pair<std::string, struct ggml_dadbed9_tensor *>>& llama_internal_get_tensor_map(struct llama_context * ctx) {
+const std::vector<std::pair<std::string, struct ggml_dadbed9_tensor *>>& llama_dadbed9_internal_get_tensor_map(struct llama_dadbed9_context * ctx) {
     return ctx->model.tensors_by_name;
 }
 
 
-void llama_log_set(llama_log_callback log_callback, void * user_data) {
-    g_state.log_callback = log_callback ? log_callback : llama_log_callback_default;
+void llama_dadbed9_log_set(llama_dadbed9_log_callback log_callback, void * user_data) {
+    g_state.log_callback = log_callback ? log_callback : llama_dadbed9_log_callback_default;
     g_state.log_callback_user_data = user_data;
 }
 
@@ -4413,7 +4413,7 @@ void llama_log_set(llama_log_callback log_callback, void * user_data) {
 #define vsnprintf _vsnprintf
 #endif
 
-static void llama_log_internal_v(llama_log_level level, const char * format, va_list args) {
+static void llama_dadbed9_log_internal_v(llama_dadbed9_log_level level, const char * format, va_list args) {
     va_list args_copy;
     va_copy(args_copy, args);
     char buffer[128];
@@ -4430,14 +4430,14 @@ static void llama_log_internal_v(llama_log_level level, const char * format, va_
     va_end(args_copy);
 }
 
-static void llama_log_internal(llama_log_level level, const char * format, ...) {
+static void llama_dadbed9_log_internal(llama_dadbed9_log_level level, const char * format, ...) {
     va_list args;
     va_start(args, format);
-    llama_log_internal_v(level, format, args);
+    llama_dadbed9_log_internal_v(level, format, args);
     va_end(args);
 }
 
-static void llama_log_callback_default(llama_log_level level, const char * text, void * user_data) {
+static void llama_dadbed9_log_callback_default(llama_dadbed9_log_level level, const char * text, void * user_data) {
     (void) level;
     (void) user_data;
     fputs(text, stderr);

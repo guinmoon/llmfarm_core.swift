@@ -1,6 +1,6 @@
 #include "../spm-headers/gpt_spm.h"
 #include "gpt_helpers.h"
-#include "../spm-headers/llama.h"
+#include "../spm-headers/llama_dadbed9.h"
 #include "../spm-headers/rwkv.h"
 #include "ggml/ggml_dadbed9.h"
 #include <cassert>
@@ -232,11 +232,11 @@ int32_t rwkv_sample_repeat(int n_logits, float * logits,
     return  smpl;
 }
 
-bool llama_save_state(struct llama_context * ctx, const char * fname){
-    const size_t state_size = llama_get_state_size(ctx);
+bool llama_save_state(struct llama_dadbed9_context * ctx, const char * fname){
+    const size_t state_size = llama_dadbed9_get_state_size(ctx);
     uint8_t * state_mem = new uint8_t[state_size];
     FILE *fp_write = fopen(fname, "wb");
-    llama_copy_state_data(ctx, state_mem); // could also copy directly to memory mapped file
+    llama_dadbed9_copy_state_data(ctx, state_mem); // could also copy directly to memory mapped file
     fwrite(state_mem, 1, state_size, fp_write);
     fclose(fp_write);
     delete[] state_mem;
