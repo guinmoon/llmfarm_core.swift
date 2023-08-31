@@ -3,6 +3,7 @@
 #import "ggml_dadbed9.h"
 
 #import <Foundation/Foundation.h>
+#include <sys/utsname.h>
 
 #import <Metal/Metal.h>
 
@@ -106,6 +107,14 @@ static NSString * const msl_library_source = @"see metal.metal";
 @implementation GGMLMetalClass
 @end
 
+NSString *GetMachineHardwareName(void) {
+    struct utsname sysinfo;
+    int retVal = uname(&sysinfo);
+    if (EXIT_SUCCESS != retVal) return nil;
+    
+    return [NSString stringWithUTF8String:sysinfo.machine];
+}
+
 struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
     fprintf(stderr, "%s: allocating\n", __func__);
 
@@ -116,7 +125,9 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
     ctx->queue  = [ctx->device newCommandQueue];
     ctx->n_buffers = 0;
     ctx->concur_list_len = 0;
-
+    
+    NSString * arch = GetMachineHardwareName();
+    
 
 #if 0
     // compile from source string and show compile log
@@ -202,19 +213,23 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
         GGML_METAL_ADD_KERNEL(mul_mat_q4_K_f32);
         GGML_METAL_ADD_KERNEL(mul_mat_q5_K_f32);
         GGML_METAL_ADD_KERNEL(mul_mat_q6_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_f16_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
+        if (![arch isEqualToString:@"x86_64"]){
+            fprintf(stderr, "%s: arch %s\n", __func__, [arch UTF8String]);
+            GGML_METAL_ADD_KERNEL(mul_mm_f16_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
+        }
         GGML_METAL_ADD_KERNEL(rope);
         GGML_METAL_ADD_KERNEL(alibi_f32);
         GGML_METAL_ADD_KERNEL(cpy_f32_f16);
         GGML_METAL_ADD_KERNEL(cpy_f32_f32);
         GGML_METAL_ADD_KERNEL(cpy_f16_f16);
+        
 
 #undef GGML_METAL_ADD_KERNEL
     }
