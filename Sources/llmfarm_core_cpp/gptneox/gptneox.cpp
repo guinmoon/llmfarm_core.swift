@@ -136,7 +136,7 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 //        if (hparams.n_embd>2048){
 //            hparams.n_embd = 2048;
 //        }
-        const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
+        const int32_t qntvr = hparams.ftype / GGML_dadbed9_QNT_VERSION_FACTOR;
         
             
         printf("%s: n_vocab = %d\n", __func__, hparams.n_vocab);
@@ -149,7 +149,7 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         printf("%s: ftype   = %d\n", __func__, hparams.ftype);
         printf("%s: qntvr   = %d\n", __func__, qntvr);
 
-        hparams.ftype %= GGML_QNT_VERSION_FACTOR;
+        hparams.ftype %= GGML_dadbed9_QNT_VERSION_FACTOR;
     }
 
     // load vocab
@@ -175,7 +175,7 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
     // for the big tensors, we have the option to store the data in 16-bit floats or quantized
     // in order to save memory and also to speed up the computation
     ggml_dadbed9_type wtype = ggml_dadbed9_ftype_to_ggml_dadbed9_type((ggml_dadbed9_ftype) (model.hparams.ftype));
-    if (wtype == GGML_TYPE_COUNT) {
+    if (wtype == GGML_dadbed9_TYPE_COUNT) {
         fprintf(stderr, "%s: invalid model file '%s' (bad ftype value %d)\n",
                 __func__, fname.c_str(), model.hparams.ftype);
         return false;
@@ -193,34 +193,34 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         const size_t n_ctx   = hparams.n_ctx;
         const size_t n_vocab = hparams.n_vocab;
 
-        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // ln_f_g
-        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // ln_f_b
+        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32); // ln_f_g
+        ctx_size += n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32); // ln_f_b
 
         ctx_size += n_embd*n_vocab*ggml_dadbed9_type_sizef(wtype); // wte
 
         ctx_size += n_embd*n_vocab*ggml_dadbed9_type_sizef(wtype);           // lmh_g
-        //ctx_size +=        n_vocab*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // lmh_b
+        //ctx_size +=        n_vocab*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32); // lmh_b
 
-        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_1_g
-        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_1_b
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // ln_1_g
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // ln_1_b
 
         ctx_size += n_layer*(3*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_attn_attn_w
-        ctx_size += n_layer*(       3*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_attn_attn_b
+        ctx_size += n_layer*(       3*n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // c_attn_attn_b
 
         ctx_size += n_layer*(n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_attn_proj_w
-        ctx_size += n_layer*(n_embd*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_attn_proj_b
+        ctx_size += n_layer*(n_embd*n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // c_attn_proj_b
 
-        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_2_g
-        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // ln_2_b
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // ln_2_g
+        ctx_size += n_layer*(n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // ln_2_b
 
         ctx_size += n_layer*(4*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_mlp_fc_w
-        ctx_size += n_layer*(       4*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_mlp_fc_b
+        ctx_size += n_layer*(       4*n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // c_mlp_fc_b
 
         ctx_size += n_layer*(4*n_embd*n_embd*ggml_dadbed9_type_sizef(wtype));         // c_mlp_proj_w
-        ctx_size += n_layer*(         n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32)); // c_mlp_proj_b
+        ctx_size += n_layer*(         n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32)); // c_mlp_proj_b
 
-        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // memory_k
-        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_TYPE_F32); // memory_v
+        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32); // memory_k
+        ctx_size += n_ctx*n_layer*n_embd*ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32); // memory_v
 
         size_t overhead =ggml_dadbed9_tensor_overhead();
         ctx_size += (6 + 16*n_layer)*1024; // object overhead
@@ -255,11 +255,11 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
 
         model.wte    = ggml_dadbed9_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
 
-        model.ln_f_g = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
-        model.ln_f_b = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+        model.ln_f_g = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, n_embd);
+        model.ln_f_b = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, n_embd);
 
         model.lmh_g  = ggml_dadbed9_new_tensor_2d(ctx, wtype,         n_embd, n_vocab);
-        //model.lmh_b  = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_vocab);
+        //model.lmh_b  = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, n_vocab);
 
         // map by name
         model.tensors["gpt_neox.embed_in.weight"] = model.wte;
@@ -273,23 +273,23 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         for (int i = 0; i < n_layer; ++i) {
             auto & layer = model.layers[i];
 
-            layer.ln_1_g          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
-            layer.ln_1_b          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_1_g          = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32,   n_embd);
+            layer.ln_1_b          = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32,   n_embd);
 
             layer.c_attn_attn_w   = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, 3*n_embd);
-            layer.c_attn_attn_b   = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 3*n_embd);
+            layer.c_attn_attn_b   = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, 3*n_embd);
 
             layer.c_attn_proj_w   = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd,   n_embd);
-            layer.c_attn_proj_b   = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.c_attn_proj_b   = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32,   n_embd);
 
-            layer.ln_2_g          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
-            layer.ln_2_b          = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.ln_2_g          = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32,   n_embd);
+            layer.ln_2_b          = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32,   n_embd);
 
             layer.c_mlp_fc_w      = ggml_dadbed9_new_tensor_2d(ctx, wtype,           n_embd, 4*n_embd);
-            layer.c_mlp_fc_b      = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, 4*n_embd);
+            layer.c_mlp_fc_b      = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, 4*n_embd);
 
             layer.c_mlp_proj_w    = ggml_dadbed9_new_tensor_2d(ctx, wtype,         4*n_embd,   n_embd);
-            layer.c_mlp_proj_b    = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32,   n_embd);
+            layer.c_mlp_proj_b    = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32,   n_embd);
 
             // map by name
             model.tensors["gpt_neox.layers." + std::to_string(i) + ".input_layernorm.weight"] = layer.ln_1_g;
@@ -323,8 +323,8 @@ bool gpt_neox_model_load(const std::string & fname, gpt_neox_model & model, gpt_
         const int64_t n_mem      = n_layer*n_ctx;
         const int64_t n_elements = n_embd*n_mem;
 
-        model.memory_k = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
-        model.memory_v = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
+        model.memory_k = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F16, n_elements);
+        model.memory_v = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F16, n_elements);
 
         const size_t memory_size = ggml_dadbed9_nbytes(model.memory_k) + ggml_dadbed9_nbytes(model.memory_v);
 
@@ -507,7 +507,7 @@ bool gpt_neox_eval(
     struct ggml_dadbed9_context * ctx0 = ggml_dadbed9_init(params);
     struct ggml_dadbed9_cgraph gf = {};
 
-    struct ggml_dadbed9_tensor * embd = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    struct ggml_dadbed9_tensor * embd = ggml_dadbed9_new_tensor_1d(ctx0, GGML_dadbed9_TYPE_I32, N);
     memcpy(embd->data, embd_inp.data(), N*ggml_dadbed9_element_size(embd));
 
     // wte
@@ -609,7 +609,7 @@ bool gpt_neox_eval(
             // cur = KQV_merged.contiguous().view(n_embd, N)
             cur = ggml_dadbed9_cpy(ctx0,
                     KQV_merged,
-                    ggml_dadbed9_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
+                    ggml_dadbed9_new_tensor_2d(ctx0, GGML_dadbed9_TYPE_F32, n_embd, N));
 
             // projection
             {
@@ -717,7 +717,7 @@ struct gpt_neox_context * gpt_neox_init_from_file(const char * path_model, struc
     ctx->rng = std::mt19937(params.seed);
     ctx->logits_all = params.logits_all;
 
-    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
+    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_dadbed9_TYPE_F16 : GGML_dadbed9_TYPE_F32;
     
     if (!gpt_neox_model_load(path_model, ctx->model, ctx->vocab,params.n_ctx)) {
         fprintf(stderr, "%s: failed to load model\n", __func__);

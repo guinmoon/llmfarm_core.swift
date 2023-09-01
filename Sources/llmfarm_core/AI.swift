@@ -41,7 +41,7 @@ public class AI {
         do{
             switch aiModel {
             case .LLama:
-                model = try LLaMa(path: self.modelPath, contextParams: contextParams)
+                model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
             case .GPTNeox:
                 model = try GPTNeoX(path: self.modelPath, contextParams: contextParams)
             case .GPT2:

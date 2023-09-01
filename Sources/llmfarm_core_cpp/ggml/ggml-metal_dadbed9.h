@@ -23,7 +23,7 @@
 #include <stdbool.h>
 
 // max memory buffers that can be mapped to the device
-#define GGML_METAL_MAX_BUFFERS 16
+#define GGML_dadbed9_METAL_MAX_BUFFERS 16
 
 struct ggml_dadbed9_tensor;
 struct ggml_dadbed9_cgraph;

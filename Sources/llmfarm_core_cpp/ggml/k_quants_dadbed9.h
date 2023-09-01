@@ -127,27 +127,27 @@ static_assert(sizeof(block_q8_K) == sizeof(float) + QK_K + QK_K/16*sizeof(int16_
 
 
 // Quantization
-void quantize_row_q2_K_reference(const float * restrict x, block_q2_K * restrict y, int k);
-void quantize_row_q3_K_reference(const float * restrict x, block_q3_K * restrict y, int k);
-void quantize_row_q4_K_reference(const float * restrict x, block_q4_K * restrict y, int k);
-void quantize_row_q5_K_reference(const float * restrict x, block_q5_K * restrict y, int k);
-void quantize_row_q6_K_reference(const float * restrict x, block_q6_K * restrict y, int k);
-void quantize_row_q8_K_reference(const float * restrict x, block_q8_K * restrict y, int k);
+void quantize_row_dadbed9_q2_K_reference(const float * restrict x, block_q2_K * restrict y, int k);
+void quantize_row_dadbed9_q3_K_reference(const float * restrict x, block_q3_K * restrict y, int k);
+void quantize_row_dadbed9_q4_K_reference(const float * restrict x, block_q4_K * restrict y, int k);
+void quantize_row_dadbed9_q5_K_reference(const float * restrict x, block_q5_K * restrict y, int k);
+void quantize_row_dadbed9_q6_K_reference(const float * restrict x, block_q6_K * restrict y, int k);
+void quantize_row_dadbed9_q8_K_reference(const float * restrict x, block_q8_K * restrict y, int k);
 
-void quantize_row_q2_K(const float * restrict x, void * restrict y, int k);
-void quantize_row_q3_K(const float * restrict x, void * restrict y, int k);
-void quantize_row_q4_K(const float * restrict x, void * restrict y, int k);
-void quantize_row_q5_K(const float * restrict x, void * restrict y, int k);
-void quantize_row_q6_K(const float * restrict x, void * restrict y, int k);
-void quantize_row_q8_K(const float * restrict x, void * restrict y, int k);
+void quantize_row_dadbed9_q2_K(const float * restrict x, void * restrict y, int k);
+void quantize_row_dadbed9_q3_K(const float * restrict x, void * restrict y, int k);
+void quantize_row_dadbed9_q4_K(const float * restrict x, void * restrict y, int k);
+void quantize_row_dadbed9_q5_K(const float * restrict x, void * restrict y, int k);
+void quantize_row_dadbed9_q6_K(const float * restrict x, void * restrict y, int k);
+void quantize_row_dadbed9_q8_K(const float * restrict x, void * restrict y, int k);
 
 // Dequantization
-void dequantize_row_q2_K(const block_q2_K * restrict x, float * restrict y, int k);
-void dequantize_row_q3_K(const block_q3_K * restrict x, float * restrict y, int k);
-void dequantize_row_q4_K(const block_q4_K * restrict x, float * restrict y, int k);
-void dequantize_row_q5_K(const block_q5_K * restrict x, float * restrict y, int k);
-void dequantize_row_q6_K(const block_q6_K * restrict x, float * restrict y, int k);
-void dequantize_row_q8_K(const block_q8_K * restrict x, float * restrict y, int k);
+void dequantize_row_dadbed9_q2_K(const block_q2_K * restrict x, float * restrict y, int k);
+void dequantize_row_dadbed9_q3_K(const block_q3_K * restrict x, float * restrict y, int k);
+void dequantize_row_dadbed9_q4_K(const block_q4_K * restrict x, float * restrict y, int k);
+void dequantize_row_dadbed9_q5_K(const block_q5_K * restrict x, float * restrict y, int k);
+void dequantize_row_dadbed9_q6_K(const block_q6_K * restrict x, float * restrict y, int k);
+void dequantize_row_dadbed9_q8_K(const block_q8_K * restrict x, float * restrict y, int k);
 
 // Dot product
 void ggml_dadbed9_vec_dot_q2_K_q8_K(int n, float * restrict s, const void * restrict vx, const void * restrict vy);

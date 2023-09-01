@@ -213,7 +213,7 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
         fin.read((char *)&hparams.n_vocab, sizeof(hparams.n_vocab));
         fin.read((char *)&hparams.ftype, sizeof(hparams.ftype));
 
-        const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
+        const int32_t qntvr = hparams.ftype / GGML_dadbed9_QNT_VERSION_FACTOR;
 
         printf("%s: d_model      = %d\n", __func__, hparams.d_model);
         printf("%s: max_seq_len  = %d\n", __func__, hparams.max_seq_len);
@@ -223,7 +223,7 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
         printf("%s: ftype        = %d\n", __func__, hparams.ftype);
         printf("%s: qntvr        = %d\n", __func__, qntvr);
 
-        hparams.ftype %= GGML_QNT_VERSION_FACTOR;
+        hparams.ftype %= GGML_dadbed9_QNT_VERSION_FACTOR;
     }
 
     // load vocab
@@ -233,7 +233,7 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
     // floats or quantized in order to save memory and also to speed up the
     // computation
     ggml_dadbed9_type wtype = ggml_dadbed9_ftype_to_ggml_dadbed9_type((ggml_dadbed9_ftype)(model.hparams.ftype));
-    if (wtype == GGML_TYPE_COUNT) {
+    if (wtype == GGML_dadbed9_TYPE_COUNT) {
         fprintf(stderr, "%s: invalid model file '%s' (bad ftype value %d)\n", __func__, fname.c_str(),
                 model.hparams.ftype);
         return false;
@@ -252,17 +252,17 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
         const int n_vocab = hparams.n_vocab;
 
         ctx_size += n_embd * n_vocab * ggml_dadbed9_type_sizef(wtype); // wte_weight
-        ctx_size += n_embd * ggml_dadbed9_type_sizef(GGML_TYPE_F32);   // ln_f_weight
+        ctx_size += n_embd * ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32);   // ln_f_weight
 
-        ctx_size += n_layer * (n_embd * ggml_dadbed9_type_sizef(GGML_TYPE_F32));      // ln_1_weight
+        ctx_size += n_layer * (n_embd * ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32));      // ln_1_weight
         ctx_size += n_layer * (3 * n_embd * n_embd * ggml_dadbed9_type_sizef(wtype)); // attn_Wqkv_weight
         ctx_size += n_layer * (n_embd * n_embd * ggml_dadbed9_type_sizef(wtype));     // attn_out_proj_weight
-        ctx_size += n_layer * (n_embd * ggml_dadbed9_type_sizef(GGML_TYPE_F32));      // ln_2_weight
+        ctx_size += n_layer * (n_embd * ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F32));      // ln_2_weight
         ctx_size += n_layer * (4 * n_embd * n_embd * ggml_dadbed9_type_sizef(wtype)); // mlp_mlp_up_weight
         ctx_size += n_layer * (n_embd * n_embd * 4 * ggml_dadbed9_type_sizef(wtype)); // mlp_mlp_down_weight
 
-        ctx_size += n_ctx * n_layer * n_embd * ggml_dadbed9_type_sizef(GGML_TYPE_F16); // memory_k
-        ctx_size += n_ctx * n_layer * n_embd * ggml_dadbed9_type_sizef(GGML_TYPE_F16); // memory_v
+        ctx_size += n_ctx * n_layer * n_embd * ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F16); // memory_k
+        ctx_size += n_ctx * n_layer * n_embd * ggml_dadbed9_type_sizef(GGML_dadbed9_TYPE_F16); // memory_v
 
         ctx_size += (1 + 6 * n_layer) * 512; // object overhead
 
@@ -295,7 +295,7 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
         model.layers.resize(n_layer);
 
         model.wte_weight = ggml_dadbed9_new_tensor_2d(ctx, wtype, n_embd, n_vocab);
-        model.norm_f_weight = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+        model.norm_f_weight = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, n_embd);
 
         // map by name
         model.tensors["transformer.wte.weight"] = model.wte_weight;
@@ -304,10 +304,10 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
         for (int i = 0; i < (int)n_layer; ++i) {
             auto & layer = model.layers[i];
 
-            layer.norm_1_weight = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+            layer.norm_1_weight = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, n_embd);
             layer.c_attn_wqkv_weight = ggml_dadbed9_new_tensor_2d(ctx, wtype, n_embd, 3 * n_embd);
             layer.c_attn_out_proj_weight = ggml_dadbed9_new_tensor_2d(ctx, wtype, n_embd, n_embd);
-            layer.norm_2_weight = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+            layer.norm_2_weight = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F32, n_embd);
             layer.ffn_up_proj = ggml_dadbed9_new_tensor_2d(ctx, wtype, n_embd, 4 * n_embd);
             layer.ffn_down_proj = ggml_dadbed9_new_tensor_2d(ctx, wtype, 4 * n_embd, n_embd);
 
@@ -333,8 +333,8 @@ bool replit_model_load(const std::string & fname, replit_model & model, replit_t
         const int64_t n_mem = n_layer * n_ctx;
         const int64_t n_elements = n_embd * n_mem;
 
-        model.memory_k = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
-        model.memory_v = ggml_dadbed9_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
+        model.memory_k = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F16, n_elements);
+        model.memory_v = ggml_dadbed9_new_tensor_1d(ctx, GGML_dadbed9_TYPE_F16, n_elements);
 
         const size_t memory_size = ggml_dadbed9_nbytes(model.memory_k) + ggml_dadbed9_nbytes(model.memory_v);
 
@@ -472,7 +472,7 @@ bool replit_eval(const replit_model & model, const int n_threads, const int n_pa
     struct ggml_dadbed9_context * ctx0 = ggml_dadbed9_init(params);
     struct ggml_dadbed9_cgraph gf = {};
 
-    struct ggml_dadbed9_tensor * embd = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    struct ggml_dadbed9_tensor * embd = ggml_dadbed9_new_tensor_1d(ctx0, GGML_dadbed9_TYPE_I32, N);
     memcpy(embd->data, embd_inp.data(), N * ggml_dadbed9_element_size(embd));
 
     struct ggml_dadbed9_tensor * inpL = ggml_dadbed9_get_rows(ctx0, model.wte_weight, embd);
@@ -516,7 +516,7 @@ bool replit_eval(const replit_model & model, const int n_threads, const int n_pa
             // Q = Qcur.contiguous().view(n_embd/n_head, n_head, N).permute(0,
             // 2, 1, 3) [64, N, 12]
             struct ggml_dadbed9_tensor * Q = ggml_dadbed9_permute(
-                ctx0, ggml_dadbed9_cpy(ctx0, Qcur, ggml_dadbed9_new_tensor_3d(ctx0, GGML_TYPE_F32, n_embd / n_head, n_head, N)), 0, 2,
+                ctx0, ggml_dadbed9_cpy(ctx0, Qcur, ggml_dadbed9_new_tensor_3d(ctx0, GGML_dadbed9_TYPE_F32, n_embd / n_head, n_head, N)), 0, 2,
                 1, 3);
 
             // K = Kmem.view(n_embd/n_head, n_head, n_past + N).permute(0, 2, 1,
@@ -562,7 +562,7 @@ bool replit_eval(const replit_model & model, const int n_threads, const int n_pa
             struct ggml_dadbed9_tensor * KQV_merged = ggml_dadbed9_permute(ctx0, KQV, 0, 2, 1, 3);
 
             // cur = KQV_merged.contiguous().view(n_embd, N)
-            cur = ggml_dadbed9_cpy(ctx0, KQV_merged, ggml_dadbed9_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
+            cur = ggml_dadbed9_cpy(ctx0, KQV_merged, ggml_dadbed9_new_tensor_2d(ctx0, GGML_dadbed9_TYPE_F32, n_embd, N));
 
             // projection
             { cur = ggml_dadbed9_mul_mat(ctx0, model.layers[il].c_attn_out_proj_weight, cur); }
@@ -653,7 +653,7 @@ struct replit_context * replit_init_from_file(const char * path_model, struct gp
     ctx->rng = std::mt19937(params.seed);
     ctx->logits_all = params.logits_all;
 
-    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
+    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_dadbed9_TYPE_F16 : GGML_dadbed9_TYPE_F32;
     
     
 //    replit_model_load(const std::string & fname, replit_model & model, replit_tokenizer & vocab)

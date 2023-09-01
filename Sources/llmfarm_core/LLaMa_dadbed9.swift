@@ -5,12 +5,11 @@
 //  Created by Byron Everson on 4/15/23.
 //
 
-import Foundation
+import Foundation 
 import llmfarm_core_cpp
 
-public class LLaMa: LLMBase {
-    
-    public var model: OpaquePointer?
+public class LLaMa_dadbed9: LLMBase {
+
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var params = llama_dadbed9_context_default_params()

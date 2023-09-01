@@ -191,7 +191,7 @@ void rwkv_init_logits(struct rwkv_context * model) {
 //    enum rwkv_error_flags error = rwkv_get_last_error(NULL);
 //    ASSERT(error == 0, "Unexpected error %d", error);
 //
-//#ifdef GGML_USE_CUBLAS
+//#ifdef GGML_dadbed9_USE_CUBLAS
 //    ASSERT(rwkv_gpu_offload_layers(model, rwkv_get_n_layer(model)), "Failed to offload layers to GPU");
 //#endif
 

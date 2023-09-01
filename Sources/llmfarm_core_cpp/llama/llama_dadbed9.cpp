@@ -24,7 +24,7 @@
 #endif
 #ifdef GGML_USE_K_QUANTS
 #ifndef QK_K
-#ifdef GGML_QKK_64
+#ifdef GGML_dadbed9_QKK_64
 #define QK_K 64
 #else
 #define QK_K 256
@@ -489,7 +489,7 @@ static size_t llama_dadbed9_calc_tensor_size(const std::vector<uint32_t> & ne, e
 
 struct llama_dadbed9_load_tensor {
     std::string name;
-    enum ggml_dadbed9_type type = GGML_TYPE_F32;
+    enum ggml_dadbed9_type type = GGML_dadbed9_TYPE_F32;
     std::vector<uint32_t> ne;
     size_t file_off;
     size_t size;
@@ -595,18 +595,18 @@ struct llama_dadbed9_file_loader {
                 throw std::runtime_error(format("llama.cpp: tensor '%s' should not be %u-dimensional", name.c_str(), n_dims));
             }
             switch (tensor.type) {
-                case GGML_TYPE_F32:
-                case GGML_TYPE_F16:
-                case GGML_TYPE_Q4_0:
-                case GGML_TYPE_Q4_1:
-                case GGML_TYPE_Q5_0:
-                case GGML_TYPE_Q5_1:
-                case GGML_TYPE_Q8_0:
-                case GGML_TYPE_Q2_K:
-                case GGML_TYPE_Q3_K:
-                case GGML_TYPE_Q4_K:
-                case GGML_TYPE_Q5_K:
-                case GGML_TYPE_Q6_K:
+                case GGML_dadbed9_TYPE_F32:
+                case GGML_dadbed9_TYPE_F16:
+                case GGML_dadbed9_TYPE_Q4_0:
+                case GGML_dadbed9_TYPE_Q4_1:
+                case GGML_dadbed9_TYPE_Q5_0:
+                case GGML_dadbed9_TYPE_Q5_1:
+                case GGML_dadbed9_TYPE_Q8_0:
+                case GGML_dadbed9_TYPE_Q2_K:
+                case GGML_dadbed9_TYPE_Q3_K:
+                case GGML_dadbed9_TYPE_Q4_K:
+                case GGML_dadbed9_TYPE_Q5_K:
+                case GGML_dadbed9_TYPE_Q6_K:
                     break;
                 default: {
                     throw std::runtime_error(format("unrecognized tensor type %u\n", tensor.type));
@@ -667,18 +667,18 @@ struct llama_dadbed9_file_saver {
     }
     void write_tensor(llama_dadbed9_load_tensor & tensor, enum ggml_dadbed9_type new_type, const void * new_data, size_t new_size) {
         switch (new_type) {
-            case GGML_TYPE_F32:
-            case GGML_TYPE_F16:
-            case GGML_TYPE_Q4_0:
-            case GGML_TYPE_Q4_1:
-            case GGML_TYPE_Q5_0:
-            case GGML_TYPE_Q5_1:
-            case GGML_TYPE_Q8_0:
-            case GGML_TYPE_Q2_K:
-            case GGML_TYPE_Q3_K:
-            case GGML_TYPE_Q4_K:
-            case GGML_TYPE_Q5_K:
-            case GGML_TYPE_Q6_K:
+            case GGML_dadbed9_TYPE_F32:
+            case GGML_dadbed9_TYPE_F16:
+            case GGML_dadbed9_TYPE_Q4_0:
+            case GGML_dadbed9_TYPE_Q4_1:
+            case GGML_dadbed9_TYPE_Q5_0:
+            case GGML_dadbed9_TYPE_Q5_1:
+            case GGML_dadbed9_TYPE_Q8_0:
+            case GGML_dadbed9_TYPE_Q2_K:
+            case GGML_dadbed9_TYPE_Q3_K:
+            case GGML_dadbed9_TYPE_Q4_K:
+            case GGML_dadbed9_TYPE_Q5_K:
+            case GGML_dadbed9_TYPE_Q6_K:
                 break;
             default: LLAMA_ASSERT(false);
         }
@@ -712,7 +712,7 @@ struct llama_dadbed9_model_loader {
     void calc_sizes(size_t * ctx_size_p, size_t * mmapped_size_p) const {
         *ctx_size_p = *mmapped_size_p = 0;
         for (const llama_dadbed9_load_tensor & lt : tensors_map.tensors) {
-            *ctx_size_p += sizeof(struct ggml_dadbed9_tensor) + GGML_OBJECT_SIZE;
+            *ctx_size_p += sizeof(struct ggml_dadbed9_tensor) + GGML_dadbed9_OBJECT_SIZE;
             *(use_mmap ? mmapped_size_p : ctx_size_p) += lt.size + 16;
         }
     }
@@ -733,7 +733,7 @@ struct llama_dadbed9_model_loader {
 
     struct ggml_dadbed9_tensor * get_tensor_for(llama_dadbed9_load_tensor & lt, ggml_dadbed9_backend backend) {
         struct ggml_dadbed9_tensor * tensor;
-        if (backend != GGML_BACKEND_CPU) {
+        if (backend != GGML_dadbed9_BACKEND_CPU) {
             ggml_dadbed9_set_no_alloc(ggml_dadbed9_ctx, true);
         }
         if (lt.ne.size() == 2) {
@@ -745,7 +745,7 @@ struct llama_dadbed9_model_loader {
         ggml_dadbed9_set_name(tensor, lt.name.c_str());
         LLAMA_ASSERT(lt.ggml_dadbed9_tensor == NULL); // if this fails, we called get_tensor twice on the same tensor
 
-        if (backend != GGML_BACKEND_CPU) {
+        if (backend != GGML_dadbed9_BACKEND_CPU) {
             ggml_dadbed9_set_no_alloc(ggml_dadbed9_ctx, use_mmap);
         }
         tensor->backend = backend;
@@ -766,7 +766,7 @@ struct llama_dadbed9_model_loader {
         size_t lock_size = 0;
         for (const llama_dadbed9_load_tensor & lt : tensors_map.tensors) {
             data_size += lt.size;
-            if (lt.ggml_dadbed9_tensor->backend != GGML_BACKEND_CPU) {
+            if (lt.ggml_dadbed9_tensor->backend != GGML_dadbed9_BACKEND_CPU) {
                 prefetch_size -= lt.size;
             }
         }
@@ -788,14 +788,14 @@ struct llama_dadbed9_model_loader {
 
             // allocate temp buffer if not using mmap
             if (!use_mmap && lt.data == NULL) {
-                GGML_ASSERT(lt.ggml_dadbed9_tensor->backend != GGML_BACKEND_CPU);
+                GGML_dadbed9_ASSERT(lt.ggml_dadbed9_tensor->backend != GGML_dadbed9_BACKEND_CPU);
                 lt.data = (uint8_t*)malloc(ggml_dadbed9_nbytes(lt.ggml_dadbed9_tensor));
             }
 
             load_data_for(lt);
 
             switch(lt.ggml_dadbed9_tensor->backend) {
-                case GGML_BACKEND_CPU:
+                case GGML_dadbed9_BACKEND_CPU:
                     lt.ggml_dadbed9_tensor->data = lt.data;
                     if (use_mmap && lmlock) {
                         lock_size += lt.size;
@@ -803,15 +803,15 @@ struct llama_dadbed9_model_loader {
                     }
                     break;
 #if defined(GGML_USE_CUBLAS)
-                case GGML_BACKEND_GPU:
-                case GGML_BACKEND_GPU_SPLIT:
+                case GGML_dadbed9_BACKEND_GPU:
+                case GGML_dadbed9_BACKEND_GPU_SPLIT:
                     ggml_dadbed9_cuda_transform_tensor(lt.data, lt.ggml_dadbed9_tensor);
                     if (!use_mmap) {
                         free(lt.data);
                     }
                     break;
 #elif defined(GGML_USE_CLBLAST)
-                case GGML_BACKEND_GPU:
+                case GGML_dadbed9_BACKEND_GPU:
                     ggml_dadbed9_cl_transform_tensor(lt.data, lt.ggml_dadbed9_tensor);
                     if (!use_mmap) {
                         free(lt.data);
@@ -1178,15 +1178,15 @@ static void llama_dadbed9_model_load_internal(
     LLAMA_LOG_INFO("%s: using CUDA for GPU acceleration\n", __func__);
     ggml_dadbed9_cuda_set_main_device(main_gpu);
     ggml_dadbed9_cuda_set_mul_mat_q(mul_mat_q);
-#define LLAMA_BACKEND_OFFLOAD       GGML_BACKEND_GPU
-#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_GPU_SPLIT
+#define LLAMA_BACKEND_OFFLOAD       GGML_dadbed9_BACKEND_GPU
+#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_dadbed9_BACKEND_GPU_SPLIT
 #elif defined(GGML_USE_CLBLAST)
     LLAMA_LOG_INFO("%s: using OpenCL for GPU acceleration\n", __func__);
-#define LLAMA_BACKEND_OFFLOAD       GGML_BACKEND_GPU
-#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_GPU
+#define LLAMA_BACKEND_OFFLOAD       GGML_dadbed9_BACKEND_GPU
+#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_dadbed9_BACKEND_GPU
 #else
-#define LLAMA_BACKEND_OFFLOAD       GGML_BACKEND_CPU
-#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_CPU
+#define LLAMA_BACKEND_OFFLOAD       GGML_dadbed9_BACKEND_CPU
+#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_dadbed9_BACKEND_CPU
 #endif
 
     // prepare memory for the weights
@@ -1200,7 +1200,7 @@ static void llama_dadbed9_model_load_internal(
 
         ml->ggml_dadbed9_ctx = ctx;
 
-        model.tok_embeddings = ml->get_tensor("tok_embeddings.weight", {n_embd, n_vocab}, GGML_BACKEND_CPU);
+        model.tok_embeddings = ml->get_tensor("tok_embeddings.weight", {n_embd, n_vocab}, GGML_dadbed9_BACKEND_CPU);
 
         // "output" tensor
         {
@@ -1210,23 +1210,23 @@ static void llama_dadbed9_model_load_internal(
                 // norm is not performance relevant on its own but keeping it in VRAM reduces data copying
                 // on Windows however this is detrimental unless everything is on the GPU
 #ifndef _WIN32
-                backend_norm = low_vram ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;
+                backend_norm = low_vram ? GGML_dadbed9_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;
 #else
-                backend_norm = low_vram || n_gpu_layers <= (int) n_layer + 2 ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;
+                backend_norm = low_vram || n_gpu_layers <= (int) n_layer + 2 ? GGML_dadbed9_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;
 #endif // _WIN32
 
                 backend_output = LLAMA_BACKEND_OFFLOAD_SPLIT;
             } else {
-                backend_norm = GGML_BACKEND_CPU;
-                backend_output = GGML_BACKEND_CPU;
+                backend_norm = GGML_dadbed9_BACKEND_CPU;
+                backend_output = GGML_dadbed9_BACKEND_CPU;
             }
 
             model.norm   = ml->get_tensor("norm.weight",   {n_embd},          backend_norm);
             model.output = ml->get_tensor("output.weight", {n_embd, n_vocab}, backend_output);
-            if (backend_norm == GGML_BACKEND_GPU) {
+            if (backend_norm == GGML_dadbed9_BACKEND_GPU) {
                 vram_weights += ggml_dadbed9_nbytes(model.norm);
             }
-            if (backend_output == GGML_BACKEND_GPU_SPLIT) {
+            if (backend_output == GGML_dadbed9_BACKEND_GPU_SPLIT) {
                 vram_weights += ggml_dadbed9_nbytes(model.output);
             }
         }
@@ -1235,8 +1235,8 @@ static void llama_dadbed9_model_load_internal(
 
         model.layers.resize(n_layer);
         for (uint32_t i = 0; i < n_layer; ++i) {
-            const ggml_dadbed9_backend backend = int(i) < i_gpu_start ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD; // NOLINT
-            const ggml_dadbed9_backend backend_split = int(i) < i_gpu_start ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD_SPLIT; // NOLINT
+            const ggml_dadbed9_backend backend = int(i) < i_gpu_start ? GGML_dadbed9_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD; // NOLINT
+            const ggml_dadbed9_backend backend_split = int(i) < i_gpu_start ? GGML_dadbed9_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD_SPLIT; // NOLINT
 
             auto & layer = model.layers[i];
 
@@ -1255,7 +1255,7 @@ static void llama_dadbed9_model_load_internal(
             layer.w2 = ml->get_tensor(layers_i + ".feed_forward.w2.weight", {  n_ff, n_embd}, backend_split);
             layer.w3 = ml->get_tensor(layers_i + ".feed_forward.w3.weight", {n_embd,   n_ff}, backend_split);
 
-            if (backend == GGML_BACKEND_GPU) {
+            if (backend == GGML_dadbed9_BACKEND_GPU) {
                 vram_weights +=
                     ggml_dadbed9_nbytes(layer.attention_norm) + ggml_dadbed9_nbytes(layer.wq) + ggml_dadbed9_nbytes(layer.wk)             +
                     ggml_dadbed9_nbytes(layer.wv)             + ggml_dadbed9_nbytes(layer.wo) + ggml_dadbed9_nbytes(layer.ffn_norm) +
@@ -1268,7 +1268,7 @@ static void llama_dadbed9_model_load_internal(
 
     // print memory requirements
     {
-        const size_t scale = memory_type == GGML_TYPE_F32 ? 2 : 1;
+        const size_t scale = memory_type == GGML_dadbed9_TYPE_F32 ? 2 : 1;
 
         // this is the total memory required to run the inference
         size_t mem_required =
@@ -1463,7 +1463,7 @@ static struct ggml_dadbed9_cgraph * llama_dadbed9_build_graph(
     struct ggml_dadbed9_tensor * inpL;
 
     if (tokens) {
-        struct ggml_dadbed9_tensor * inp_tokens = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+        struct ggml_dadbed9_tensor * inp_tokens = ggml_dadbed9_new_tensor_1d(ctx0, GGML_dadbed9_TYPE_I32, N);
 
 #ifdef LLAMA_USE_ALLOCATOR
         ggml_dadbed9_allocr_alloc(lctx.alloc, inp_tokens);
@@ -1478,10 +1478,10 @@ static struct ggml_dadbed9_cgraph * llama_dadbed9_build_graph(
         inpL = ggml_dadbed9_get_rows(ctx0, model.tok_embeddings, inp_tokens);
     } else {
 #ifdef GGML_USE_MPI
-        GGML_ASSERT(false && "not implemented");
+        GGML_dadbed9_ASSERT(false && "not implemented");
 #endif
 
-        inpL = ggml_dadbed9_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N);
+        inpL = ggml_dadbed9_new_tensor_2d(ctx0, GGML_dadbed9_TYPE_F32, n_embd, N);
 
 #ifdef LLAMA_USE_ALLOCATOR
         ggml_dadbed9_allocr_alloc(lctx.alloc, inpL);
@@ -1517,7 +1517,7 @@ static struct ggml_dadbed9_cgraph * llama_dadbed9_build_graph(
     }
 #endif // GGML_USE_CUBLAS
 
-    struct ggml_dadbed9_tensor * KQ_scale = ggml_dadbed9_new_tensor_1d(ctx0, GGML_TYPE_F32, 1);
+    struct ggml_dadbed9_tensor * KQ_scale = ggml_dadbed9_new_tensor_1d(ctx0, GGML_dadbed9_TYPE_F32, 1);
 #ifdef LLAMA_USE_ALLOCATOR
     ggml_dadbed9_allocr_alloc(lctx.alloc, KQ_scale);
     if (!ggml_dadbed9_allocr_is_measure(lctx.alloc)) {
@@ -1668,7 +1668,7 @@ static struct ggml_dadbed9_cgraph * llama_dadbed9_build_graph(
             // cur = KQV_merged.contiguous().view(n_embd, N)
             cur = ggml_dadbed9_cpy(ctx0,
                     KQV_merged,
-                    ggml_dadbed9_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
+                    ggml_dadbed9_new_tensor_2d(ctx0, GGML_dadbed9_TYPE_F32, n_embd, N));
             offload_func_v(cur);
             ggml_dadbed9_set_name(cur, "KQV_merged_contiguous");
 
@@ -1877,9 +1877,9 @@ static bool llama_dadbed9_eval_internal(
         ggml_dadbed9_graph_export(gf, cgraph_fname);
     }
 
-#ifdef GGML_PERF
+#ifdef GGML_dadbed9_PERF
     // print timing information per ggml operation (for debugging purposes)
-    // requires GGML_PERF to be defined
+    // requires GGML_dadbed9_PERF to be defined
     ggml_dadbed9_graph_print(gf);
 #endif
 
@@ -3000,12 +3000,12 @@ static void llama_dadbed9_convert_tensor_internal(const llama_dadbed9_load_tenso
         if (qtype.to_float == NULL) {
             throw std::runtime_error(format("type %s unsupported for integer quantization: no dequantization available", ggml_dadbed9_type_name(tensor.type)));
         }
-    } else if (tensor.type != GGML_TYPE_F16) {
+    } else if (tensor.type != GGML_dadbed9_TYPE_F16) {
         throw std::runtime_error(format("cannot dequantize/convert tensor type %s", ggml_dadbed9_type_name(tensor.type)));
     }
 
     if (nthread < 2) {
-        if (tensor.type == GGML_TYPE_F16) {
+        if (tensor.type == GGML_dadbed9_TYPE_F16) {
             ggml_dadbed9_fp16_to_fp32_row((ggml_dadbed9_fp16_t *)tensor.data, f32_output, nelements);
         } else if (ggml_dadbed9_is_quantized(tensor.type)) {
             qtype.to_float(tensor.data, f32_output, nelements);
@@ -3015,7 +3015,7 @@ static void llama_dadbed9_convert_tensor_internal(const llama_dadbed9_load_tenso
         return;
     }
 
-    auto block_size = tensor.type == GGML_TYPE_F16 ? 1 : (size_t)ggml_dadbed9_blck_size(tensor.type);
+    auto block_size = tensor.type == GGML_dadbed9_TYPE_F16 ? 1 : (size_t)ggml_dadbed9_blck_size(tensor.type);
     auto block_size_bytes = ggml_dadbed9_type_size(tensor.type);
 
     LLAMA_ASSERT(nelements % block_size == 0);
@@ -3030,7 +3030,7 @@ static void llama_dadbed9_convert_tensor_internal(const llama_dadbed9_load_tenso
         auto thr_block_bytes = thr_blocks * block_size_bytes; // number of input bytes for this thread
 
         auto compute = [qtype] (ggml_dadbed9_type typ, uint8_t * inbuf, float * outbuf, int nels) {
-            if (typ == GGML_TYPE_F16) {
+            if (typ == GGML_dadbed9_TYPE_F16) {
                 ggml_dadbed9_fp16_to_fp32_row((ggml_dadbed9_fp16_t *)inbuf, outbuf, nels);
             } else {
                 qtype.to_float(inbuf, outbuf, nels);
@@ -3052,25 +3052,25 @@ static void llama_dadbed9_model_quantize_internal(const std::string & fname_inp,
     int nthread = params->nthread;
 
     switch (params->ftype) {
-        case LLAMA_FTYPE_MOSTLY_Q4_0: quantized_type = GGML_TYPE_Q4_0; break;
-        case LLAMA_FTYPE_MOSTLY_Q4_1: quantized_type = GGML_TYPE_Q4_1; break;
-        case LLAMA_FTYPE_MOSTLY_Q5_0: quantized_type = GGML_TYPE_Q5_0; break;
-        case LLAMA_FTYPE_MOSTLY_Q5_1: quantized_type = GGML_TYPE_Q5_1; break;
-        case LLAMA_FTYPE_MOSTLY_Q8_0: quantized_type = GGML_TYPE_Q8_0; break;
-        case LLAMA_FTYPE_MOSTLY_F16:  quantized_type = GGML_TYPE_F16;  break;
-        case LLAMA_FTYPE_ALL_F32:     quantized_type = GGML_TYPE_F32;  break;
+        case LLAMA_FTYPE_MOSTLY_Q4_0: quantized_type = GGML_dadbed9_TYPE_Q4_0; break;
+        case LLAMA_FTYPE_MOSTLY_Q4_1: quantized_type = GGML_dadbed9_TYPE_Q4_1; break;
+        case LLAMA_FTYPE_MOSTLY_Q5_0: quantized_type = GGML_dadbed9_TYPE_Q5_0; break;
+        case LLAMA_FTYPE_MOSTLY_Q5_1: quantized_type = GGML_dadbed9_TYPE_Q5_1; break;
+        case LLAMA_FTYPE_MOSTLY_Q8_0: quantized_type = GGML_dadbed9_TYPE_Q8_0; break;
+        case LLAMA_FTYPE_MOSTLY_F16:  quantized_type = GGML_dadbed9_TYPE_F16;  break;
+        case LLAMA_FTYPE_ALL_F32:     quantized_type = GGML_dadbed9_TYPE_F32;  break;
 
 #ifdef GGML_USE_K_QUANTS
         // K-quants
-        case LLAMA_FTYPE_MOSTLY_Q2_K:   quantized_type = GGML_TYPE_Q2_K; break;
+        case LLAMA_FTYPE_MOSTLY_Q2_K:   quantized_type = GGML_dadbed9_TYPE_Q2_K; break;
         case LLAMA_FTYPE_MOSTLY_Q3_K_S:
         case LLAMA_FTYPE_MOSTLY_Q3_K_M:
-        case LLAMA_FTYPE_MOSTLY_Q3_K_L: quantized_type = GGML_TYPE_Q3_K; break;
+        case LLAMA_FTYPE_MOSTLY_Q3_K_L: quantized_type = GGML_dadbed9_TYPE_Q3_K; break;
         case LLAMA_FTYPE_MOSTLY_Q4_K_S:
-        case LLAMA_FTYPE_MOSTLY_Q4_K_M: quantized_type = GGML_TYPE_Q4_K; break;
+        case LLAMA_FTYPE_MOSTLY_Q4_K_M: quantized_type = GGML_dadbed9_TYPE_Q4_K; break;
         case LLAMA_FTYPE_MOSTLY_Q5_K_S:
-        case LLAMA_FTYPE_MOSTLY_Q5_K_M: quantized_type = GGML_TYPE_Q5_K; break;
-        case LLAMA_FTYPE_MOSTLY_Q6_K:   quantized_type = GGML_TYPE_Q6_K; break;
+        case LLAMA_FTYPE_MOSTLY_Q5_K_M: quantized_type = GGML_dadbed9_TYPE_Q5_K; break;
+        case LLAMA_FTYPE_MOSTLY_Q6_K:   quantized_type = GGML_dadbed9_TYPE_Q6_K; break;
 #endif
         default: throw std::runtime_error(format("invalid output file type %d\n", ftype));
     }
@@ -3146,30 +3146,30 @@ static void llama_dadbed9_model_quantize_internal(const std::string & fname_inp,
                 int nx = tensor.ne.at(0);
                 int ny = tensor.ne.at(1);
                 if (nx % QK_K == 0 && ny % QK_K == 0) {
-                    new_type = GGML_TYPE_Q6_K;
+                    new_type = GGML_dadbed9_TYPE_Q6_K;
                 }
             } else if (tensor.name.find("attention.wv.weight") != std::string::npos) {
-                if      (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q2_K) new_type = GGML_TYPE_Q4_K;
-                else if (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_L) new_type = GGML_TYPE_Q5_K;
+                if      (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q2_K) new_type = GGML_dadbed9_TYPE_Q4_K;
+                else if (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_L) new_type = GGML_dadbed9_TYPE_Q5_K;
                 else if ((ftype == LLAMA_FTYPE_MOSTLY_Q4_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q5_K_M) &&
-                        use_more_bits(i_attention_wv, n_attention_wv)) new_type = GGML_TYPE_Q6_K;
+                        use_more_bits(i_attention_wv, n_attention_wv)) new_type = GGML_dadbed9_TYPE_Q6_K;
                 else if (QK_K == 64 && (ftype == LLAMA_FTYPE_MOSTLY_Q4_K_S || ftype == LLAMA_FTYPE_MOSTLY_Q3_K_S) &&
-                        (i_attention_wv < n_attention_wv/8 || i_attention_wv >= 7*n_attention_wv/8)) new_type = GGML_TYPE_Q6_K;
+                        (i_attention_wv < n_attention_wv/8 || i_attention_wv >= 7*n_attention_wv/8)) new_type = GGML_dadbed9_TYPE_Q6_K;
                 ++i_attention_wv;
             } else if (tensor.name.find("feed_forward.w2.weight") != std::string::npos) {
-                if      (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q2_K) new_type = GGML_TYPE_Q4_K;
-                else if (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_L) new_type = GGML_TYPE_Q5_K;
+                if      (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q2_K) new_type = GGML_dadbed9_TYPE_Q4_K;
+                else if (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_L) new_type = GGML_dadbed9_TYPE_Q5_K;
                 else if ((ftype == LLAMA_FTYPE_MOSTLY_Q4_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q5_K_M) &&
-                         use_more_bits(i_feed_forward_w2, n_feed_forward_w2)) new_type = GGML_TYPE_Q6_K;
-                //else if (ftype == LLAMA_FTYPE_MOSTLY_Q4_K_S && i_feed_forward_w2 < n_feed_forward_w2/8) new_type = GGML_TYPE_Q6_K;
+                         use_more_bits(i_feed_forward_w2, n_feed_forward_w2)) new_type = GGML_dadbed9_TYPE_Q6_K;
+                //else if (ftype == LLAMA_FTYPE_MOSTLY_Q4_K_S && i_feed_forward_w2 < n_feed_forward_w2/8) new_type = GGML_dadbed9_TYPE_Q6_K;
                 ++i_feed_forward_w2;
             } else if (tensor.name.find("attention.wo.weight") != std::string::npos) {
-                if      (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q2_K) new_type = GGML_TYPE_Q4_K;
-                else if (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_L) new_type = GGML_TYPE_Q5_K;
+                if      (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_M || ftype == LLAMA_FTYPE_MOSTLY_Q2_K) new_type = GGML_dadbed9_TYPE_Q4_K;
+                else if (ftype == LLAMA_FTYPE_MOSTLY_Q3_K_L) new_type = GGML_dadbed9_TYPE_Q5_K;
             }
             bool convert_incompatible_tensor = false;
-            if (new_type == GGML_TYPE_Q2_K || new_type == GGML_TYPE_Q3_K || new_type == GGML_TYPE_Q4_K ||
-                new_type == GGML_TYPE_Q5_K || new_type == GGML_TYPE_Q6_K) {
+            if (new_type == GGML_dadbed9_TYPE_Q2_K || new_type == GGML_dadbed9_TYPE_Q3_K || new_type == GGML_dadbed9_TYPE_Q4_K ||
+                new_type == GGML_dadbed9_TYPE_Q5_K || new_type == GGML_dadbed9_TYPE_Q6_K) {
                 int nx = tensor.ne.at(0);
                 int ny = tensor.ne.at(1);
                 if (nx % QK_K != 0 || ny % QK_K != 0) {
@@ -3179,10 +3179,10 @@ static void llama_dadbed9_model_quantize_internal(const std::string & fname_inp,
             }
             if (convert_incompatible_tensor) {
                 if (tensor.name == "output.weight") {
-                    new_type = GGML_TYPE_F16; //fall back to F16 instead of just failing.
+                    new_type = GGML_dadbed9_TYPE_F16; //fall back to F16 instead of just failing.
                     LLAMA_LOG_WARN("F16 will be used for this tensor instead.\n");
                 } else if (tensor.name == "tok_embeddings.weight") {
-                    new_type = GGML_TYPE_Q4_0; //fall back to Q4_0 instead of just failing.
+                    new_type = GGML_dadbed9_TYPE_Q4_0; //fall back to Q4_0 instead of just failing.
                     LLAMA_LOG_WARN("Q4_0 will be used for this tensor instead.\n");
                 } else {
                     throw std::runtime_error("Unsupported tensor size encountered\n");
@@ -3194,7 +3194,7 @@ static void llama_dadbed9_model_quantize_internal(const std::string & fname_inp,
             size_t nelements = tensor.ne.at(0) * tensor.ne.at(1);
             llama_dadbed9_buffer f32_conv_buf;
 
-            if (tensor.type == GGML_TYPE_F32) {
+            if (tensor.type == GGML_dadbed9_TYPE_F32) {
                 f32_data = (float *) tensor.data;
             } else if (ggml_dadbed9_is_quantized(tensor.type) && !params->allow_requantize) {
                 throw std::runtime_error(format("requantizing from type %s is disabled", ggml_dadbed9_type_name(tensor.type)));
@@ -3304,7 +3304,7 @@ struct llama_dadbed9_model * llama_dadbed9_load_model_from_file(
 
     llama_dadbed9_model * model = new llama_dadbed9_model;
 
-    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
+    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_dadbed9_TYPE_F16 : GGML_dadbed9_TYPE_F32;
 
     if (!llama_dadbed9_model_load(path_model, *model, model->vocab, params.n_ctx, params.n_batch, params.n_gqa, params.rms_norm_eps, params.n_gpu_layers,
                 params.main_gpu, params.tensor_split, params.mul_mat_q, params.rope_freq_base, params.rope_freq_scale,params.low_vram,
@@ -3355,7 +3355,7 @@ struct llama_dadbed9_context * llama_dadbed9_new_context_with_model(
     ctx->rng = std::mt19937(params.seed);
     ctx->logits_all = params.logits_all;
 
-    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
+    ggml_dadbed9_type memory_type = params.f16_kv ? GGML_dadbed9_TYPE_F16 : GGML_dadbed9_TYPE_F32;
 
     // reserve memory for context buffers
     if (!params.vocab_only) {
@@ -3387,7 +3387,7 @@ struct llama_dadbed9_context * llama_dadbed9_new_context_with_model(
         {
             static const size_t tensor_alignment = 32;
             // the compute buffer is used to store the tensor and graph structs, while the allocator buffer is used for the tensor data
-            ctx->buf_compute.resize(ggml_dadbed9_tensor_overhead()*GGML_MAX_NODES + ggml_dadbed9_graph_overhead());
+            ctx->buf_compute.resize(ggml_dadbed9_tensor_overhead()*GGML_dadbed9_MAX_NODES + ggml_dadbed9_graph_overhead());
 
             // create measure allocator
             ctx->alloc = ggml_dadbed9_allocr_new_measure(tensor_alignment);
@@ -3657,8 +3657,8 @@ int llama_dadbed9_apply_lora_from_file_internal(const struct llama_dadbed9_model
         // create ggml tensor
         ggml_dadbed9_type wtype;
         switch (ftype) {
-            case 0: wtype = GGML_TYPE_F32;  break;
-            case 1: wtype = GGML_TYPE_F16;  break;
+            case 0: wtype = GGML_dadbed9_TYPE_F32;  break;
+            case 1: wtype = GGML_dadbed9_TYPE_F16;  break;
             default:
                     {
                         LLAMA_LOG_ERROR("%s: invalid tensor data type '%d'\n",
@@ -3695,8 +3695,8 @@ int llama_dadbed9_apply_lora_from_file_internal(const struct llama_dadbed9_model
             offload_func_t offload_func_force_inplace = llama_dadbed9_nop;
 
 #ifdef GGML_USE_CUBLAS
-            if (dest_t->backend == GGML_BACKEND_GPU || dest_t->backend == GGML_BACKEND_GPU_SPLIT) {
-                if (dest_t->type != GGML_TYPE_F16) {
+            if (dest_t->backend == GGML_dadbed9_BACKEND_GPU || dest_t->backend == GGML_dadbed9_BACKEND_GPU_SPLIT) {
+                if (dest_t->type != GGML_dadbed9_TYPE_F16) {
                     throw std::runtime_error(format(
                         "%s: error: the simultaneous use of LoRAs and GPU acceleration is only supported for f16 models", __func__));
                 }
@@ -3714,7 +3714,7 @@ int llama_dadbed9_apply_lora_from_file_internal(const struct llama_dadbed9_model
                 }
                 size_t idx = model_loader->tensors_map.name_to_idx[base_name];
                 llama_dadbed9_load_tensor & lt = model_loader->tensors_map.tensors[idx];
-                base_t = model_loader->get_tensor(base_name, { (uint32_t)dest_t->ne[0], (uint32_t)dest_t->ne[1] }, GGML_BACKEND_CPU);
+                base_t = model_loader->get_tensor(base_name, { (uint32_t)dest_t->ne[0], (uint32_t)dest_t->ne[1] }, GGML_dadbed9_BACKEND_CPU);
                 lt.data = (uint8_t *) lt.ggml_dadbed9_tensor->data;
                 model_loader->load_data_for(lt);
                 lt.ggml_dadbed9_tensor->data = lt.data;
@@ -3732,11 +3732,11 @@ int llama_dadbed9_apply_lora_from_file_internal(const struct llama_dadbed9_model
             }
 
             ggml_dadbed9_tensor * loraA = lora_tensors[base_name + ".loraA"];
-            GGML_ASSERT(loraA->type == GGML_TYPE_F32);
+            GGML_dadbed9_ASSERT(loraA->type == GGML_dadbed9_TYPE_F32);
             ggml_dadbed9_set_name(loraA, "loraA");
 
             ggml_dadbed9_tensor * loraB = lora_tensors[base_name + ".loraB"];
-            GGML_ASSERT(loraB->type == GGML_TYPE_F32);
+            GGML_dadbed9_ASSERT(loraB->type == GGML_dadbed9_TYPE_F32);
             ggml_dadbed9_set_name(loraB, "loraB");
 
             if (base_t->ne[0] != loraA->ne[1] || base_t->ne[1] != loraB->ne[1]) {

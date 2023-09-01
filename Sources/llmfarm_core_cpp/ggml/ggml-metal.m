@@ -1,9 +1,8 @@
-#import "ggml-metal_dadbed9.h"
+#import "ggml-metal.h"
 
-#import "ggml_dadbed9.h"
+#import "ggml.h"
 
 #import <Foundation/Foundation.h>
-#include <sys/utsname.h>
 
 #import <Metal/Metal.h>
 
@@ -12,7 +11,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#ifdef GGML_dadbed9_METAL_NDEBUG
+// TODO: temporary - reuse llama.cpp logging
+#ifdef GGML_METAL_NDEBUG
 #define metal_printf(...)
 #else
 #define metal_printf(...) fprintf(stderr, __VA_ARGS__)
@@ -20,9 +20,9 @@
 
 #define UNUSED(x) (void)(x)
 
-#define GGML_dadbed9_MAX_CONCUR (2*GGML_dadbed9_MAX_NODES)
+#define GGML_MAX_CONCUR (2*GGML_MAX_NODES)
 
-struct ggml_dadbed9_metal_buffer {
+struct ggml_metal_buffer {
     const char * name;
 
     void   * data;
@@ -31,69 +31,75 @@ struct ggml_dadbed9_metal_buffer {
     id<MTLBuffer> metal;
 };
 
-struct ggml_dadbed9_metal_context {
+struct ggml_metal_context {
     int n_cb;
-
-    float * logits;
 
     id<MTLDevice>       device;
     id<MTLCommandQueue> queue;
     id<MTLLibrary>      library;
 
-    int n_buffers;
-    struct ggml_dadbed9_metal_buffer buffers[GGML_dadbed9_METAL_MAX_BUFFERS];
+    id<MTLCommandBuffer>         command_buffers [GGML_METAL_MAX_COMMAND_BUFFERS];
+    id<MTLComputeCommandEncoder> command_encoders[GGML_METAL_MAX_COMMAND_BUFFERS];
 
-    int concur_list[GGML_dadbed9_MAX_CONCUR];
+    dispatch_queue_t d_queue;
+
+    int n_buffers;
+    struct ggml_metal_buffer buffers[GGML_METAL_MAX_BUFFERS];
+
+    int concur_list[GGML_MAX_CONCUR];
     int concur_list_len;
 
     // custom kernels
-#define GGML_dadbed9_METAL_DECL_KERNEL(name) \
+#define GGML_METAL_DECL_KERNEL(name) \
     id<MTLFunction>             function_##name; \
     id<MTLComputePipelineState> pipeline_##name
 
-    GGML_dadbed9_METAL_DECL_KERNEL(add);
-    GGML_dadbed9_METAL_DECL_KERNEL(add_row); // TODO: avoid this extra kernel, instead extend the "add" kernel to support broadcast
-    GGML_dadbed9_METAL_DECL_KERNEL(mul);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_row); // TODO: avoid this extra kernel, instead extend the "mul" kernel to support broadcast
-    GGML_dadbed9_METAL_DECL_KERNEL(scale);
-    GGML_dadbed9_METAL_DECL_KERNEL(silu);
-    GGML_dadbed9_METAL_DECL_KERNEL(relu);
-    GGML_dadbed9_METAL_DECL_KERNEL(gelu);
-    GGML_dadbed9_METAL_DECL_KERNEL(soft_max);
-    GGML_dadbed9_METAL_DECL_KERNEL(diag_mask_inf);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_f16);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q4_0);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q4_1);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q2_K);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q3_K);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q4_K);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q5_K);
-    GGML_dadbed9_METAL_DECL_KERNEL(get_rows_q6_K);
-    GGML_dadbed9_METAL_DECL_KERNEL(rms_norm);
-    GGML_dadbed9_METAL_DECL_KERNEL(norm);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_f16_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q4_0_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q4_1_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q2_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q3_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q4_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q5_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mat_q6_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_f16_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q4_0_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q4_1_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q2_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q3_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q4_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q5_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(mul_mm_q6_K_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(rope);
-    GGML_dadbed9_METAL_DECL_KERNEL(alibi_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(cpy_f32_f16);
-    GGML_dadbed9_METAL_DECL_KERNEL(cpy_f32_f32);
-    GGML_dadbed9_METAL_DECL_KERNEL(cpy_f16_f16);
+    GGML_METAL_DECL_KERNEL(add);
+    GGML_METAL_DECL_KERNEL(add_row); // TODO: avoid this extra kernel, instead extend the "add" kernel to support broadcast
+    GGML_METAL_DECL_KERNEL(mul);
+    GGML_METAL_DECL_KERNEL(mul_row); // TODO: avoid this extra kernel, instead extend the "mul" kernel to support broadcast
+    GGML_METAL_DECL_KERNEL(scale);
+    GGML_METAL_DECL_KERNEL(silu);
+    GGML_METAL_DECL_KERNEL(relu);
+    GGML_METAL_DECL_KERNEL(gelu);
+    GGML_METAL_DECL_KERNEL(soft_max);
+    GGML_METAL_DECL_KERNEL(diag_mask_inf);
+    GGML_METAL_DECL_KERNEL(get_rows_f16);
+    GGML_METAL_DECL_KERNEL(get_rows_q4_0);
+    GGML_METAL_DECL_KERNEL(get_rows_q4_1);
+    GGML_METAL_DECL_KERNEL(get_rows_q8_0);
+    GGML_METAL_DECL_KERNEL(get_rows_q2_K);
+    GGML_METAL_DECL_KERNEL(get_rows_q3_K);
+    GGML_METAL_DECL_KERNEL(get_rows_q4_K);
+    GGML_METAL_DECL_KERNEL(get_rows_q5_K);
+    GGML_METAL_DECL_KERNEL(get_rows_q6_K);
+    GGML_METAL_DECL_KERNEL(rms_norm);
+    GGML_METAL_DECL_KERNEL(norm);
+    GGML_METAL_DECL_KERNEL(mul_mat_f16_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q4_0_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q4_1_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q8_0_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q2_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q3_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q4_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q5_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mat_q6_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_f16_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q4_0_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q4_1_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q8_0_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q2_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q3_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q4_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q5_K_f32);
+    GGML_METAL_DECL_KERNEL(mul_mm_q6_K_f32);
+    GGML_METAL_DECL_KERNEL(rope);
+    GGML_METAL_DECL_KERNEL(alibi_f32);
+    GGML_METAL_DECL_KERNEL(cpy_f32_f16);
+    GGML_METAL_DECL_KERNEL(cpy_f32_f32);
+    GGML_METAL_DECL_KERNEL(cpy_f16_f16);
 
-#undef GGML_dadbed9_METAL_DECL_KERNEL
+#undef GGML_METAL_DECL_KERNEL
 };
 
 // MSL code
@@ -102,32 +108,23 @@ struct ggml_dadbed9_metal_context {
 static NSString * const msl_library_source = @"see metal.metal";
 
 // Here to assist with NSBundle Path Hack
-@interface GGMLMetalClass_dadbed9 : NSObject
+@interface GGMLMetalClass : NSObject
 @end
-@implementation GGMLMetalClass_dadbed9
+@implementation GGMLMetalClass
 @end
 
-NSString *GetMachineHardwareName(void) {
-    struct utsname sysinfo;
-    int retVal = uname(&sysinfo);
-    if (EXIT_SUCCESS != retVal) return nil;
-    
-    return [NSString stringWithUTF8String:sysinfo.machine];
-}
+struct ggml_metal_context * ggml_metal_init(int n_cb) {
+    metal_printf("%s: allocating\n", __func__);
 
-struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
-    fprintf(stderr, "%s: allocating\n", __func__);
+    struct ggml_metal_context * ctx = malloc(sizeof(struct ggml_metal_context));
 
-    struct ggml_dadbed9_metal_context * ctx = calloc(1, sizeof(struct ggml_dadbed9_metal_context));
-
-    ctx->n_cb   = n_cb;
+    ctx->n_cb   = MIN(n_cb, GGML_METAL_MAX_BUFFERS);
     ctx->device = MTLCreateSystemDefaultDevice();
     ctx->queue  = [ctx->device newCommandQueue];
     ctx->n_buffers = 0;
     ctx->concur_list_len = 0;
-    
-    NSString * arch = GetMachineHardwareName();
-    
+
+    ctx->d_queue = dispatch_queue_create("llama.cpp", DISPATCH_QUEUE_CONCURRENT);
 
 #if 0
     // compile from source string and show compile log
@@ -136,7 +133,7 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
 
         ctx->library = [ctx->device newLibraryWithSource:msl_library_source options:nil error:&error];
         if (error) {
-            fprintf(stderr, "%s: error: %s\n", __func__, [[error description] UTF8String]);
+            metal_printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
             return NULL;
         }
     }
@@ -148,18 +145,17 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
         NSError * error = nil;
 
         //NSString * path = [[NSBundle mainBundle] pathForResource:@"../../examples/metal/metal" ofType:@"metal"];
-//        NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
-        NSString * path = [SWIFTPM_MODULE_BUNDLE pathForResource:@"ggml-metal" ofType:@"metal" inDirectory:@"metal"];
-//        NSString *path = @"/Users/guinmoon/dev/alpaca_llama_etc/LLMFarm/llmfarm_core.swift/Sources/llmfarm_core_cpp/metal/ggml-metal.metal";
-        fprintf(stderr, "%s: loading '%s'\n", __func__, [path UTF8String]);
+        NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
+        NSString * path = [bundle pathForResource:@"ggml-metal" ofType:@"metal"];
+        metal_printf("%s: loading '%s'\n", __func__, [path UTF8String]);
 
         NSString * src  = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:&error];
         if (error) {
-            fprintf(stderr, "%s: error: %s\n", __func__, [[error description] UTF8String]);
+            metal_printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
             return NULL;
         }
 
-#ifdef GGML_dadbed9_QKK_64
+#ifdef GGML_QKK_64
         MTLCompileOptions* options = [MTLCompileOptions new];
         options.preprocessorMacros = @{ @"QK_K" : @(64) };
         ctx->library = [ctx->device newLibraryWithSource:src options:options error:&error];
@@ -167,7 +163,7 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
         ctx->library = [ctx->device newLibraryWithSource:src options:nil error:&error];
 #endif
         if (error) {
-            fprintf(stderr, "%s: error: %s\n", __func__, [[error description] UTF8String]);
+            metal_printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
             return NULL;
         }
     }
@@ -176,92 +172,166 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
     // load kernels
     {
         NSError * error = nil;
-#define GGML_dadbed9_METAL_ADD_KERNEL(name) \
+#define GGML_METAL_ADD_KERNEL(name) \
         ctx->function_##name = [ctx->library newFunctionWithName:@"kernel_"#name]; \
         ctx->pipeline_##name = [ctx->device newComputePipelineStateWithFunction:ctx->function_##name error:&error]; \
-        fprintf(stderr, "%s: loaded %-32s %16p\n", __func__, "kernel_"#name, (__bridge void *) ctx->pipeline_##name); \
+        metal_printf("%s: loaded %-32s %16p | th_max = %4d | th_width = %4d\n", __func__, "kernel_"#name, (void *) ctx->pipeline_##name, \
+                (int) ctx->pipeline_##name.maxTotalThreadsPerThreadgroup, \
+                (int) ctx->pipeline_##name.threadExecutionWidth); \
         if (error) { \
-            fprintf(stderr, "%s: load pipeline error: %s\n", __func__, [[error description] UTF8String]); \
+            metal_printf("%s: load pipeline error: %s\n", __func__, [[error description] UTF8String]); \
             return NULL; \
         }
 
-        GGML_dadbed9_METAL_ADD_KERNEL(add);
-        GGML_dadbed9_METAL_ADD_KERNEL(add_row);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_row);
-        GGML_dadbed9_METAL_ADD_KERNEL(scale);
-        GGML_dadbed9_METAL_ADD_KERNEL(silu);
-        GGML_dadbed9_METAL_ADD_KERNEL(relu);
-        GGML_dadbed9_METAL_ADD_KERNEL(gelu);
-        GGML_dadbed9_METAL_ADD_KERNEL(soft_max);
-        GGML_dadbed9_METAL_ADD_KERNEL(diag_mask_inf);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_f16);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q4_0);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q4_1);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q2_K);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q3_K);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q4_K);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q5_K);
-        GGML_dadbed9_METAL_ADD_KERNEL(get_rows_q6_K);
-        GGML_dadbed9_METAL_ADD_KERNEL(rms_norm);
-        GGML_dadbed9_METAL_ADD_KERNEL(norm);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_f16_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q4_0_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q4_1_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q2_K_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q3_K_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q4_K_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q5_K_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(mul_mat_q6_K_f32);
-        if (![arch isEqualToString:@"x86_64"]){
-            fprintf(stderr, "%s: arch %s\n", __func__, [arch UTF8String]);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_f16_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
-            GGML_dadbed9_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
-        }
-        GGML_dadbed9_METAL_ADD_KERNEL(rope);
-        GGML_dadbed9_METAL_ADD_KERNEL(alibi_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(cpy_f32_f16);
-        GGML_dadbed9_METAL_ADD_KERNEL(cpy_f32_f32);
-        GGML_dadbed9_METAL_ADD_KERNEL(cpy_f16_f16);
-        
+        GGML_METAL_ADD_KERNEL(add);
+        GGML_METAL_ADD_KERNEL(add_row);
+        GGML_METAL_ADD_KERNEL(mul);
+        GGML_METAL_ADD_KERNEL(mul_row);
+        GGML_METAL_ADD_KERNEL(scale);
+        GGML_METAL_ADD_KERNEL(silu);
+        GGML_METAL_ADD_KERNEL(relu);
+        GGML_METAL_ADD_KERNEL(gelu);
+        GGML_METAL_ADD_KERNEL(soft_max);
+        GGML_METAL_ADD_KERNEL(diag_mask_inf);
+        GGML_METAL_ADD_KERNEL(get_rows_f16);
+        GGML_METAL_ADD_KERNEL(get_rows_q4_0);
+        GGML_METAL_ADD_KERNEL(get_rows_q4_1);
+        GGML_METAL_ADD_KERNEL(get_rows_q8_0);
+        GGML_METAL_ADD_KERNEL(get_rows_q2_K);
+        GGML_METAL_ADD_KERNEL(get_rows_q3_K);
+        GGML_METAL_ADD_KERNEL(get_rows_q4_K);
+        GGML_METAL_ADD_KERNEL(get_rows_q5_K);
+        GGML_METAL_ADD_KERNEL(get_rows_q6_K);
+        GGML_METAL_ADD_KERNEL(rms_norm);
+        GGML_METAL_ADD_KERNEL(norm);
+        GGML_METAL_ADD_KERNEL(mul_mat_f16_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q4_0_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q4_1_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q8_0_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q2_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q3_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q4_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q5_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mat_q6_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_f16_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q8_0_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
+        GGML_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
+        GGML_METAL_ADD_KERNEL(rope);
+        GGML_METAL_ADD_KERNEL(alibi_f32);
+        GGML_METAL_ADD_KERNEL(cpy_f32_f16);
+        GGML_METAL_ADD_KERNEL(cpy_f32_f32);
+        GGML_METAL_ADD_KERNEL(cpy_f16_f16);
 
-#undef GGML_dadbed9_METAL_ADD_KERNEL
+#undef GGML_METAL_ADD_KERNEL
     }
-#ifndef TARGET_OS_IPHONE
-    fprintf(stderr, "%s: recommendedMaxWorkingSetSize = %8.2f MB\n", __func__, ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
-    fprintf(stderr, "%s: hasUnifiedMemory             = %s\n",       __func__, ctx->device.hasUnifiedMemory ? "true" : "false");
+
+    metal_printf("%s: recommendedMaxWorkingSetSize  = %8.2f MB\n", __func__, ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
+    metal_printf("%s: hasUnifiedMemory              = %s\n",       __func__, ctx->device.hasUnifiedMemory ? "true" : "false");
     if (ctx->device.maxTransferRate != 0) {
-        fprintf(stderr, "%s: maxTransferRate              = %8.2f MB/s\n", __func__, ctx->device.maxTransferRate / 1024.0 / 1024.0);
+        metal_printf("%s: maxTransferRate               = %8.2f MB/s\n", __func__, ctx->device.maxTransferRate / 1024.0 / 1024.0);
     } else {
-        fprintf(stderr, "%s: maxTransferRate              = built-in GPU\n", __func__);
+        metal_printf("%s: maxTransferRate               = built-in GPU\n", __func__);
     }
-#endif
+
     return ctx;
 }
 
-void ggml_dadbed9_metal_free(struct ggml_dadbed9_metal_context * ctx) {
-    fprintf(stderr, "%s: deallocating\n", __func__);
+void ggml_metal_free(struct ggml_metal_context * ctx) {
+    metal_printf("%s: deallocating\n", __func__);
+//#define GGML_METAL_DEL_KERNEL(name) \
+//    [ctx->function_##name release]; \
+//    [ctx->pipeline_##name release];
+//
+//    GGML_METAL_DEL_KERNEL(add);
+//    GGML_METAL_DEL_KERNEL(add_row);
+//    GGML_METAL_DEL_KERNEL(mul);
+//    GGML_METAL_DEL_KERNEL(mul_row);
+//    GGML_METAL_DEL_KERNEL(scale);
+//    GGML_METAL_DEL_KERNEL(silu);
+//    GGML_METAL_DEL_KERNEL(relu);
+//    GGML_METAL_DEL_KERNEL(gelu);
+//    GGML_METAL_DEL_KERNEL(soft_max);
+//    GGML_METAL_DEL_KERNEL(diag_mask_inf);
+//    GGML_METAL_DEL_KERNEL(get_rows_f16);
+//    GGML_METAL_DEL_KERNEL(get_rows_q4_0);
+//    GGML_METAL_DEL_KERNEL(get_rows_q4_1);
+//    GGML_METAL_DEL_KERNEL(get_rows_q8_0);
+//    GGML_METAL_DEL_KERNEL(get_rows_q2_K);
+//    GGML_METAL_DEL_KERNEL(get_rows_q3_K);
+//    GGML_METAL_DEL_KERNEL(get_rows_q4_K);
+//    GGML_METAL_DEL_KERNEL(get_rows_q5_K);
+//    GGML_METAL_DEL_KERNEL(get_rows_q6_K);
+//    GGML_METAL_DEL_KERNEL(rms_norm);
+//    GGML_METAL_DEL_KERNEL(norm);
+//    GGML_METAL_DEL_KERNEL(mul_mat_f16_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q4_0_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q4_1_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q8_0_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q2_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q3_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q4_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q5_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mat_q6_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_f16_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q4_0_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q8_0_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q4_1_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q2_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q3_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q4_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q5_K_f32);
+//    GGML_METAL_DEL_KERNEL(mul_mm_q6_K_f32);
+//    GGML_METAL_DEL_KERNEL(rope);
+//    GGML_METAL_DEL_KERNEL(alibi_f32);
+//    GGML_METAL_DEL_KERNEL(cpy_f32_f16);
+//    GGML_METAL_DEL_KERNEL(cpy_f32_f32);
+//    GGML_METAL_DEL_KERNEL(cpy_f16_f16);
+
+//#undef GGML_METAL_DEL_KERNEL
+
 //    for (int i = 0; i < ctx->n_buffers; ++i) {
 //        [ctx->buffers[i].metal release];
 //    }
+//
+//    [ctx->library release];
+//    [ctx->queue release];
+//    [ctx->device release];
+
+//    dispatch_release(ctx->d_queue);
+
     free(ctx);
 }
 
-void ggml_dadbed9_metal_set_n_cb(struct ggml_dadbed9_metal_context * ctx, int n_cb) {
-    ctx->n_cb = n_cb;
+void * ggml_metal_host_malloc(size_t n) {
+    void * data = NULL;
+    const int result = posix_memalign((void **) &data, getpagesize(), n);
+    if (result != 0) {
+        metal_printf("%s: error: posix_memalign failed\n", __func__);
+        return NULL;
+    }
+
+    return data;
 }
 
-int ggml_dadbed9_metal_if_optimized(struct ggml_dadbed9_metal_context * ctx) {
+void ggml_metal_host_free(void * data) {
+    free(data);
+}
+
+void ggml_metal_set_n_cb(struct ggml_metal_context * ctx, int n_cb) {
+    ctx->n_cb = MIN(n_cb, GGML_METAL_MAX_BUFFERS);
+}
+
+int ggml_metal_if_optimized(struct ggml_metal_context * ctx) {
     return ctx->concur_list_len;
 }
 
-int * ggml_dadbed9_metal_get_concur_list(struct ggml_dadbed9_metal_context * ctx) {
+int * ggml_metal_get_concur_list(struct ggml_metal_context * ctx) {
     return ctx->concur_list;
 }
 
@@ -269,10 +339,10 @@ int * ggml_dadbed9_metal_get_concur_list(struct ggml_dadbed9_metal_context * ctx
 // the assumption is that there is 1-to-1 mapping between the host and device memory buffers, so we can find the
 // Metal buffer based on the host memory pointer
 //
-static id<MTLBuffer> ggml_dadbed9_metal_get_buffer(struct ggml_dadbed9_metal_context * ctx, struct ggml_dadbed9_tensor * t, size_t * offs) {
-    //fprintf(stderr, "%s: data tensor '%16s', offs_data = %8ld, offs_eval = %8ld, offs_cach = %8ld\n", __func__, t->name, offs_data, offs_eval, offs_cach);
+static id<MTLBuffer> ggml_metal_get_buffer(struct ggml_metal_context * ctx, struct ggml_tensor * t, size_t * offs) {
+    //metal_printf("%s: data tensor '%16s', offs_data = %8ld, offs_eval = %8ld, offs_cach = %8ld\n", __func__, t->name, offs_data, offs_eval, offs_cach);
 
-    const int64_t tsize = ggml_dadbed9_nbytes(t);
+    const int64_t tsize = ggml_nbytes(t);
 
     // find the view that contains the tensor fully
     for (int i = 0; i < ctx->n_buffers; ++i) {
@@ -281,25 +351,25 @@ static id<MTLBuffer> ggml_dadbed9_metal_get_buffer(struct ggml_dadbed9_metal_con
         if (ioffs >= 0 && ioffs + tsize <= (int64_t) ctx->buffers[i].size) {
             *offs = (size_t) ioffs;
 
-            //fprintf(stderr, "%s: '%s' tensor '%16s', offs = %8ld\n", __func__, ctx->buffers[i].name, t->name, *offs);
+            //metal_printf("%s: '%s' tensor '%16s', offs = %8ld\n", __func__, ctx->buffers[i].name, t->name, *offs);
 
             return ctx->buffers[i].metal;
         }
     }
 
-    fprintf(stderr, "%s: error: buffer is nil\n", __func__);
+    metal_printf("%s: error: buffer is nil\n", __func__);
 
     return nil;
 }
 
-bool ggml_dadbed9_metal_add_buffer(
-        struct ggml_dadbed9_metal_context * ctx,
+bool ggml_metal_add_buffer(
+        struct ggml_metal_context * ctx,
                      const char * name,
                            void * data,
                          size_t   size,
                          size_t   max_size) {
-    if (ctx->n_buffers >= GGML_dadbed9_METAL_MAX_BUFFERS) {
-        fprintf(stderr, "%s: too many buffers\n", __func__);
+    if (ctx->n_buffers >= GGML_METAL_MAX_BUFFERS) {
+        metal_printf("%s: too many buffers\n", __func__);
         return false;
     }
 
@@ -309,7 +379,7 @@ bool ggml_dadbed9_metal_add_buffer(
             const int64_t ioffs = (int64_t) data - (int64_t) ctx->buffers[i].data;
 
             if (ioffs >= 0 && ioffs < (int64_t) ctx->buffers[i].size) {
-                fprintf(stderr, "%s: error: buffer '%s' overlaps with '%s'\n", __func__, name, ctx->buffers[i].name);
+                metal_printf("%s: error: buffer '%s' overlaps with '%s'\n", __func__, name, ctx->buffers[i].name);
                 return false;
             }
         }
@@ -330,11 +400,11 @@ bool ggml_dadbed9_metal_add_buffer(
             ctx->buffers[ctx->n_buffers].metal = [ctx->device newBufferWithBytesNoCopy:data length:size_aligned options:MTLResourceStorageModeShared deallocator:nil];
 
             if (ctx->buffers[ctx->n_buffers].metal == nil) {
-                fprintf(stderr, "%s: failed to allocate '%-16s' buffer, size = %8.2f MB\n", __func__, name, size_aligned / 1024.0 / 1024.0);
+                metal_printf("%s: failed to allocate '%-16s' buffer, size = %8.2f MB\n", __func__, name, size_aligned / 1024.0 / 1024.0);
                 return false;
             }
 
-            fprintf(stderr, "%s: allocated '%-16s' buffer, size = %8.2f MB", __func__, name, size_aligned / 1024.0 / 1024.0);
+            metal_printf("%s: allocated '%-16s' buffer, size = %8.2f MB", __func__, name, size_aligned / 1024.0 / 1024.0);
 
             ++ctx->n_buffers;
         } else {
@@ -354,63 +424,58 @@ bool ggml_dadbed9_metal_add_buffer(
                 ctx->buffers[ctx->n_buffers].metal = [ctx->device newBufferWithBytesNoCopy:(void *) ((uint8_t *) data + i) length:size_step_aligned options:MTLResourceStorageModeShared deallocator:nil];
 
                 if (ctx->buffers[ctx->n_buffers].metal == nil) {
-                    fprintf(stderr, "%s: failed to allocate '%-16s' buffer, size = %8.2f MB\n", __func__, name, size_step_aligned / 1024.0 / 1024.0);
+                    metal_printf("%s: failed to allocate '%-16s' buffer, size = %8.2f MB\n", __func__, name, size_step_aligned / 1024.0 / 1024.0);
                     return false;
                 }
 
-                fprintf(stderr, "%s: allocated '%-16s' buffer, size = %8.2f MB, offs = %12ld", __func__, name, size_step_aligned / 1024.0 / 1024.0, i);
+                metal_printf("%s: allocated '%-16s' buffer, size = %8.2f MB, offs = %12ld", __func__, name, size_step_aligned / 1024.0 / 1024.0, i);
                 if (i + size_step < size) {
-                    fprintf(stderr, "\n");
+                    metal_printf("\n");
                 }
 
                 ++ctx->n_buffers;
             }
         }
-#ifndef TARGET_OS_IPHONE
-        fprintf(stderr, ", (%8.2f / %8.2f)",
+
+        metal_printf(", (%8.2f / %8.2f)",
                 ctx->device.currentAllocatedSize / 1024.0 / 1024.0,
                 ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
 
         if (ctx->device.currentAllocatedSize > ctx->device.recommendedMaxWorkingSetSize) {
-            fprintf(stderr, ", warning: current allocated size is greater than the recommended max working set size\n");
+            metal_printf(", warning: current allocated size is greater than the recommended max working set size\n");
         } else {
-            fprintf(stderr, "\n");
+            metal_printf("\n");
         }
-#endif
     }
 
     return true;
 }
 
-void ggml_dadbed9_metal_set_tensor(
-        struct ggml_dadbed9_metal_context * ctx,
-        struct ggml_dadbed9_tensor * t) {
-    metal_printf("%s: set input for tensor '%s'\n", __func__, t->name);
-
+void ggml_metal_set_tensor(
+        struct ggml_metal_context * ctx,
+        struct ggml_tensor * t) {
     size_t offs;
-    id<MTLBuffer> id_dst = ggml_dadbed9_metal_get_buffer(ctx, t, &offs);
+    id<MTLBuffer> id_dst = ggml_metal_get_buffer(ctx, t, &offs);
 
-    memcpy((void *) ((uint8_t *) id_dst.contents + offs), t->data, ggml_dadbed9_nbytes(t));
+    memcpy((void *) ((uint8_t *) id_dst.contents + offs), t->data, ggml_nbytes(t));
 }
 
-void ggml_dadbed9_metal_get_tensor(
-        struct ggml_dadbed9_metal_context * ctx,
-        struct ggml_dadbed9_tensor * t) {
-    metal_printf("%s: extract results for tensor '%s'\n", __func__, t->name);
-
+void ggml_metal_get_tensor(
+        struct ggml_metal_context * ctx,
+        struct ggml_tensor * t) {
     size_t offs;
-    id<MTLBuffer> id_src = ggml_dadbed9_metal_get_buffer(ctx, t, &offs);
+    id<MTLBuffer> id_src = ggml_metal_get_buffer(ctx, t, &offs);
 
-    memcpy(t->data, (void *) ((uint8_t *) id_src.contents + offs), ggml_dadbed9_nbytes(t));
+    memcpy(t->data, (void *) ((uint8_t *) id_src.contents + offs), ggml_nbytes(t));
 }
 
-void ggml_dadbed9_metal_graph_find_concurrency(
-        struct ggml_dadbed9_metal_context * ctx,
-        struct ggml_dadbed9_cgraph * gf, bool check_mem) {
+void ggml_metal_graph_find_concurrency(
+        struct ggml_metal_context * ctx,
+        struct ggml_cgraph * gf, bool check_mem) {
     int search_depth = gf->n_nodes; //we only find concurrency in this range to avoid wasting too much time
-    int nodes_unused[GGML_dadbed9_MAX_CONCUR];
+    int nodes_unused[GGML_MAX_CONCUR];
 
-    for (int i = 0; i < GGML_dadbed9_MAX_CONCUR; i++) { ctx->concur_list[i] = 0; }
+    for (int i = 0; i < GGML_MAX_CONCUR; i++) { ctx->concur_list[i] = 0; }
     for (int i = 0; i < gf->n_nodes;     i++) { nodes_unused[i]     = 1; }
     ctx->concur_list_len = 0;
 
@@ -427,12 +492,12 @@ void ggml_dadbed9_metal_graph_find_concurrency(
                 int exe_flag = 1;
 
                 // scan all srcs
-                for (int src_ind = 0; src_ind < GGML_dadbed9_MAX_SRC; src_ind++) {
-                    struct ggml_dadbed9_tensor * src_cur = gf->nodes[i]->src[src_ind];
+                for (int src_ind = 0; src_ind < GGML_MAX_SRC; src_ind++) {
+                    struct ggml_tensor * src_cur = gf->nodes[i]->src[src_ind];
                     if (src_cur) {
                         // if is leaf nodes it's satisfied.
-                        // TODO: ggml_dadbed9_is_leaf()
-                        if (src_cur->op == GGML_dadbed9_OP_NONE && src_cur->grad == NULL) {
+                        // TODO: ggml_is_leaf()
+                        if (src_cur->op == GGML_OP_NONE && src_cur->grad == NULL) {
                             continue;
                         }
 
@@ -457,14 +522,14 @@ void ggml_dadbed9_metal_graph_find_concurrency(
                     // check if nodes[i]'s data will be overwritten by a node before nodes[i].
                     // if node[5] and node[3] write to the same memory region, then we can't issue node[5] before node[3]
                     int64_t data_start = (int64_t) gf->nodes[i]->data;
-                    int64_t length     = (int64_t) ggml_dadbed9_nbytes(gf->nodes[i]);
+                    int64_t length     = (int64_t) ggml_nbytes(gf->nodes[i]);
                     for (int j = n_start; j < i; j++) {
-                        if (nodes_unused[j] && gf->nodes[j]->op != GGML_dadbed9_OP_RESHAPE \
-                                            && gf->nodes[j]->op != GGML_dadbed9_OP_VIEW \
-                                            && gf->nodes[j]->op != GGML_dadbed9_OP_TRANSPOSE \
-                                            && gf->nodes[j]->op != GGML_dadbed9_OP_PERMUTE) {
+                        if (nodes_unused[j] && gf->nodes[j]->op != GGML_OP_RESHAPE \
+                                            && gf->nodes[j]->op != GGML_OP_VIEW \
+                                            && gf->nodes[j]->op != GGML_OP_TRANSPOSE \
+                                            && gf->nodes[j]->op != GGML_OP_PERMUTE) {
                             if (((int64_t)gf->nodes[j]->data) >= data_start + length || \
-                                ((int64_t)gf->nodes[j]->data) + (int64_t) ggml_dadbed9_nbytes(gf->nodes[j]) <= data_start) {
+                                ((int64_t)gf->nodes[j]->data) + (int64_t) ggml_nbytes(gf->nodes[j]) <= data_start) {
                                 continue;
                             }
 
@@ -491,21 +556,21 @@ void ggml_dadbed9_metal_graph_find_concurrency(
         level_pos += concurrency + 1;
     }
 
-    if (ctx->concur_list_len > GGML_dadbed9_MAX_CONCUR) {
-        fprintf(stderr, "%s: too many elements for metal ctx->concur_list!\n", __func__);
+    if (ctx->concur_list_len > GGML_MAX_CONCUR) {
+        metal_printf("%s: too many elements for metal ctx->concur_list!\n", __func__);
     }
 }
 
-void ggml_dadbed9_metal_graph_compute(
-        struct ggml_dadbed9_metal_context * ctx,
-               struct ggml_dadbed9_cgraph * gf) {
-    metal_printf("%s: evaluating graph\n", __func__);
+void ggml_metal_graph_compute(
+        struct ggml_metal_context * ctx,
+               struct ggml_cgraph * gf) {
+    @autoreleasepool {
 
     // if there is ctx->concur_list, dispatch concurrently
     // else fallback to serial dispatch
     MTLComputePassDescriptor * edesc = MTLComputePassDescriptor.computePassDescriptor;
 
-    const bool has_concur = ctx->concur_list_len && ctx->concur_list_len <= GGML_dadbed9_MAX_CONCUR;
+    const bool has_concur = ctx->concur_list_len && ctx->concur_list_len <= GGML_MAX_CONCUR;
 
     const int n_nodes  = has_concur ? ctx->concur_list_len      : gf->n_nodes;
     edesc.dispatchType = has_concur ? MTLDispatchTypeConcurrent : MTLDispatchTypeSerial;
@@ -515,32 +580,28 @@ void ggml_dadbed9_metal_graph_compute(
 
     const int n_cb = ctx->n_cb;
 
-    NSMutableArray * command_buffers = [NSMutableArray arrayWithCapacity:n_cb];
-
     for (int i = 0; i < n_cb; ++i) {
-        command_buffers[i] = [ctx->queue commandBuffer];
+        ctx->command_buffers[i] = [ctx->queue commandBuffer];
 
         // enqueue the command buffers in order to specify their execution order
-        [command_buffers[i] enqueue];
-    }
+        [ctx->command_buffers[i] enqueue];
 
-    // TODO: is this the best way to start threads?
-    dispatch_queue_t queue = dispatch_queue_create("llama.cpp", DISPATCH_QUEUE_CONCURRENT);
+        ctx->command_encoders[i] = [ctx->command_buffers[i] computeCommandEncoderWithDescriptor: edesc];
+    }
 
     for (int cb_idx = 0; cb_idx < n_cb; ++cb_idx) {
         const int n_nodes_per_cb = (n_nodes + n_cb - 1) / n_cb;
 
-        dispatch_async(queue, ^{
+        dispatch_async(ctx->d_queue, ^{
             size_t offs_src0 = 0;
             size_t offs_src1 = 0;
             size_t offs_dst  = 0;
 
-            id<MTLCommandBuffer> command_buffer = command_buffers[cb_idx];
+            id<MTLCommandBuffer> command_buffer  = ctx->command_buffers[cb_idx];
+            id<MTLComputeCommandEncoder> encoder = ctx->command_encoders[cb_idx];
 
-            id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoderWithDescriptor: edesc];
-
-            const int node_start =                                  (cb_idx + 0) * n_nodes_per_cb;
-            const int node_end   = (cb_idx == n_cb - 1) ? n_nodes : (cb_idx + 1) * n_nodes_per_cb;
+            const int node_start =                                      (cb_idx + 0) * n_nodes_per_cb;
+            const int node_end   = MIN((cb_idx == n_cb - 1) ? n_nodes : (cb_idx + 1) * n_nodes_per_cb, n_nodes);
 
             for (int ind = node_start; ind < node_end; ++ind) {
                 const int i = has_concur ? ctx->concur_list[ind] : ind;
@@ -550,11 +611,11 @@ void ggml_dadbed9_metal_graph_compute(
                     continue;
                 }
 
-                metal_printf("%s: encoding node %3d, op = %8s\n", __func__, i, ggml_dadbed9_op_name(gf->nodes[i]->op));
+                //metal_printf("%s: encoding node %3d, op = %8s\n", __func__, i, ggml_op_name(gf->nodes[i]->op));
 
-                struct ggml_dadbed9_tensor * src0 = gf->nodes[i]->src[0];
-                struct ggml_dadbed9_tensor * src1 = gf->nodes[i]->src[1];
-                struct ggml_dadbed9_tensor * dst  = gf->nodes[i];
+                struct ggml_tensor * src0 = gf->nodes[i]->src[0];
+                struct ggml_tensor * src1 = gf->nodes[i]->src[1];
+                struct ggml_tensor * dst  = gf->nodes[i];
 
                 const int64_t  ne00 = src0 ? src0->ne[0] : 0;
                 const int64_t  ne01 = src0 ? src0->ne[1] : 0;
@@ -586,40 +647,40 @@ void ggml_dadbed9_metal_graph_compute(
                 const uint64_t nb2  = dst ? dst->nb[2] : 0;
                 const uint64_t nb3  = dst ? dst->nb[3] : 0;
 
-                const enum ggml_dadbed9_type src0t = src0 ? src0->type : GGML_dadbed9_TYPE_COUNT;
-                const enum ggml_dadbed9_type src1t = src1 ? src1->type : GGML_dadbed9_TYPE_COUNT;
-                const enum ggml_dadbed9_type dstt  = dst  ? dst->type  : GGML_dadbed9_TYPE_COUNT;
+                const enum ggml_type src0t = src0 ? src0->type : GGML_TYPE_COUNT;
+                const enum ggml_type src1t = src1 ? src1->type : GGML_TYPE_COUNT;
+                const enum ggml_type dstt  = dst  ? dst->type  : GGML_TYPE_COUNT;
 
-                id<MTLBuffer> id_src0 = src0 ? ggml_dadbed9_metal_get_buffer(ctx, src0, &offs_src0) : nil;
-                id<MTLBuffer> id_src1 = src1 ? ggml_dadbed9_metal_get_buffer(ctx, src1, &offs_src1) : nil;
-                id<MTLBuffer> id_dst  = dst  ? ggml_dadbed9_metal_get_buffer(ctx, dst,  &offs_dst)  : nil;
+                id<MTLBuffer> id_src0 = src0 ? ggml_metal_get_buffer(ctx, src0, &offs_src0) : nil;
+                id<MTLBuffer> id_src1 = src1 ? ggml_metal_get_buffer(ctx, src1, &offs_src1) : nil;
+                id<MTLBuffer> id_dst  = dst  ? ggml_metal_get_buffer(ctx, dst,  &offs_dst)  : nil;
 
-                //metal_printf("%s: op - %s\n", __func__, ggml_dadbed9_op_name(dst->op));
+                //metal_printf("%s: op - %s\n", __func__, ggml_op_name(dst->op));
                 //if (src0) {
-                //    metal_printf("%s: src0 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_dadbed9_type_name(src0t), ne00, ne01, ne02,
-                //            ggml_dadbed9_is_contiguous(src0), src0->name);
+                //    metal_printf("%s: src0 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_type_name(src0t), ne00, ne01, ne02,
+                //            ggml_is_contiguous(src0), src0->name);
                 //}
                 //if (src1) {
-                //    metal_printf("%s: src1 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_dadbed9_type_name(src1t), ne10, ne11, ne12,
-                //            ggml_dadbed9_is_contiguous(src1), src1->name);
+                //    metal_printf("%s: src1 - %4s [%5lld, %5lld, %5lld], %d, %s\n", __func__, ggml_type_name(src1t), ne10, ne11, ne12,
+                //            ggml_is_contiguous(src1), src1->name);
                 //}
                 //if (dst) {
-                //    metal_printf("%s: dst  - %4s [%5lld, %5lld, %5lld], 1, %s\n",  __func__, ggml_dadbed9_type_name(dstt),  ne0,  ne1,  ne2,
+                //    metal_printf("%s: dst  - %4s [%5lld, %5lld, %5lld], 1, %s\n",  __func__, ggml_type_name(dstt),  ne0,  ne1,  ne2,
                 //            dst->name);
                 //}
 
                 switch (dst->op) {
-                    case GGML_dadbed9_OP_NONE:
-                    case GGML_dadbed9_OP_RESHAPE:
-                    case GGML_dadbed9_OP_VIEW:
-                    case GGML_dadbed9_OP_TRANSPOSE:
-                    case GGML_dadbed9_OP_PERMUTE:
+                    case GGML_OP_NONE:
+                    case GGML_OP_RESHAPE:
+                    case GGML_OP_VIEW:
+                    case GGML_OP_TRANSPOSE:
+                    case GGML_OP_PERMUTE:
                         {
                             // noop
                         } break;
-                    case GGML_dadbed9_OP_ADD:
+                    case GGML_OP_ADD:
                         {
-                            if (ggml_dadbed9_nelements(src1) == ne10) {
+                            if (ggml_nelements(src1) == ne10) {
                                 // src1 is a row
                                 [encoder setComputePipelineState:ctx->pipeline_add_row];
                             } else {
@@ -630,13 +691,13 @@ void ggml_dadbed9_metal_graph_compute(
                             [encoder setBuffer:id_dst  offset:offs_dst  atIndex:2];
                             [encoder setBytes:&ne00 length:sizeof(ne00) atIndex:3];
 
-                            const int64_t n = ggml_dadbed9_nelements(dst);
+                            const int64_t n = ggml_nelements(dst);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_MUL:
+                    case GGML_OP_MUL:
                         {
-                            if (ggml_dadbed9_nelements(src1) == ne10) {
+                            if (ggml_nelements(src1) == ne10) {
                                 // src1 is a row
                                 [encoder setComputePipelineState:ctx->pipeline_mul_row];
                             } else {
@@ -647,11 +708,11 @@ void ggml_dadbed9_metal_graph_compute(
                             [encoder setBuffer:id_dst  offset:offs_dst  atIndex:2];
                             [encoder setBytes:&ne00 length:sizeof(ne00) atIndex:3];
 
-                            const int64_t n = ggml_dadbed9_nelements(dst);
+                            const int64_t n = ggml_nelements(dst);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_SCALE:
+                    case GGML_OP_SCALE:
                         {
                             const float scale = *(const float *) src1->data;
 
@@ -660,49 +721,49 @@ void ggml_dadbed9_metal_graph_compute(
                             [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
                             [encoder setBytes:&scale length:sizeof(scale) atIndex:2];
 
-                            const int64_t n = ggml_dadbed9_nelements(dst);
+                            const int64_t n = ggml_nelements(dst);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_UNARY:
-                        switch (ggml_dadbed9_get_unary_op(gf->nodes[i])) {
-                            case GGML_dadbed9_UNARY_OP_SILU:
+                    case GGML_OP_UNARY:
+                        switch (ggml_get_unary_op(gf->nodes[i])) {
+                            case GGML_UNARY_OP_SILU:
                                 {
                                     [encoder setComputePipelineState:ctx->pipeline_silu];
                                     [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                                     [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
 
-                                    const int64_t n = ggml_dadbed9_nelements(dst);
+                                    const int64_t n = ggml_nelements(dst);
 
                                     [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                                 } break;
-                            case GGML_dadbed9_UNARY_OP_RELU:
+                            case GGML_UNARY_OP_RELU:
                                 {
                                     [encoder setComputePipelineState:ctx->pipeline_relu];
                                     [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                                     [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
 
-                                    const int64_t n = ggml_dadbed9_nelements(dst);
+                                    const int64_t n = ggml_nelements(dst);
 
                                     [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                                 } break;
-                            case GGML_dadbed9_UNARY_OP_GELU:
+                            case GGML_UNARY_OP_GELU:
                                 {
                                     [encoder setComputePipelineState:ctx->pipeline_gelu];
                                     [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                                     [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
 
-                                    const int64_t n = ggml_dadbed9_nelements(dst);
+                                    const int64_t n = ggml_nelements(dst);
 
                                     [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                                 } break;
                             default:
                                 {
-                                    fprintf(stderr, "%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_dadbed9_op_name(dst->op));
-                                    GGML_dadbed9_ASSERT(false);
+                                    metal_printf("%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_op_name(dst->op));
+                                    GGML_ASSERT(false);
                                 }
                         } break;
-                    case GGML_dadbed9_OP_SOFT_MAX:
+                    case GGML_OP_SOFT_MAX:
                         {
                             const int nth = 32;
 
@@ -716,7 +777,7 @@ void ggml_dadbed9_metal_graph_compute(
 
                             [encoder dispatchThreadgroups:MTLSizeMake(ne01, ne02, ne03) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_DIAG_MASK_INF:
+                    case GGML_OP_DIAG_MASK_INF:
                         {
                             const int n_past = ((int32_t *)(dst->op_params))[0];
 
@@ -729,118 +790,127 @@ void ggml_dadbed9_metal_graph_compute(
 
                             [encoder dispatchThreadgroups:MTLSizeMake(ne00, ne01, ne02) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_MUL_MAT:
+                    case GGML_OP_MUL_MAT:
                         {
                             // TODO: needs to be updated after PR: https://github.com/ggerganov/ggml/pull/224
 
-                            GGML_dadbed9_ASSERT(ne00 == ne10);
-                            // GGML_dadbed9_ASSERT(ne02 == ne12); // Should be checked on individual data types until broadcast is implemented everywhere
+                            GGML_ASSERT(ne00 == ne10);
+                            // GGML_ASSERT(ne02 == ne12); // Should be checked on individual data types until broadcast is implemented everywhere
                             uint gqa = ne12/ne02;
-                            GGML_dadbed9_ASSERT(ne03 == ne13);
+                            GGML_ASSERT(ne03 == ne13);
 
                             // for now the matrix-matrix multiplication kernel only works on A14+/M1+ SoCs
                             // AMD GPU and older A-chips will reuse matrix-vector multiplication kernel
-                            if (ggml_dadbed9_is_contiguous(src0) &&
-                                ggml_dadbed9_is_contiguous(src1) &&
-                                src1t == GGML_dadbed9_TYPE_F32 &&
+                            if (ggml_is_contiguous(src0) &&
+                                ggml_is_contiguous(src1) &&
+                                src1t == GGML_TYPE_F32 &&
                                 [ctx->device supportsFamily:MTLGPUFamilyApple7] &&
                                 ne00%32 == 0 &&
                                 ne11 > 1) {
-                                    switch (src0->type) {
-                                        case GGML_dadbed9_TYPE_F16:  [encoder setComputePipelineState:ctx->pipeline_mul_mm_f16_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q4_0: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q4_0_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q4_1: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q4_1_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q2_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q2_K_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q3_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q3_K_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q4_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q4_K_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q5_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q5_K_f32]; break;
-                                        case GGML_dadbed9_TYPE_Q6_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q6_K_f32]; break;
-                                        default: GGML_dadbed9_ASSERT(false && "MUL MAT-MAT not implemented");
-                                    }
-                                    [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
-                                    [encoder setBuffer:id_src1 offset:offs_src1 atIndex:1];
-                                    [encoder setBuffer:id_dst  offset:offs_dst  atIndex:2];
-                                    [encoder setBytes:&ne00 length:sizeof(ne00) atIndex:3];
-                                    [encoder setBytes:&ne02 length:sizeof(ne02) atIndex:4];
-                                    [encoder setBytes:&nb01 length:sizeof(nb01) atIndex:5];
-                                    [encoder setBytes:&nb02 length:sizeof(nb02) atIndex:6];
-                                    [encoder setBytes:&ne12 length:sizeof(ne12) atIndex:7];
-                                    [encoder setBytes:&ne0 length:sizeof(ne0) atIndex:8];
-                                    [encoder setBytes:&ne1 length:sizeof(ne1) atIndex:9];
-                                    [encoder setBytes:&gqa length:sizeof(gqa) atIndex:10];
-                                    [encoder setThreadgroupMemoryLength:8192 atIndex:0];
-                                    [encoder dispatchThreadgroups:MTLSizeMake( (ne11+31)/32, (ne01+63) / 64, ne12) threadsPerThreadgroup:MTLSizeMake(128, 1, 1)];
+                                switch (src0->type) {
+                                    case GGML_TYPE_F16:  [encoder setComputePipelineState:ctx->pipeline_mul_mm_f16_f32];  break;
+                                    case GGML_TYPE_Q4_0: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q4_0_f32]; break;
+                                    case GGML_TYPE_Q4_1: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q4_1_f32]; break;
+                                    case GGML_TYPE_Q8_0: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q8_0_f32]; break;
+                                    case GGML_TYPE_Q2_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q2_K_f32]; break;
+                                    case GGML_TYPE_Q3_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q3_K_f32]; break;
+                                    case GGML_TYPE_Q4_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q4_K_f32]; break;
+                                    case GGML_TYPE_Q5_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q5_K_f32]; break;
+                                    case GGML_TYPE_Q6_K: [encoder setComputePipelineState:ctx->pipeline_mul_mm_q6_K_f32]; break;
+                                    default: GGML_ASSERT(false && "MUL MAT-MAT not implemented");
                                 }
-                            else {
+                                [encoder setBuffer:id_src0 offset:offs_src0    atIndex:0];
+                                [encoder setBuffer:id_src1 offset:offs_src1    atIndex:1];
+                                [encoder setBuffer:id_dst  offset:offs_dst     atIndex:2];
+                                [encoder setBytes:&ne00    length:sizeof(ne00) atIndex:3];
+                                [encoder setBytes:&ne02    length:sizeof(ne02) atIndex:4];
+                                [encoder setBytes:&nb01    length:sizeof(nb01) atIndex:5];
+                                [encoder setBytes:&nb02    length:sizeof(nb02) atIndex:6];
+                                [encoder setBytes:&ne12    length:sizeof(ne12) atIndex:7];
+                                [encoder setBytes:&ne0     length:sizeof(ne0)  atIndex:8];
+                                [encoder setBytes:&ne1     length:sizeof(ne1)  atIndex:9];
+                                [encoder setBytes:&gqa     length:sizeof(gqa)  atIndex:10];
+                                [encoder setThreadgroupMemoryLength:8192 atIndex:0];
+                                [encoder dispatchThreadgroups:MTLSizeMake( (ne11+31)/32, (ne01+63) / 64, ne12) threadsPerThreadgroup:MTLSizeMake(128, 1, 1)];
+                            } else {
                                 int nth0 = 32;
                                 int nth1 = 1;
 
                                 // use custom matrix x vector kernel
                                 switch (src0t) {
-                                    case GGML_dadbed9_TYPE_F16:
+                                    case GGML_TYPE_F16:
                                         {
                                             nth0 = 64;
                                             nth1 = 1;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_f16_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q4_0:
+                                    case GGML_TYPE_Q4_0:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 8;
                                             nth1 = 8;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_q4_0_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q4_1:
+                                    case GGML_TYPE_Q4_1:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 8;
                                             nth1 = 8;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_q4_1_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q2_K:
+                                    case GGML_TYPE_Q8_0:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
+
+                                            nth0 = 8;
+                                            nth1 = 8;
+                                            [encoder setComputePipelineState:ctx->pipeline_mul_mat_q8_0_f32];
+                                        } break;
+                                    case GGML_TYPE_Q2_K:
+                                        {
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 2;
                                             nth1 = 32;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_q2_K_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q3_K:
+                                    case GGML_TYPE_Q3_K:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 2;
                                             nth1 = 32;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_q3_K_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q4_K:
+                                    case GGML_TYPE_Q4_K:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 2;
                                             nth1 = 32;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_q4_K_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q5_K:
+                                    case GGML_TYPE_Q5_K:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 2;
                                             nth1 = 32;
                                             [encoder setComputePipelineState:ctx->pipeline_mul_mat_q5_K_f32];
                                         } break;
-                                    case GGML_dadbed9_TYPE_Q6_K:
+                                    case GGML_TYPE_Q6_K:
                                         {
-                                            GGML_dadbed9_ASSERT(ne02 == 1);
-                                            GGML_dadbed9_ASSERT(ne12 == 1);
+                                            GGML_ASSERT(ne02 == 1);
+                                            GGML_ASSERT(ne12 == 1);
 
                                             nth0 = 2;
                                             nth1 = 32;
@@ -848,8 +918,8 @@ void ggml_dadbed9_metal_graph_compute(
                                         } break;
                                     default:
                                         {
-                                            fprintf(stderr, "Asserting on type %d\n",(int)src0t);
-                                            GGML_dadbed9_ASSERT(false && "not implemented");
+                                            metal_printf("Asserting on type %d\n",(int)src0t);
+                                            GGML_ASSERT(false && "not implemented");
                                         }
                                 };
 
@@ -870,42 +940,43 @@ void ggml_dadbed9_metal_graph_compute(
                                 [encoder setBytes:&nb12 length:sizeof(nb12) atIndex:14];
                                 [encoder setBytes:&ne0  length:sizeof(ne0)  atIndex:15];
                                 [encoder setBytes:&ne1  length:sizeof(ne1)  atIndex:16];
-                                [encoder setBytes:&gqa length:sizeof(gqa) atIndex:17];
+                                [encoder setBytes:&gqa  length:sizeof(gqa)  atIndex:17];
 
-                                if (src0t == GGML_dadbed9_TYPE_Q4_0 || src0t == GGML_dadbed9_TYPE_Q4_1 ||
-                                    src0t == GGML_dadbed9_TYPE_Q2_K || src0t == GGML_dadbed9_TYPE_Q4_K) {
-                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 7) / 8, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
+                                if (src0t == GGML_TYPE_Q4_0 || src0t == GGML_TYPE_Q4_1 || src0t == GGML_TYPE_Q8_0 ||
+                                    src0t == GGML_TYPE_Q2_K || src0t == GGML_TYPE_Q4_K) {
+                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 7)/8, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
                                 }
-                                else if (src0t == GGML_dadbed9_TYPE_Q3_K) {
-#ifdef GGML_dadbed9_QKK_64
-                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01+1)/2, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
+                                else if (src0t == GGML_TYPE_Q3_K) {
+#ifdef GGML_QKK_64
+                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 1)/2, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
 #else
-                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01+3)/4, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
+                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 3)/4, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
 #endif
                                 }
-                                else if (src0t == GGML_dadbed9_TYPE_Q5_K) {
-                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 3) / 4, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
+                                else if (src0t == GGML_TYPE_Q5_K) {
+                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 3)/4, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
                                 }
-                                else if (src0t == GGML_dadbed9_TYPE_Q6_K) {
-                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01+1)/2, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
+                                else if (src0t == GGML_TYPE_Q6_K) {
+                                    [encoder dispatchThreadgroups:MTLSizeMake((ne01 + 1)/2, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
                                 } else {
                                     [encoder setThreadgroupMemoryLength:nth0*sizeof(float) atIndex:0];
                                     [encoder dispatchThreadgroups:MTLSizeMake(ne01, ne11, ne12) threadsPerThreadgroup:MTLSizeMake(nth0, nth1, 1)];
                                 }
                             }
                         } break;
-                    case GGML_dadbed9_OP_GET_ROWS:
+                    case GGML_OP_GET_ROWS:
                         {
                             switch (src0->type) {
-                                case GGML_dadbed9_TYPE_F16:  [encoder setComputePipelineState:ctx->pipeline_get_rows_f16]; break;
-                                case GGML_dadbed9_TYPE_Q4_0: [encoder setComputePipelineState:ctx->pipeline_get_rows_q4_0]; break;
-                                case GGML_dadbed9_TYPE_Q4_1: [encoder setComputePipelineState:ctx->pipeline_get_rows_q4_1]; break;
-                                case GGML_dadbed9_TYPE_Q2_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q2_K]; break;
-                                case GGML_dadbed9_TYPE_Q3_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q3_K]; break;
-                                case GGML_dadbed9_TYPE_Q4_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q4_K]; break;
-                                case GGML_dadbed9_TYPE_Q5_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q5_K]; break;
-                                case GGML_dadbed9_TYPE_Q6_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q6_K]; break;
-                                default: GGML_dadbed9_ASSERT(false && "not implemented");
+                                case GGML_TYPE_F16:  [encoder setComputePipelineState:ctx->pipeline_get_rows_f16];  break;
+                                case GGML_TYPE_Q4_0: [encoder setComputePipelineState:ctx->pipeline_get_rows_q4_0]; break;
+                                case GGML_TYPE_Q4_1: [encoder setComputePipelineState:ctx->pipeline_get_rows_q4_1]; break;
+                                case GGML_TYPE_Q8_0: [encoder setComputePipelineState:ctx->pipeline_get_rows_q8_0]; break;
+                                case GGML_TYPE_Q2_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q2_K]; break;
+                                case GGML_TYPE_Q3_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q3_K]; break;
+                                case GGML_TYPE_Q4_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q4_K]; break;
+                                case GGML_TYPE_Q5_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q5_K]; break;
+                                case GGML_TYPE_Q6_K: [encoder setComputePipelineState:ctx->pipeline_get_rows_q6_K]; break;
+                                default: GGML_ASSERT(false && "not implemented");
                             }
 
                             [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
@@ -915,11 +986,11 @@ void ggml_dadbed9_metal_graph_compute(
                             [encoder setBytes:&(src0->nb[1]) length:sizeof(uint64_t) atIndex:4];
                             [encoder setBytes:&(dst->nb[1])  length:sizeof(uint64_t) atIndex:5];
 
-                            const int64_t n = ggml_dadbed9_nelements(src1);
+                            const int64_t n = ggml_nelements(src1);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_RMS_NORM:
+                    case GGML_OP_RMS_NORM:
                         {
                             float eps;
                             memcpy(&eps, dst->op_params, sizeof(float));
@@ -934,31 +1005,32 @@ void ggml_dadbed9_metal_graph_compute(
                             [encoder setBytes:&eps  length:sizeof(   float) atIndex:4];
                             [encoder setThreadgroupMemoryLength:nth/32*sizeof(float) atIndex:0];
 
-                            const int64_t nrows = ggml_dadbed9_nrows(src0);
+                            const int64_t nrows = ggml_nrows(src0);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(nrows, 1, 1) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_NORM:
+                    case GGML_OP_NORM:
                         {
-                            const float eps = 1e-5f;
+                            float eps;
+                            memcpy(&eps, dst->op_params, sizeof(float));
 
                             const int nth = 256;
 
                             [encoder setComputePipelineState:ctx->pipeline_norm];
-                            [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
-                            [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
-                            [encoder setBytes:&ne00 length:sizeof( int64_t) atIndex:2];
-                            [encoder setBytes:&nb01 length:sizeof(uint64_t) atIndex:3];
-                            [encoder setBytes:&eps  length:sizeof(   float) atIndex:4];
+                            [encoder setBuffer:id_src0 offset:offs_src0        atIndex:0];
+                            [encoder setBuffer:id_dst  offset:offs_dst         atIndex:1];
+                            [encoder setBytes:&ne00    length:sizeof( int64_t) atIndex:2];
+                            [encoder setBytes:&nb01    length:sizeof(uint64_t) atIndex:3];
+                            [encoder setBytes:&eps     length:sizeof(   float) atIndex:4];
                             [encoder setThreadgroupMemoryLength:nth*sizeof(float) atIndex:0];
 
-                            const int64_t nrows = ggml_dadbed9_nrows(src0);
+                            const int64_t nrows = ggml_nrows(src0);
 
                             [encoder dispatchThreadgroups:MTLSizeMake(nrows, 1, 1) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_ALIBI:
+                    case GGML_OP_ALIBI:
                         {
-                            GGML_dadbed9_ASSERT((src0t == GGML_dadbed9_TYPE_F32));
+                            GGML_ASSERT((src0t == GGML_TYPE_F32));
 
                             const int n_past = ((int32_t *) dst->op_params)[0]; UNUSED(n_past);
                             const int n_head = ((int32_t *) dst->op_params)[1];
@@ -966,7 +1038,7 @@ void ggml_dadbed9_metal_graph_compute(
                             memcpy(&max_bias, (int32_t *) dst->op_params + 2, sizeof(float));
 
                             if (__builtin_popcount(n_head) != 1) {
-                                GGML_dadbed9_ASSERT(false && "only power-of-two n_head implemented");
+                                GGML_ASSERT(false && "only power-of-two n_head implemented");
                             }
 
                             const int n_heads_log2_floor = 1 << (int) floor(log2(n_head));
@@ -992,10 +1064,12 @@ void ggml_dadbed9_metal_graph_compute(
                             [encoder setBytes:&nb2  length:sizeof(uint64_t) atIndex:16];
                             [encoder setBytes:&nb3  length:sizeof(uint64_t) atIndex:17];
                             [encoder setBytes:&m0  length:sizeof(    float) atIndex:18];
+
                             const int nth = 32;
+
                             [encoder dispatchThreadgroups:MTLSizeMake(ne01, ne02, ne03) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_ROPE:
+                    case GGML_OP_ROPE:
                         {
                             const int n_past = ((int32_t *) dst->op_params)[0];
                             const int n_dims = ((int32_t *) dst->op_params)[1];
@@ -1007,8 +1081,8 @@ void ggml_dadbed9_metal_graph_compute(
                             memcpy(&freq_scale, (int32_t *) dst->op_params + 5, sizeof(float));
 
                             [encoder setComputePipelineState:ctx->pipeline_rope];
-                            [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
-                            [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
+                            [encoder setBuffer:id_src0 offset:offs_src0        atIndex:0];
+                            [encoder setBuffer:id_dst  offset:offs_dst         atIndex:1];
                             [encoder setBytes:&ne00    length:sizeof( int64_t) atIndex:2];
                             [encoder setBytes:&ne01    length:sizeof( int64_t) atIndex:3];
                             [encoder setBytes:&ne02    length:sizeof( int64_t) atIndex:4];
@@ -1033,57 +1107,57 @@ void ggml_dadbed9_metal_graph_compute(
 
                             [encoder dispatchThreadgroups:MTLSizeMake(ne01, ne02, ne03) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
                         } break;
-                    case GGML_dadbed9_OP_DUP:
-                    case GGML_dadbed9_OP_CPY:
-                    case GGML_dadbed9_OP_CONT:
+                    case GGML_OP_DUP:
+                    case GGML_OP_CPY:
+                    case GGML_OP_CONT:
                         {
                             const int nth = 32;
 
                             switch (src0t) {
-                                case GGML_dadbed9_TYPE_F32:
+                                case GGML_TYPE_F32:
                                     {
                                         switch (dstt) {
-                                            case GGML_dadbed9_TYPE_F16: [encoder setComputePipelineState:ctx->pipeline_cpy_f32_f16]; break;
-                                            case GGML_dadbed9_TYPE_F32: [encoder setComputePipelineState:ctx->pipeline_cpy_f32_f32]; break;
-                                            default: GGML_dadbed9_ASSERT(false && "not implemented");
+                                            case GGML_TYPE_F16: [encoder setComputePipelineState:ctx->pipeline_cpy_f32_f16]; break;
+                                            case GGML_TYPE_F32: [encoder setComputePipelineState:ctx->pipeline_cpy_f32_f32]; break;
+                                            default: GGML_ASSERT(false && "not implemented");
                                         };
                                     } break;
-                                case GGML_dadbed9_TYPE_F16:
+                                case GGML_TYPE_F16:
                                     {
                                         switch (dstt) {
-                                            case GGML_dadbed9_TYPE_F16: [encoder setComputePipelineState:ctx->pipeline_cpy_f16_f16]; break;
-                                            case GGML_dadbed9_TYPE_F32: GGML_dadbed9_ASSERT(false && "cpy_f16_f32 not implemented"); break;
-                                            default: GGML_dadbed9_ASSERT(false && "not implemented");
+                                            case GGML_TYPE_F16: [encoder setComputePipelineState:ctx->pipeline_cpy_f16_f16]; break;
+                                            case GGML_TYPE_F32: GGML_ASSERT(false && "cpy_f16_f32 not implemented"); break;
+                                            default: GGML_ASSERT(false && "not implemented");
                                         };
                                     } break;
-                                default: GGML_dadbed9_ASSERT(false && "not implemented");
+                                default: GGML_ASSERT(false && "not implemented");
                             }
 
-                            [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
-                            [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
-                            [encoder setBytes:&ne00 length:sizeof( int64_t) atIndex:2];
-                            [encoder setBytes:&ne01 length:sizeof( int64_t) atIndex:3];
-                            [encoder setBytes:&ne02 length:sizeof( int64_t) atIndex:4];
-                            [encoder setBytes:&ne03 length:sizeof( int64_t) atIndex:5];
-                            [encoder setBytes:&nb00 length:sizeof(uint64_t) atIndex:6];
-                            [encoder setBytes:&nb01 length:sizeof(uint64_t) atIndex:7];
-                            [encoder setBytes:&nb02 length:sizeof(uint64_t) atIndex:8];
-                            [encoder setBytes:&nb03 length:sizeof(uint64_t) atIndex:9];
-                            [encoder setBytes:&ne0  length:sizeof( int64_t) atIndex:10];
-                            [encoder setBytes:&ne1  length:sizeof( int64_t) atIndex:11];
-                            [encoder setBytes:&ne2  length:sizeof( int64_t) atIndex:12];
-                            [encoder setBytes:&ne3  length:sizeof( int64_t) atIndex:13];
-                            [encoder setBytes:&nb0  length:sizeof(uint64_t) atIndex:14];
-                            [encoder setBytes:&nb1  length:sizeof(uint64_t) atIndex:15];
-                            [encoder setBytes:&nb2  length:sizeof(uint64_t) atIndex:16];
-                            [encoder setBytes:&nb3  length:sizeof(uint64_t) atIndex:17];
+                            [encoder setBuffer:id_src0 offset:offs_src0        atIndex:0];
+                            [encoder setBuffer:id_dst  offset:offs_dst         atIndex:1];
+                            [encoder setBytes:&ne00    length:sizeof( int64_t) atIndex:2];
+                            [encoder setBytes:&ne01    length:sizeof( int64_t) atIndex:3];
+                            [encoder setBytes:&ne02    length:sizeof( int64_t) atIndex:4];
+                            [encoder setBytes:&ne03    length:sizeof( int64_t) atIndex:5];
+                            [encoder setBytes:&nb00    length:sizeof(uint64_t) atIndex:6];
+                            [encoder setBytes:&nb01    length:sizeof(uint64_t) atIndex:7];
+                            [encoder setBytes:&nb02    length:sizeof(uint64_t) atIndex:8];
+                            [encoder setBytes:&nb03    length:sizeof(uint64_t) atIndex:9];
+                            [encoder setBytes:&ne0     length:sizeof( int64_t) atIndex:10];
+                            [encoder setBytes:&ne1     length:sizeof( int64_t) atIndex:11];
+                            [encoder setBytes:&ne2     length:sizeof( int64_t) atIndex:12];
+                            [encoder setBytes:&ne3     length:sizeof( int64_t) atIndex:13];
+                            [encoder setBytes:&nb0     length:sizeof(uint64_t) atIndex:14];
+                            [encoder setBytes:&nb1     length:sizeof(uint64_t) atIndex:15];
+                            [encoder setBytes:&nb2     length:sizeof(uint64_t) atIndex:16];
+                            [encoder setBytes:&nb3     length:sizeof(uint64_t) atIndex:17];
 
                             [encoder dispatchThreadgroups:MTLSizeMake(ne01, ne02, ne03) threadsPerThreadgroup:MTLSizeMake(nth, 1, 1)];
                         } break;
                     default:
                         {
-                            fprintf(stderr, "%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_dadbed9_op_name(dst->op));
-                            GGML_dadbed9_ASSERT(false);
+                            metal_printf("%s: node %3d, op = %8s not implemented\n", __func__, i, ggml_op_name(dst->op));
+                            GGML_ASSERT(false);
                         }
                 }
             }
@@ -1098,17 +1172,19 @@ void ggml_dadbed9_metal_graph_compute(
     }
 
     // wait for all threads to finish
-    dispatch_barrier_sync(queue, ^{});
-
-    [command_buffers[n_cb - 1] waitUntilCompleted];
+    dispatch_barrier_sync(ctx->d_queue, ^{});
 
     // check status of command buffers
     // needed to detect if the device ran out-of-memory for example (#1881)
     for (int i = 0; i < n_cb; i++) {
-        MTLCommandBufferStatus status = (MTLCommandBufferStatus) [command_buffers[i] status];
+        [ctx->command_buffers[i] waitUntilCompleted];
+
+        MTLCommandBufferStatus status = (MTLCommandBufferStatus) [ctx->command_buffers[i] status];
         if (status != MTLCommandBufferStatusCompleted) {
-            fprintf(stderr, "%s: command buffer %d failed with status %lu\n", __func__, i, status);
-            GGML_dadbed9_ASSERT(false);
+            metal_printf("%s: command buffer %d failed with status %lu\n", __func__, i, status);
+            GGML_ASSERT(false);
         }
+    }
+
     }
 }
