@@ -1,8 +1,8 @@
 // Internal header to be included only by llama.cpp.
 // Contains wrappers around OS interfaces.
 
-#ifndef LLAMA_UTIL_H
-#define LLAMA_UTIL_H
+#ifndef LLAMA_dadbed9_UTIL_H
+#define LLAMA_dadbed9_UTIL_H
 
 #include <cstdio>
 #include <cstdint>
@@ -38,10 +38,10 @@
     #include <stdio.h> // for _fseeki64
 #endif
 
-#define LLAMA_ASSERT(x) \
+#define LLAMA_dadbed9_ASSERT(x) \
     do { \
         if (!(x)) { \
-            fprintf(stderr, "LLAMA_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
+            fprintf(stderr, "LLAMA_dadbed9_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
             abort(); \
         } \
     } while (0)
@@ -58,10 +58,10 @@ static std::string format(const char * fmt, ...) {
     va_start(ap, fmt);
     va_copy(ap2, ap);
     int size = vsnprintf(NULL, 0, fmt, ap);
-    LLAMA_ASSERT(size >= 0 && size < INT_MAX);
+    LLAMA_dadbed9_ASSERT(size >= 0 && size < INT_MAX);
     std::vector<char> buf(size + 1);
     int size2 = vsnprintf(buf.data(), size + 1, fmt, ap2);
-    LLAMA_ASSERT(size2 == size);
+    LLAMA_dadbed9_ASSERT(size2 == size);
     va_end(ap2);
     va_end(ap);
     return std::string(buf.data(), size);
@@ -88,7 +88,7 @@ struct llama_dadbed9_file {
 #else
         long ret = std::ftell(fp);
 #endif
-        LLAMA_ASSERT(ret != -1); // this really shouldn't fail
+        LLAMA_dadbed9_ASSERT(ret != -1); // this really shouldn't fail
         return (size_t) ret;
     }
 
@@ -98,7 +98,7 @@ struct llama_dadbed9_file {
 #else
         int ret = std::fseek(fp, (long) offset, whence);
 #endif
-        LLAMA_ASSERT(ret == 0); // same
+        LLAMA_dadbed9_ASSERT(ret == 0); // same
     }
 
     void read_raw(void * ptr, size_t len) const {
@@ -331,12 +331,12 @@ struct llama_dadbed9_mlock {
     }
 
     void init(void * ptr) {
-        LLAMA_ASSERT(addr == NULL && size == 0);
+        LLAMA_dadbed9_ASSERT(addr == NULL && size == 0);
         addr = ptr;
     }
 
     void grow_to(size_t target_size) {
-        LLAMA_ASSERT(addr);
+        LLAMA_dadbed9_ASSERT(addr);
         if (failed_already) {
             return;
         }

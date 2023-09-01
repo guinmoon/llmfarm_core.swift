@@ -24,7 +24,7 @@ let package = Package(
             name: "llmfarm_core_cpp",
             sources: ["ggml/ggml_dadbed9.c","ggml/ggml_a1d0ea7.c","ggml/k_quants_dadbed9.c","ggml/ggml-alloc_dadbed9.c","ggml/ggml-metal_dadbed9.m",
                       "ggml/ggml.c","ggml/k_quants.c","ggml/ggml-alloc.c","ggml/ggml-metal.m","ggml/common.cpp","gpt_helpers.cpp","gpt_spm.cpp","package_helper.m",
-                      "gptneox/gptneox.cpp","gpt2/gpt2.cpp","replit/replit.cpp","starcoder/starcoder.cpp","rwkv/rwkv.cpp","llama/llama_dadbed9.cpp"
+                      "gptneox/gptneox.cpp","gpt2/gpt2.cpp","replit/replit.cpp","starcoder/starcoder.cpp","rwkv/rwkv.cpp","llama/llama.cpp","llama/llama_dadbed9.cpp"
                       ],
             resources: [
                 .copy("tokenizers"),
