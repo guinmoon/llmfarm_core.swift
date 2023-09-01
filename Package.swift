@@ -33,7 +33,7 @@ let package = Package(
             publicHeadersPath: "spm-headers",
             //            I'm not sure about some of the flags, please correct it's wrong.
             cSettings: [
-//                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp
+                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp
                 .unsafeFlags(["-DNDEBUG"]),
                 .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3"]), //for Intel CPU
                 .unsafeFlags(["-DGGML_METAL_NDEBUG"]),

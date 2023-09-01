@@ -12,6 +12,8 @@ extern "C" {
 #endif
 
 typedef int gpt_token;
+typedef int llama_token;
+
 const char * print_system_info(void);
 
 typedef struct gpt_neox_token_data {
@@ -110,6 +112,8 @@ int32_t rwkv_sample_repeat(int n_logits, float * logits,
                                int top_k, float top_p, float temp,
                                int repeat_last_n,
                            float repeat_penalty);
+
+const char * llama_token_to_str(const struct llama_context * ctx, llama_token token);
 
 bool llama_save_state(struct llama_dadbed9_context * ctx,  const char * fname);
 

@@ -10,6 +10,7 @@ import llmfarm_core_cpp
 
 public enum ModelInference {
     case LLama
+    case LLama_gguf
     case GPTNeox
     case GPT2
     case Replit
@@ -42,6 +43,8 @@ public class AI {
             switch aiModel {
             case .LLama:
                 model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
+            case .LLama_gguf:
+                model = try LLaMa(path: self.modelPath, contextParams: contextParams)
             case .GPTNeox:
                 model = try GPTNeoX(path: self.modelPath, contextParams: contextParams)
             case .GPT2:

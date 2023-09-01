@@ -1,6 +1,7 @@
 #include "../spm-headers/gpt_spm.h"
 #include "gpt_helpers.h"
 #include "../spm-headers/llama_dadbed9.h"
+#include "../spm-headers/llama.h"
 #include "../spm-headers/rwkv.h"
 #include "ggml/ggml_dadbed9.h"
 #include <cassert>
@@ -243,7 +244,19 @@ bool llama_save_state(struct llama_dadbed9_context * ctx, const char * fname){
     return  true;
 }
 
+const char * llama_token_to_str(const struct llama_context * ctx, llama_token token) {
+    std::vector<char> result(8, 0);
+    const int n_tokens = llama_token_to_piece(ctx, token, result.data(), result.size());
+    if (n_tokens < 0) {
+        result.resize(-n_tokens);
+        int check = llama_token_to_piece(ctx, token, result.data(), result.size());
+        GGML_ASSERT(check == -n_tokens);
+    } else {
+        result.resize(n_tokens);
+    }
 
+    return std::string(result.data(), result.size()).c_str();
+}
 
 //bool llama_load_state(struct llama_context * ctx, const char * fname)
 //{

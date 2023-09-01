@@ -13,7 +13,7 @@ public class LLaMa: LLMBase {
     public var model: OpaquePointer?
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
-        var params = llama_dadbed9_context_default_params()
+        var params = llama_context_default_params()
         params.n_ctx = contextParams.context
 //        params.n_parts = contextParams.parts
         params.seed = UInt32(contextParams.seed)
@@ -25,24 +25,26 @@ public class LLaMa: LLMBase {
         if contextParams.use_metal{
             params.n_gpu_layers = 1
         }
-        self.context = llama_dadbed9_init_from_file(path, params)
+        self.model = llama_load_model_from_file(path, params)
+        self.context = llama_new_context_with_model(model, params)
         return true
     }
     
     deinit {
-        llama_dadbed9_free(context)
+        llama_free(context)
+        llama_free_model(model)
     }
     
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
-        return llama_dadbed9_n_vocab(ctx)
+        return llama_n_vocab(ctx)
     }
     
     override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
-        return llama_dadbed9_get_logits(ctx);
+        return llama_get_logits(ctx);
     }
 
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        if llama_dadbed9_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
+        if llama_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
             throw ModelError.failedToEval
         }
         return true
@@ -51,29 +53,26 @@ public class LLaMa: LLMBase {
     public override func llm_token_to_str(outputToken:Int32) -> String? {
 //        var cStringPtr: UnsafeMutablePointer<CChar>? = nil
 //        var cStr_len: Int32 = 0;
-//        llama_dadbed9_token_to_str(context, outputToken,cStringPtr,cStr_len)
+//        llama_token_to_str(context, outputToken,cStringPtr,cStr_len)
 //        if cStr_len>0{
 //            return String(cString: cStringPtr!)
 //        }
-        if let cStr = llama_dadbed9_token_to_str(context, outputToken){
+        if let cStr = llama_token_to_str(context, outputToken){
             return String(cString: cStr)
         }
         return nil
     }
     
     public override func llm_token_nl() -> ModelToken{
-//        return llama_dadbed9_token_nl(self.context)
-        return llama_dadbed9_token_nl()
+        return llama_token_nl(self.context)
     }
 
     public override func llm_token_bos() -> ModelToken{
-//        return llama_dadbed9_token_bos(self.context)
-        return llama_dadbed9_token_bos()
+       return llama_token_bos(self.context)
     }
     
     public override func llm_token_eos() -> ModelToken{
-//        return llama_dadbed9_token_eos(self.context)
-        return llama_dadbed9_token_eos()
+        return llama_token_eos(self.context)
     }
     
 
@@ -84,14 +83,13 @@ public class LLaMa: LLMBase {
             return []
         }
 
-        var embeddings: [llama_dadbed9_token] = Array<llama_dadbed9_token>(repeating: llama_dadbed9_token(), count: input.utf8.count)
-        let n = llama_dadbed9_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
+        var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
+        let n = llama_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
         assert(n >= 0)
         embeddings.removeSubrange(Int(n)..<embeddings.count)
         
         if eos {
-//            embeddings.append(llama_dadbed9_token_eos(self.context))
-            embeddings.append(llama_dadbed9_token_eos())
+            embeddings.append(llama_token_eos(self.context))
         }
         
         return embeddings
