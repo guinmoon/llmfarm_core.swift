@@ -10,6 +10,7 @@ import llmfarm_core_cpp
 
 public class LLaMa_dadbed9: LLMBase {
 
+    public var hardware_arch: String=""
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var params = llama_dadbed9_context_default_params()
@@ -23,6 +24,10 @@ public class LLaMa_dadbed9: LLMBase {
         params.embedding = contextParams.embedding
         if contextParams.use_metal{
             params.n_gpu_layers = 1
+        }
+        self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
+        if self.hardware_arch=="x86_64"{
+            params.n_gpu_layers = 0
         }
         self.context = llama_dadbed9_init_from_file(path, params)
         return true

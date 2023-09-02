@@ -84,7 +84,7 @@ var params:ModelContextParams = .default
 params.use_metal = true
 
 try? ai.loadModel(ModelInference.LLamaInference,contextParams: params)
-ai.model.promptFormat = .LLaMa
+ai.model.promptFormat = .LLaMa_bin
 
 let output = try? ai.model.predict(input_text, mainCallback)
 

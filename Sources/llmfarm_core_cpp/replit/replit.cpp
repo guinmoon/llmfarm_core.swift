@@ -795,6 +795,8 @@ int32_t replit_sample_repeat(struct replit_context * ctx,
     return  smpl;
 }
 
+
+char* replit_token_to_str_res = new char[3];
 const char * replit_token_to_str(struct replit_context * ctx, gpt_token token) {
 //    std::string replit_tokenizer_detokenize(replit_tokenizer & tokenizer, const std::vector<std::size_t> & tokens)
 //    std::string res = replit_tokenizer_detokenize(ctx->vocab, {static_cast<std::size_t>(token)});
@@ -806,7 +808,8 @@ const char * replit_token_to_str(struct replit_context * ctx, gpt_token token) {
 //        text += ctx->vocab.raw_vocab.id_to_token[tok];
 //    }
     auto denormalized_text = replace_all(text, ws_symbol, " ");
-    return denormalized_text.c_str();
+    strcpy(replit_token_to_str_res, denormalized_text.c_str());
+    return replit_token_to_str_res;
     
 }
 

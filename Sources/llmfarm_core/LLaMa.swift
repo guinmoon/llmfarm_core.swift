@@ -11,6 +11,7 @@ import llmfarm_core_cpp
 public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
+    public var hardware_arch: String=""
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var params = llama_context_default_params()
@@ -24,6 +25,10 @@ public class LLaMa: LLMBase {
         params.embedding = contextParams.embedding
         if contextParams.use_metal{
             params.n_gpu_layers = 1
+        }
+        self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
+        if self.hardware_arch=="x86_64"{
+            params.n_gpu_layers = 0
         }
         self.model = llama_load_model_from_file(path, params)
         self.context = llama_new_context_with_model(model, params)
@@ -51,13 +56,8 @@ public class LLaMa: LLMBase {
     }
     
     public override func llm_token_to_str(outputToken:Int32) -> String? {
-//        var cStringPtr: UnsafeMutablePointer<CChar>? = nil
-//        var cStr_len: Int32 = 0;
-//        llama_token_to_str(context, outputToken,cStringPtr,cStr_len)
-//        if cStr_len>0{
-//            return String(cString: cStringPtr!)
-//        }
         if let cStr = llama_token_to_str(context, outputToken){
+//            print(String(cString: cStr))
             return String(cString: cStr)
         }
         return nil

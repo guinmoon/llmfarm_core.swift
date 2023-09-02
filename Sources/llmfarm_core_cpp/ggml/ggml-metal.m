@@ -3,7 +3,7 @@
 #import "ggml.h"
 
 #import <Foundation/Foundation.h>
-
+#include <sys/utsname.h>
 #import <Metal/Metal.h>
 
 #undef MIN
@@ -113,10 +113,19 @@ static NSString * const msl_library_source = @"see metal.metal";
 @implementation GGMLMetalClass
 @end
 
+
+NSString *GetMachineHardwareName_new(void) {
+    struct utsname sysinfo;
+    int retVal = uname(&sysinfo);
+    if (EXIT_SUCCESS != retVal) return nil;
+    
+    return [NSString stringWithUTF8String:sysinfo.machine];
+}
+
 struct ggml_metal_context * ggml_metal_init(int n_cb) {
     metal_printf("%s: allocating\n", __func__);
 
-    struct ggml_metal_context * ctx = malloc(sizeof(struct ggml_metal_context));
+    struct ggml_metal_context * ctx = calloc(1, sizeof(struct ggml_metal_context));
 
     ctx->n_cb   = MIN(n_cb, GGML_METAL_MAX_BUFFERS);
     ctx->device = MTLCreateSystemDefaultDevice();
@@ -125,7 +134,7 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
     ctx->concur_list_len = 0;
 
     ctx->d_queue = dispatch_queue_create("llama.cpp", DISPATCH_QUEUE_CONCURRENT);
-
+    NSString * arch = GetMachineHardwareName_new();
 #if 0
     // compile from source string and show compile log
     {
@@ -145,8 +154,9 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
         NSError * error = nil;
 
         //NSString * path = [[NSBundle mainBundle] pathForResource:@"../../examples/metal/metal" ofType:@"metal"];
-        NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
-        NSString * path = [bundle pathForResource:@"ggml-metal" ofType:@"metal"];
+//        NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
+//        NSString * path = [bundle pathForResource:@"ggml-metal" ofType:@"metal"];
+        NSString * path = [SWIFTPM_MODULE_BUNDLE pathForResource:@"ggml-metal" ofType:@"metal" inDirectory:@"metal"];
         metal_printf("%s: loading '%s'\n", __func__, [path UTF8String]);
 
         NSString * src  = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:&error];
@@ -175,7 +185,7 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
 #define GGML_METAL_ADD_KERNEL(name) \
         ctx->function_##name = [ctx->library newFunctionWithName:@"kernel_"#name]; \
         ctx->pipeline_##name = [ctx->device newComputePipelineStateWithFunction:ctx->function_##name error:&error]; \
-        metal_printf("%s: loaded %-32s %16p | th_max = %4d | th_width = %4d\n", __func__, "kernel_"#name, (void *) ctx->pipeline_##name, \
+        metal_printf("%s: loaded %-32s %16p | th_max = %4d | th_width = %4d\n", __func__, "kernel_"#name, (__bridge void *) ctx->pipeline_##name, \
                 (int) ctx->pipeline_##name.maxTotalThreadsPerThreadgroup, \
                 (int) ctx->pipeline_##name.threadExecutionWidth); \
         if (error) { \
@@ -213,15 +223,18 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
         GGML_METAL_ADD_KERNEL(mul_mat_q4_K_f32);
         GGML_METAL_ADD_KERNEL(mul_mat_q5_K_f32);
         GGML_METAL_ADD_KERNEL(mul_mat_q6_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_f16_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q8_0_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
+        if (![arch isEqualToString:@"x86_64"]){
+            fprintf(stderr, "%s: arch %s\n", __func__, [arch UTF8String]);
+            GGML_METAL_ADD_KERNEL(mul_mm_f16_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q8_0_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
+            GGML_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
+        }
         GGML_METAL_ADD_KERNEL(rope);
         GGML_METAL_ADD_KERNEL(alibi_f32);
         GGML_METAL_ADD_KERNEL(cpy_f32_f16);
@@ -233,12 +246,13 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
 
     metal_printf("%s: recommendedMaxWorkingSetSize  = %8.2f MB\n", __func__, ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
     metal_printf("%s: hasUnifiedMemory              = %s\n",       __func__, ctx->device.hasUnifiedMemory ? "true" : "false");
+#ifndef TARGET_OS_IPHONE
     if (ctx->device.maxTransferRate != 0) {
         metal_printf("%s: maxTransferRate               = %8.2f MB/s\n", __func__, ctx->device.maxTransferRate / 1024.0 / 1024.0);
     } else {
         metal_printf("%s: maxTransferRate               = built-in GPU\n", __func__);
     }
-
+#endif
     return ctx;
 }
 
@@ -440,12 +454,13 @@ bool ggml_metal_add_buffer(
         metal_printf(", (%8.2f / %8.2f)",
                 ctx->device.currentAllocatedSize / 1024.0 / 1024.0,
                 ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
-
+#ifndef TARGET_OS_IPHONE
         if (ctx->device.currentAllocatedSize > ctx->device.recommendedMaxWorkingSetSize) {
             metal_printf(", warning: current allocated size is greater than the recommended max working set size\n");
         } else {
             metal_printf("\n");
         }
+#endif
     }
 
     return true;

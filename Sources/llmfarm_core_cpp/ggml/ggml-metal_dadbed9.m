@@ -149,7 +149,7 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
 
         //NSString * path = [[NSBundle mainBundle] pathForResource:@"../../examples/metal/metal" ofType:@"metal"];
 //        NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
-        NSString * path = [SWIFTPM_MODULE_BUNDLE pathForResource:@"ggml-metal" ofType:@"metal" inDirectory:@"metal"];
+        NSString * path = [SWIFTPM_MODULE_BUNDLE pathForResource:@"ggml-metal_dadbed9" ofType:@"metal" inDirectory:@"metal"];
 //        NSString *path = @"/Users/guinmoon/dev/alpaca_llama_etc/LLMFarm/llmfarm_core.swift/Sources/llmfarm_core_cpp/metal/ggml-metal.metal";
         fprintf(stderr, "%s: loading '%s'\n", __func__, [path UTF8String]);
 

@@ -244,6 +244,8 @@ bool llama_save_state(struct llama_dadbed9_context * ctx, const char * fname){
     return  true;
 }
 
+char* llama_token_to_str_res = new char[3];
+
 const char * llama_token_to_str(const struct llama_context * ctx, llama_token token) {
     std::vector<char> result(8, 0);
     const int n_tokens = llama_token_to_piece(ctx, token, result.data(), result.size());
@@ -254,8 +256,11 @@ const char * llama_token_to_str(const struct llama_context * ctx, llama_token to
     } else {
         result.resize(n_tokens);
     }
-
-    return std::string(result.data(), result.size()).c_str();
+//    auto res = std::string(result.data(), result.size());
+//    fprintf(stderr, "%s: %s\n", __func__,res.c_str());
+    strcpy(llama_token_to_str_res, std::string(result.data(), result.size()).c_str());
+    return  llama_token_to_str_res;
+//    return res.c_str();
 }
 
 //bool llama_load_state(struct llama_context * ctx, const char * fname)
