@@ -243,10 +243,10 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
 
 #undef GGML_METAL_ADD_KERNEL
     }
-
+#ifndef TARGET_OS_IPHONE
     metal_printf("%s: recommendedMaxWorkingSetSize  = %8.2f MB\n", __func__, ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
     metal_printf("%s: hasUnifiedMemory              = %s\n",       __func__, ctx->device.hasUnifiedMemory ? "true" : "false");
-#ifndef TARGET_OS_IPHONE
+
     if (ctx->device.maxTransferRate != 0) {
         metal_printf("%s: maxTransferRate               = %8.2f MB/s\n", __func__, ctx->device.maxTransferRate / 1024.0 / 1024.0);
     } else {
@@ -450,11 +450,11 @@ bool ggml_metal_add_buffer(
                 ++ctx->n_buffers;
             }
         }
-
+#ifndef TARGET_OS_IPHONE
         metal_printf(", (%8.2f / %8.2f)",
                 ctx->device.currentAllocatedSize / 1024.0 / 1024.0,
                 ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
-#ifndef TARGET_OS_IPHONE
+
         if (ctx->device.currentAllocatedSize > ctx->device.recommendedMaxWorkingSetSize) {
             metal_printf(", warning: current allocated size is greater than the recommended max working set size\n");
         } else {
