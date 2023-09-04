@@ -15,3 +15,14 @@ NSString *Get_Machine_Hardware_Name(void) {
     
     return [NSString stringWithUTF8String:sysinfo.machine];
 }
+
+
+NS_INLINE NSException * _Nullable tryBlock(void(^_Nonnull tryBlock)(void)) {
+    @try {
+        tryBlock();
+    }
+    @catch (NSException *exception) {
+        return exception;
+    }
+    return nil;
+}
