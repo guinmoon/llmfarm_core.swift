@@ -79,11 +79,11 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
 
 var input_text = "State the meaning of life."
 
-let ai = AI(_modelPath: "llama-2-7b.ggmlv3.q4_K_M.bin",_chatName: "chat")
+let ai = AI(_modelPath: "llama-2-7b.ggmlv3.q4_K_M.gguf",_chatName: "chat")
 var params:ModelContextParams = .default
 params.use_metal = true
 
-try? ai.loadModel(ModelInference.LLamaInference,contextParams: params)
+try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
 ai.model.promptFormat = .LLaMa_bin
 
 let output = try? ai.model.predict(input_text, mainCallback)

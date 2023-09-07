@@ -21,10 +21,10 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
 
 var input_text = "State the meaning of life."
 
-let ai = AI(_modelPath: "orca-mini-3b.ggmlv3.q4_1.bin",_chatName: "chat")
+let ai = AI(_modelPath: "orca-mini-3b.ggmlv3.q4_1.gguf",_chatName: "chat")
 var params:ModelContextParams = .default
 
-try? ai.loadModel(ModelInference.LLamaInference,contextParams: params)
+try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
 
 ai.model.promptFormat = .Custom
 ai.model.custom_prompt_format = "### Instruction:{{prompt}}### Response:"

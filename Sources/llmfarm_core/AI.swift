@@ -67,7 +67,10 @@ public class AI {
     public func conversation(_ input: String,  _ tokenCallback: ((String, Double) -> ())?, _ completion: ((String) -> ())?) {
         flagResponding = true
         aiQueue.async {
-            func mainCallback(_ str: String, _ time: Double) -> Bool {
+            guard let completion = completion else { return }
+            
+            // Model output
+            let output = try? self.model.predict(input, { str, time in
                 DispatchQueue.main.async {
                     tokenCallback?(str, time)
                 }
@@ -78,11 +81,7 @@ public class AI {
                     return true
                 }
                 return false
-            }
-            guard let completion = completion else { return }
-            
-            // Model output
-            let output = try? self.model.predict(input, mainCallback)
+            })
             
             DispatchQueue.main.async {
                 self.flagResponding = false
