@@ -31,7 +31,13 @@ public class LLaMa: LLMBase {
             params.n_gpu_layers = 0
         }
         self.model = llama_load_model_from_file(path, params)
+        if self.model == nil{
+            return false
+        }
         self.context = llama_new_context_with_model(model, params)
+        if self.context == nil {
+            return false
+        }
         return true
     }
     

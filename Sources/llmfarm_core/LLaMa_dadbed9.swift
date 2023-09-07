@@ -30,6 +30,9 @@ public class LLaMa_dadbed9: LLMBase {
             params.n_gpu_layers = 0
         }
         self.context = llama_dadbed9_init_from_file(path, params)
+        if self.context == nil {
+            return false
+        }
         return true
     }
     

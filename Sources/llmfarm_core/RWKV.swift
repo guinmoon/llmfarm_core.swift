@@ -30,6 +30,9 @@ public class RWKV: LLMBase {
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         self.context = rwkv_init_from_file(path, UInt32(contextParams.numberOfThreads))
+        if self.context == nil {
+            return false
+        }
         self.promptFormat = .None
         
         return true

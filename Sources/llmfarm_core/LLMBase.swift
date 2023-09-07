@@ -8,12 +8,24 @@
 import Foundation
 import llmfarm_core_cpp
 
+public enum ModelLoadError: Error {
+    // Throw when an invalid password is entered
+    case modelLoadError
+
+    // Throw when an expected resource is not found
+    case contextLoadError
+
+//        // Throw in all other cases
+//        case unexpected(code: Int)
+}
+
 public class LLMBase: Model {
     
     // Used to keep old context until it needs to be rotated or purge out for new tokens
     var past: [[ModelToken]] = [] // Will house both queries and responses in order
     //var n_history: Int32 = 0
     var nPast: Int32 = 0
+    
     
     
     public override init(path: String, contextParams: ModelContextParams = .default) throws {
@@ -39,7 +51,10 @@ public class LLMBase: Model {
         // Load model at path
         //        self.context = gptneox_init_from_file(path, params)
         //        let test = test_fn()
-        try llm_load_model(path:path,contextParams:contextParams,params: params)
+        let load_res = try llm_load_model(path:path,contextParams:contextParams,params: params)
+        if load_res != true{
+            throw ModelLoadError.modelLoadError
+        }
         
         print("%s: seed = %d\n", params.seed);
         

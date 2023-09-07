@@ -37,7 +37,7 @@ public class AI {
         self.chatName = _chatName
     }
     
-    public func loadModel(_ aiModel: ModelInference, contextParams: ModelContextParams = .default) {
+    public func loadModel(_ aiModel: ModelInference, contextParams: ModelContextParams = .default) throws -> Bool {
         print("AI init")
         do{
             switch aiModel {
@@ -56,9 +56,11 @@ public class AI {
             case .RWKV:
                 model = try RWKV(path: self.modelPath, contextParams: contextParams)
             }
+            return true
         }
         catch {
             print(error)
+            throw ModelLoadError.modelLoadError
         }
     }
     

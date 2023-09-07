@@ -12,7 +12,9 @@ public class Replit: LLMBase {
 
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         self.context = replit_init_from_file(path, params)
-        self.promptFormat = .None
+        if self.context == nil {
+            return false
+        }
         return true
     }
     

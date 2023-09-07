@@ -12,6 +12,9 @@ public class GPT2: LLMBase {
 
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         self.context = gpt2_init_from_file(path, params)
+        if self.context == nil {
+            return false
+        }
         self.promptFormat = .None
         return true
     }
