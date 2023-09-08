@@ -247,9 +247,9 @@ struct ggml_dadbed9_metal_context * ggml_dadbed9_metal_init(int n_cb) {
 
 void ggml_dadbed9_metal_free(struct ggml_dadbed9_metal_context * ctx) {
     fprintf(stderr, "%s: deallocating\n", __func__);
-//    for (int i = 0; i < ctx->n_buffers; ++i) {
-//        [ctx->buffers[i].metal release];
-//    }
+    for (int i = 0; i < ctx->n_buffers; ++i) {
+        [ctx->buffers[i].metal release];
+    }
     free(ctx);
 }
 

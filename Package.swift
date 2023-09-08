@@ -41,15 +41,10 @@ let package = Package(
                 .unsafeFlags(["-DGGML_USE_METAL"]),
                 .unsafeFlags(["-DGGML_USE_K_QUANTS"]),
                 .unsafeFlags(["-pthread"]),
+                .unsafeFlags(["-fno-objc-arc"]),
                 .unsafeFlags(["-w"]),    // ignore all warnings
                 //                .unsafeFlags(["-DGGML_QKK_64"]), // Dont forget to comment this if you dont use QKK_64
                 
-            ],
-            cxxSettings: [
-                .unsafeFlags(["-Ofast"]),
-                .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3"]),
-                .unsafeFlags(["-pthread"]),
-                .unsafeFlags(["-w"])
             ],
             linkerSettings: [
                 .linkedFramework("Foundation"),
