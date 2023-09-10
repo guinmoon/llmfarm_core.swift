@@ -27,7 +27,7 @@ Also used sources from:
 - [x] [GPT2](https://huggingface.co/docs/transformers/model_doc/gpt2) + [Cerebras](https://arxiv.org/abs/2304.03208)
 - [x] [Starcoder(Santacoder)](https://huggingface.co/bigcode/santacoder)
 - [x] [RWKV](https://huggingface.co/docs/transformers/model_doc/rwkv) (20B tokenizer)
-- [ ] [Falcon](https://github.com/cmp-nct/ggllm.cpp)
+- [x] [Falcon](https://github.com/cmp-nct/ggllm.cpp)
 
 
 # Installation
@@ -79,7 +79,7 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
 
 var input_text = "State the meaning of life."
 
-let ai = AI(_modelPath: "llama-2-7b.ggmlv3.q4_K_M.gguf",_chatName: "chat")
+let ai = AI(_modelPath: "llama-2-7b.q4_K_M.gguf",_chatName: "chat")
 var params:ModelContextParams = .default
 params.use_metal = true
 

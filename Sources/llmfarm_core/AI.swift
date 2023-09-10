@@ -163,6 +163,7 @@ public struct ModelContextParams {
     public var logitsAll = false    // the llama_eval() call computes all logits, not just the last one
     public var vocabOnly = false    // only load the vocabulary, no weights
     public var useMlock = false     // force system to keep model in RAM
+    public var useMMap = true     // if disabled dont use MMap file
     public var embedding = false    // embedding mode only
     public var processorsConunt  = Int32(ProcessInfo.processInfo.processorCount)
     public var use_metal = false
@@ -171,7 +172,7 @@ public struct ModelContextParams {
 
     public static let `default` = ModelContextParams()
 
-    public init(context: Int32 = 2048 /*512*/, parts: Int32 = -1, seed: UInt32 = 0xFFFFFFFF, numberOfThreads: Int32 = 0, f16Kv: Bool = true, logitsAll: Bool = false, vocabOnly: Bool = false, useMlock: Bool = false, embedding: Bool = false) {
+    public init(context: Int32 = 2048 /*512*/, parts: Int32 = -1, seed: UInt32 = 0xFFFFFFFF, numberOfThreads: Int32 = 0, f16Kv: Bool = true, logitsAll: Bool = false, vocabOnly: Bool = false, useMlock: Bool = false,useMMap: Bool = true, embedding: Bool = false) {
         self.context = context
         self.parts = parts
         self.seed = seed
@@ -182,6 +183,7 @@ public struct ModelContextParams {
         self.logitsAll = logitsAll
         self.vocabOnly = vocabOnly
         self.useMlock = useMlock
+        self.useMMap = useMMap
         self.embedding = embedding
     }
 }
