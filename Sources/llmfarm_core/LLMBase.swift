@@ -114,7 +114,6 @@ public class LLMBase: Model {
                 penalize_nl: Bool) -> ModelToken {
         // Model input context size
         let n_ctx = llm_get_n_ctx(ctx: ctx)
-        
         // Auto params
         
         let top_k = top_k <= 0 ? llm_n_vocab(ctx) : top_k
@@ -277,7 +276,7 @@ public class LLMBase: Model {
                 top_k: params.top_k,
                 top_p: params.top_p,
                 tfs_z: params.tfs_z,
-                typical_p: params.repeat_penalty,
+                typical_p: params.typical_p,
                 repeat_last_n: params.repeat_last_n,
                 repeat_penalty: params.repeat_penalty,
                 alpha_presence: params.presence_penalty,
