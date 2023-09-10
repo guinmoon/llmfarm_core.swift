@@ -6,7 +6,7 @@ Also used sources from:
 * [rwkv.cpp](https://github.com/saharNooby/rwkv.cpp) by [saharNooby](https://github.com/saharNooby).
 * [Mia](https://github.com/byroneverson/Mia) by [byroneverson](https://github.com/byroneverson).
 
-## Features
+# Features
 
 - [x] MacOS (13+)
 - [x] iOS (16+)
@@ -19,7 +19,7 @@ Also used sources from:
 - [ ] Restore context state (now only chat history) 
 - [ ] Metal for other inference
 
-## Inferences
+# Inferences
 
 - [x] [LLaMA](https://arxiv.org/abs/2302.13971)
 - [x] [GPTNeoX](https://huggingface.co/docs/transformers/model_doc/gpt_neox)
@@ -35,9 +35,7 @@ Also used sources from:
 git clone https://github.com/guinmoon/llmfarm_core.swift
 ```
 
-## Installation
-
-### Swift Package Manager
+## Swift Package Manager
 
 Add `llmfarm_core` to your project using Xcode (File > Add Packages...) or by adding it to your project's `Package.swift` file:
 
@@ -54,9 +52,9 @@ Don't forget that the debug version is slower than the release version.
 
 To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `Package.swift`.
 
-## Usage
+# Usage
 
-### [More examples in the examples directory.](/Examples)
+## [More examples in the examples directory.](/Examples)
 
 ### Example generate output from a prompt:
 
@@ -90,3 +88,7 @@ let output = try? ai.model.predict(input_text, mainCallback)
 
 
 ```
+
+# Projects based on this library:
+ * ## [LLM Farm](https://github.com/guinmoon/LLMFarm)
+App to run LLaMA and other large language models locally on iOS and MacOS.
