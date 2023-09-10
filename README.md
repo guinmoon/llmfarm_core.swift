@@ -54,9 +54,9 @@ To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `P
 
 # Usage
 
-## [More examples in the examples directory.](/Examples)
+## [More examples in the examples directory](/Examples)
 
-### Example generate output from a prompt:
+### Example generate output from a prompt
 
 
 ```swift
@@ -89,6 +89,6 @@ let output = try? ai.model.predict(input_text, mainCallback)
 
 ```
 
-# Projects based on this library:
+# Projects based on this library
  * ## [LLM Farm](https://github.com/guinmoon/LLMFarm)
 App to run LLaMA and other large language models locally on iOS and MacOS.
