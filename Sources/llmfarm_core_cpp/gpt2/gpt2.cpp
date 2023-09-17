@@ -71,6 +71,9 @@ struct gpt2_hparams:gpt_base_hparams {
 };
 
 
+
+
+
 struct gpt2_model {
     gpt2_hparams hparams;
 
@@ -91,6 +94,11 @@ struct gpt2_model {
     //
     struct ggml_context * ctx;
     std::map<std::string, struct ggml_tensor *> tensors;
+    ~gpt2_model() {
+        if (ctx) {
+            ggml_free(ctx);
+        }
+    }
 };
 
 struct gpt2_context:gpt_base_context {
@@ -99,7 +107,7 @@ struct gpt2_context:gpt_base_context {
     std::vector<uint8_t> compute_buffer;
 };
 
-void gpt2_free(struct gpt2_context * ctx) {
+void gpt2_free(struct gpt2_context * ctx) {    
     delete ctx;
 }
 
