@@ -53,6 +53,7 @@ struct gpt_context_params gpt_context_default_params() {
         /*.n_ctx                       =*/ 512,
         /*.n_parts                     =*/ -1,
         /*.seed                        =*/ 0,
+        /*.n_batch                     =*/ 8,
         /*.f16_kv                      =*/ false,
         /*.logits_all                  =*/ false,
         /*.vocab_only                  =*/ false,

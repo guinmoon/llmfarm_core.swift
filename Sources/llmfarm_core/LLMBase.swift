@@ -31,7 +31,7 @@ public class LLMBase: Model {
     public override init(path: String, contextParams: ModelContextParams = .default) throws {
         try super.init()
         
-        self.promptFormat = .OpenAssistant
+        self.promptFormat = .None
         
         self.contextParams = contextParams
         //        var params = gptneox_context_default_params()

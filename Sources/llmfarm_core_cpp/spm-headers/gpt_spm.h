@@ -43,10 +43,34 @@ typedef struct gpt_token_data_array {
 
 typedef void (*gpt_progress_callback)(float progress, void *ctx);
 
+//struct gpt_params {
+//    int32_t seed      = -1;  // RNG seed
+//    int32_t n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
+//    int32_t n_predict = 200; // new tokens to predict
+//    int32_t n_batch   = 8;   // batch size for prompt processing
+//
+//    // sampling parameters
+//    int32_t top_k          = 40;
+//    float   top_p          = 0.9f;
+//    float   temp           = 0.9f;
+//    int32_t repeat_last_n  = 64;
+//    float   repeat_penalty = 1.00f;
+//
+//    std::string model      = "models/gpt-2-117M/ggml-model.bin"; // model path
+//    std::string prompt     = "";
+//    std::string token_test = "";
+//
+//    bool    interactive      = false;
+//    int32_t interactive_port = -1;
+//
+//    int32_t n_gpu_layers     = 0;
+//};
+
 struct gpt_context_params {
     int n_ctx;   // text context
     int n_parts; // -1 for default
     uint32_t seed;    // RNG seed, 0 for random
+    int32_t n_batch;
 
     bool f16_kv;     // use fp16 for KV cache
     bool logits_all; // the gptneox_eval() call computes all logits, not just the last one
