@@ -34,7 +34,7 @@ public class LLaMa: LLMBase {
         }
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{
-            params.n_gpu_layers = 0
+//            params.n_gpu_layers = 0
         }
         self.model = llama_load_model_from_file(path, params)
         if self.model == nil{
@@ -95,8 +95,16 @@ public class LLaMa: LLMBase {
             return []
         }
 
+//        llama_tokenize(
+//                struct llama_context * ctx,
+//                          const char * text,
+//                                 int   text_len,
+//                         llama_token * tokens,
+//                                 int   n_max_tokens,
+//                                bool   add_bos)
+        let n_tokens = Int32(input.utf8.count) + (bos == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
-        let n = llama_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
+        let n = llama_tokenize(context, input, Int32(input.utf8.count), &embeddings, n_tokens, bos)
         assert(n >= 0)
         embeddings.removeSubrange(Int(n)..<embeddings.count)
         

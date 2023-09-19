@@ -17,6 +17,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <csignal>
 
 
 
@@ -107,7 +108,7 @@ struct gpt2_context:gpt_base_context {
     std::vector<uint8_t> compute_buffer;
 };
 
-void gpt2_free(struct gpt2_context * ctx) {    
+void gpt2_free(struct gpt2_context * ctx) {
     delete ctx;
 }
 
@@ -756,7 +757,18 @@ bool gpt2_eval(
     return true;
 }
 
+void signalHandler( int signum ) {
+    fprintf(stderr, "%s: SIGABRT recived\n", __func__);
+
+   // cleanup and close up stuff here
+   // terminate program
+
+   exit(signum);
+}
+
 struct gpt2_context * gpt2_init_from_file(const char * path_model, struct gpt_context_params   params) {
+//    signal(SIGABRT, signalHandler);
+//    abort();
     ggml_dadbed9_time_init();
 
     gpt2_context * ctx = new gpt2_context;
