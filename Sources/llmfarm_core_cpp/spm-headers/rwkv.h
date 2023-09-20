@@ -85,7 +85,7 @@ extern "C" {
 
     // Loads the model from a file and prepares it for inference.
     // Returns NULL on any error.
-    // - model_file_path: path to model file in ggml format.
+    // - model_file_path: path to model file in ggml_d925ed_d925ed format.
     // - n_threads: count of threads to use, must be positive.
     RWKV_API struct rwkv_context * rwkv_init_from_file(const char * model_file_path, const uint32_t n_threads);
 
@@ -103,10 +103,9 @@ extern "C" {
     RWKV_API bool rwkv_gpu_offload_layers(struct rwkv_context * ctx, const uint32_t n_layers);
 
     // Evaluates the model for a single token.
+    // You can pass NULL to logits_out whenever logits are not needed. This can improve speed by ~10 ms per iteration, because logits are not calculated.
     // Not thread-safe. For parallel inference, call rwkv_clone_context to create one rwkv_context for each thread.
     // Returns false on any error.
-    // You can pass NULL to logits_out whenever logits are not needed. This can improve speed by ~10ms per iteration
-    // that you do not calculate logits.
     // - token: next token index, in range 0 <= token < n_vocab.
     // - state_in: FP32 buffer of size rwkv_get_state_len(); or NULL, if this is a first pass.
     // - state_out: FP32 buffer of size rwkv_get_state_len(). This buffer will be written to if non-NULL.
@@ -114,12 +113,23 @@ extern "C" {
     RWKV_API bool rwkv_eval(struct rwkv_context * ctx, const uint32_t token, const float * state_in, float * state_out, float * logits_out);
 
     // Evaluates the model for a sequence of tokens.
-    // Uses a faster algorithm than rwkv_eval if you do not need the state and logits for every token. Best used with batch sizes of 64 or so.
+    // Uses a faster algorithm than rwkv_eval if you do not need the state and logits for every token. Best used with sequence lengths of 64 or so.
     // Has to build a computation graph on the first call for a given sequence, but will use this cached graph for subsequent calls of the same sequence length.
+    //
+    // NOTE ON ggml_d925ed_d925ed NODE LIMIT
+    //
+    // ggml_d925ed_d925ed has a hard-coded limit on max amount of nodes in a computation graph. The sequence graph is built in a way that quickly exceedes
+    // this limit when using large models and/or large sequence lengths.
+    // Fortunately, rwkv.cpp's fork of ggml_d925ed_d925ed has increased limit which was tested to work for sequence lengths up to 64 for 14B models.
+    //
+    // If you get `GGML_d925ed_ASSERT: ...\ggml_d925ed_d925ed.c:16941: cgraph->n_nodes < GGML_d925ed_MAX_NODES`, this means you've exceeded the limit.
+    // To get rid of the assertion failure, reduce the model size and/or sequence length.
+    //
+    // TODO When Metal (MPS) support is implemented, check that large sequence lengths work
+    //
+    // You can pass NULL to logits_out whenever logits are not needed. This can improve speed by ~10 ms per iteration, because logits are not calculated.
     // Not thread-safe. For parallel inference, call rwkv_clone_context to create one rwkv_context for each thread.
     // Returns false on any error.
-    // You can pass NULL to logits_out whenever logits are not needed. This can improve speed by ~10ms per iteration
-    // that you do not calculate logits.
     // - tokens: pointer to an array of tokens. If NULL, the graph will be built and cached, but not executed: this can be useful for initialization.
     // - sequence_len: number of tokens to read from the array.
     // - state_in: FP32 buffer of size rwkv_get_state_len(), or NULL if this is a first pass.
@@ -159,7 +169,7 @@ extern "C" {
 
     // Quantizes FP32 or FP16 model to one of quantized formats.
     // Returns false on any error. Error messages would be printed to stderr.
-    // - model_file_path_in: path to model file in ggml format, must be either FP32 or FP16.
+    // - model_file_path_in: path to model file in ggml_d925ed_d925ed format, must be either FP32 or FP16.
     // - model_file_path_out: quantized model will be written here.
     // - format_name: must be one of available format names below.
     // Available format names:

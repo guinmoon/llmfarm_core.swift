@@ -51,10 +51,12 @@ public class Tokenizer {
         let bpeMergesTxt = try! String(contentsOf: config.merges)
         let arr = bpeMergesTxt.split(separator: "\n").map { String($0) }
         var bpeRanks: [BytePair: Int32] = [:]
-        for i in 1 ..< arr.count {
-            let tuple = arr[i].split(separator: " ").map { String($0) }
-            let bp = BytePair(tuple: tuple)
-            bpeRanks[bp] = Int32(i - 1)
+        if arr.count>0{
+            for i in 1 ..< arr.count {
+                let tuple = arr[i].split(separator: " ").map { String($0) }
+                let bp = BytePair(tuple: tuple)
+                bpeRanks[bp] = Int32(i - 1)
+            }
         }
         self.bpeRanks = bpeRanks
 
@@ -166,7 +168,11 @@ public class Tokenizer {
     }
 
     func encode(text: String) -> [Int32] {
-        return tokenize(text: text).map { encoder[$0]! }
+        return tokenize(text: text).map {
+            let encoded = encoder[$0]
+            if encoded != nil {return encoded!}
+            else {return 0}
+        }
     }
 
     func decode(tokens: [Int32]) -> String {
