@@ -76,8 +76,12 @@ public class RWKV: LLMBase {
     }
     
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        for token in inputBatch{
-            rwkv_eval(self.context, UInt32(token), self.pointerToStateIn,self.pointerToStateIn, self.pointerToLogits)
+//        for token in inputBatch{
+//            rwkv_eval(self.context, UInt32(token), self.pointerToStateIn,self.pointerToStateIn, self.pointerToLogits)
+//        }
+        let token_chunks = inputBatch.chunked(into: 64)
+        for chunk in token_chunks{
+            rwkv_eval_sequence(self.context, chunk.map { UInt32($0) }, chunk.count, self.pointerToStateIn,self.pointerToStateIn, self.pointerToLogits)
         }
         return true
     }

@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef RWKV_SHARED
+#if defined(RWKV_SHARED)
 #    if defined(_WIN32) && !defined(__MINGW32__)
-#        ifdef RWKV_BUILD
+#        if defined(RWKV_BUILD)
 #            define RWKV_API __declspec(dllexport)
 #        else
 #            define RWKV_API __declspec(dllimport)
@@ -29,7 +29,7 @@
 // Default file version is the latest version.
 #define RWKV_FILE_VERSION RWKV_FILE_VERSION_MAX
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -73,11 +73,11 @@ extern "C" {
     //   If NULL, affects model load (rwkv_init_from_file) and quantization (rwkv_quantize_model_file) errors,
     //   as well as the default for new context.
     // - print_errors: whether error messages should be automatically printed.
-    RWKV_API void rwkv_set_print_errors(struct rwkv_context * ctx, bool print_errors);
+    RWKV_API void rwkv_set_print_errors(struct rwkv_context * ctx, const bool print_errors);
 
     // Gets whether errors are automatically printed to stderr.
     // - ctx: the context to retrieve the setting for, or NULL for the global setting.
-    RWKV_API bool rwkv_get_print_errors(struct rwkv_context * ctx);
+    RWKV_API bool rwkv_get_print_errors(const struct rwkv_context * ctx);
 
     // Retrieves and clears the error flags.
     // - ctx: the context the retrieve the error for, or NULL for the global error.
@@ -85,7 +85,7 @@ extern "C" {
 
     // Loads the model from a file and prepares it for inference.
     // Returns NULL on any error.
-    // - model_file_path: path to model file in ggml_d925ed_d925ed format.
+    // - model_file_path: path to model file in ggml format.
     // - n_threads: count of threads to use, must be positive.
     RWKV_API struct rwkv_context * rwkv_init_from_file(const char * model_file_path, const uint32_t n_threads);
 
@@ -110,19 +110,25 @@ extern "C" {
     // - state_in: FP32 buffer of size rwkv_get_state_len(); or NULL, if this is a first pass.
     // - state_out: FP32 buffer of size rwkv_get_state_len(). This buffer will be written to if non-NULL.
     // - logits_out: FP32 buffer of size rwkv_get_logits_len(). This buffer will be written to if non-NULL.
-    RWKV_API bool rwkv_eval(struct rwkv_context * ctx, const uint32_t token, const float * state_in, float * state_out, float * logits_out);
+    RWKV_API bool rwkv_eval(
+        struct rwkv_context * ctx,
+        const uint32_t token,
+        const float * state_in,
+        float * state_out,
+        float * logits_out
+    );
 
     // Evaluates the model for a sequence of tokens.
     // Uses a faster algorithm than rwkv_eval if you do not need the state and logits for every token. Best used with sequence lengths of 64 or so.
     // Has to build a computation graph on the first call for a given sequence, but will use this cached graph for subsequent calls of the same sequence length.
     //
-    // NOTE ON ggml_d925ed_d925ed NODE LIMIT
+    // NOTE ON GGML NODE LIMIT
     //
-    // ggml_d925ed_d925ed has a hard-coded limit on max amount of nodes in a computation graph. The sequence graph is built in a way that quickly exceedes
+    // ggml has a hard-coded limit on max amount of nodes in a computation graph. The sequence graph is built in a way that quickly exceedes
     // this limit when using large models and/or large sequence lengths.
-    // Fortunately, rwkv.cpp's fork of ggml_d925ed_d925ed has increased limit which was tested to work for sequence lengths up to 64 for 14B models.
+    // Fortunately, rwkv.cpp's fork of ggml has increased limit which was tested to work for sequence lengths up to 64 for 14B models.
     //
-    // If you get `GGML_d925ed_ASSERT: ...\ggml_d925ed_d925ed.c:16941: cgraph->n_nodes < GGML_d925ed_MAX_NODES`, this means you've exceeded the limit.
+    // If you get `GGML_ASSERT: ...\ggml.c:16941: cgraph->n_nodes < GGML_MAX_NODES`, this means you've exceeded the limit.
     // To get rid of the assertion failure, reduce the model size and/or sequence length.
     //
     // TODO When Metal (MPS) support is implemented, check that large sequence lengths work
@@ -135,7 +141,14 @@ extern "C" {
     // - state_in: FP32 buffer of size rwkv_get_state_len(), or NULL if this is a first pass.
     // - state_out: FP32 buffer of size rwkv_get_state_len(). This buffer will be written to if non-NULL.
     // - logits_out: FP32 buffer of size rwkv_get_logits_len(). This buffer will be written to if non-NULL.
-    RWKV_API bool rwkv_eval_sequence(struct rwkv_context * ctx, const uint32_t * tokens, size_t sequence_len, const float * state_in, float * state_out, float * logits_out);
+    RWKV_API bool rwkv_eval_sequence(
+        struct rwkv_context * ctx,
+        const uint32_t * tokens,
+        const size_t sequence_len,
+        const float * state_in,
+        float * state_out,
+        float * logits_out
+    );
 
     // Returns the number of tokens in the given model's vocabulary.
     // Useful for telling 20B_tokenizer models (n_vocab = 50277) apart from World models (n_vocab = 65536).
@@ -169,7 +182,7 @@ extern "C" {
 
     // Quantizes FP32 or FP16 model to one of quantized formats.
     // Returns false on any error. Error messages would be printed to stderr.
-    // - model_file_path_in: path to model file in ggml_d925ed_d925ed format, must be either FP32 or FP16.
+    // - model_file_path_in: path to model file in ggml format, must be either FP32 or FP16.
     // - model_file_path_out: quantized model will be written here.
     // - format_name: must be one of available format names below.
     // Available format names:
@@ -183,7 +196,7 @@ extern "C" {
     // Returns system information string.
     RWKV_API const char * rwkv_get_system_info_string(void);
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

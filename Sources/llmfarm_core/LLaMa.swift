@@ -34,7 +34,7 @@ public class LLaMa: LLMBase {
         }
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{
-//            params.n_gpu_layers = 0
+            params.n_gpu_layers = 0
         }
         self.model = llama_load_model_from_file(path, params)
         if self.model == nil{
