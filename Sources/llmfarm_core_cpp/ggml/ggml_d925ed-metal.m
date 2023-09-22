@@ -177,8 +177,9 @@ struct ggml_d925ed_metal_context * ggml_d925ed_metal_init(int n_cb) {
         NSError * error = nil;
 
         //NSString * path = [[NSBundle mainBundle] pathForResource:@"../../examples/metal/metal" ofType:@"metal"];
-        NSBundle * bundle = [NSBundle bundleForClass:[GGML_d925edMetalClass class]];
-        NSString * path   = [bundle pathForResource:@"ggml_d925ed-metal" ofType:@"metal"];
+//        NSBundle * bundle = [NSBundle bundleForClass:[GGML_d925edMetalClass class]];
+//        NSString * path   = [bundle pathForResource:@"ggml_d925ed-metal" ofType:@"metal"];
+        NSString * path = [SWIFTPM_MODULE_BUNDLE pathForResource:@"ggml-metal" ofType:@"metal" inDirectory:@"metal"];
         metal_printf("%s: loading '%s'\n", __func__, [path UTF8String]);
 
         NSString * src  = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:&error];

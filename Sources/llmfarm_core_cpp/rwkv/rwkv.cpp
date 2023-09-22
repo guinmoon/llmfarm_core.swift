@@ -9,6 +9,10 @@
 #elif defined(GGML_d925ed_USE_CLBLAST)
 #include "ggml_d925ed/src/ggml_d925ed-opencl.h"
 #endif
+#ifdef GGML_USE_META
+#  include "../ggml/ggml_d925ed-metal.h"
+#endif
+
 
 #include <string>
 #include <vector>
@@ -760,6 +764,9 @@ struct rwkv_context:gpt_base_context {
 
     enum rwkv_error_flags last_error;
     bool print_errors;
+#ifdef GGML_USE_META
+    ggml_d925ed_metal_context * ctx_metal = NULL;
+#endif
 };
 
 void rwkv_set_print_errors(struct rwkv_context * ctx, bool print_errors) {
@@ -1176,7 +1183,12 @@ bool rwkv_measure_and_build_sequential_context(struct rwkv_model & model, struct
             // Instead of diving deep into ggml_d925ed internals to debug this issue, I will just add some padding.
             // 64 MB per token seems to be enough for Raven 14B model. It works for sequence_length = 5; not tested on larger lengths.
             + sequence_length * 64 * 1024 * 1024;
-
+        
+#if defined(GGML_USE_META)
+    ggml_d925ed_metal_graph_find_concurrency(ctx->ctx_metal, graph.cgraph, false);
+    ggml_d925ed_allocr_set_parse_seq(ctx->alloc, ggml_metal_get_concur_list(ctx->ctx_metal), ggml_metal_if_optimized(ctx->ctx_metal));
+#endif
+    
     ggml_d925ed_allocr_free(allocator);
     ggml_d925ed_free(graph.ggml_d925ed_ctx);
 
@@ -1226,7 +1238,7 @@ struct rwkv_context * rwkv_clone_context(struct rwkv_context * ctx, const uint32
 }
 
 bool rwkv_gpu_offload_layers(struct rwkv_context * ctx, const uint32_t n_layers) {
-#if defined(GGML_d925ed_USE_CUBLAS) || defined(GGML_d925ed_USE_CLBLAST)
+#if defined(GGML_d925ed_USE_CUBLAS) || defined(GGML_d925ed_USE_CLBLAST) || defined(GGML_USE_META)
     const auto offload = [&](struct ggml_d925ed_tensor * tensor) {
         // TODO Support multi-GPU
         tensor->backend = GGML_d925ed_BACKEND_GPU;
@@ -1234,6 +1246,9 @@ bool rwkv_gpu_offload_layers(struct rwkv_context * ctx, const uint32_t n_layers)
         ggml_d925ed_cuda_transform_tensor(tensor->data, tensor);
 #elif defined(GGML_d925ed_USE_CLBLAST)
         ggml_d925ed_cl_transform_tensor(tensor->data, tensor);
+#elif defined(GGML_USE_META)
+        ctx->ctx_metal = ggml_d925ed_metal_init(1);
+//        ggml_d925ed_metal_
 #endif
     };
 
@@ -1253,7 +1268,6 @@ bool rwkv_gpu_offload_layers(struct rwkv_context * ctx, const uint32_t n_layers)
             offload(layer.ffn_value);
             offload(layer.ffn_receptance);
         }
-
         return true;
     }
 #endif
@@ -1278,7 +1292,7 @@ void rwkv_get_outputs(const struct rwkv_computation_graph & graph, float * state
     }
 }
 
-void rwkv_eval_graph(struct rwkv_computation_graph & graph, const uint32_t n_threads, const bool compute_logits) {
+void rwkv_eval_graph(struct rwkv_context * ctx,struct rwkv_computation_graph & graph, const uint32_t n_threads, const bool compute_logits) {
     // Short circuit computation of logits if they are not needed.
     if (!compute_logits) {
         graph.cgraph->n_nodes = graph.pre_logits_nodes;
@@ -1292,9 +1306,11 @@ void rwkv_eval_graph(struct rwkv_computation_graph & graph, const uint32_t n_thr
 
     std::unique_ptr<uint8_t[]> work_data{ new(std::nothrow) uint8_t[plan->work_size] };
     plan->work_data = work_data.get();
-
+#if defined(GGML_USE_META)
+   
+#else
     ggml_d925ed_graph_compute(graph.cgraph.get(), plan);
-
+#endif
     free(plan);
 }
 
@@ -1308,7 +1324,7 @@ bool rwkv_eval(struct rwkv_context * ctx, const uint32_t token, const float * st
     rwkv_set_inputs(ctx, ctx->serial_graph, state_in);
     ggml_d925ed_set_i32(ctx->serial_graph.tokens, token);
 
-    rwkv_eval_graph(ctx->serial_graph, ctx->n_threads, logits_out != NULL);
+    rwkv_eval_graph(ctx,ctx->serial_graph, ctx->n_threads, logits_out != NULL);
 
     rwkv_get_outputs(ctx->serial_graph, state_out, logits_out);
 
@@ -1348,7 +1364,7 @@ bool rwkv_eval_sequence(
         rwkv_set_inputs(ctx, ctx->sequential_graph, state_in);
         memcpy(ctx->sequential_graph.tokens->data, sequence, sequence_len * sizeof(uint32_t));
 
-        rwkv_eval_graph(ctx->sequential_graph, ctx->n_threads, logits_out != NULL);
+        rwkv_eval_graph(ctx,ctx->sequential_graph, ctx->n_threads, logits_out != NULL);
 
         rwkv_get_outputs(ctx->sequential_graph, state_out, logits_out);
     }

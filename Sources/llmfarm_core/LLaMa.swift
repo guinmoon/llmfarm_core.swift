@@ -16,7 +16,7 @@ public class LLaMa: LLMBase {
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var params = llama_context_default_params()
         params.n_ctx = contextParams.context
-//        params.n_parts = contextParams.parts
+        //        params.n_parts = contextParams.parts
         params.seed = UInt32(contextParams.seed)
         params.f16_kv = contextParams.f16Kv
         params.logits_all = contextParams.logitsAll
@@ -36,11 +36,15 @@ public class LLaMa: LLMBase {
         if self.hardware_arch=="x86_64"{
             params.n_gpu_layers = 0
         }
-        self.model = llama_load_model_from_file(path, params)
+        var exception = tryBlock {
+            self.model = llama_load_model_from_file(path, params)
+        }
         if self.model == nil{
             return false
         }
-        self.context = llama_new_context_with_model(model, params)
+        exception = tryBlock {
+            self.context = llama_new_context_with_model(self.model, params)
+        }
         if self.context == nil {
             return false
         }
@@ -61,7 +65,14 @@ public class LLaMa: LLMBase {
     }
 
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        if llama_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
+        var eval_res:Int32 = 1
+        var exception = tryBlock {
+            eval_res = llama_eval(self.context, inputBatch, Int32(inputBatch.count), self.nPast, self.contextParams.numberOfThreads)
+        }
+        if exception != nil{
+            throw ModelError.failedToEval
+        }
+        if eval_res != 0 {
             throw ModelError.failedToEval
         }
         return true

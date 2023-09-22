@@ -219,11 +219,23 @@
 
 #define GGML_dadbed9_PAD(x, n) (((x) + (n) - 1) & ~((n) - 1))
 
+//#define GGML_dadbed9_ASSERT(x) \
+//    do { \
+//        if (!(x)) { \
+//            fprintf(stderr, "GGML_dadbed9_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
+//            abort(); \
+//        } \
+//    } while (0)
+
+#include "exception_helper.h"
+
 #define GGML_dadbed9_ASSERT(x) \
     do { \
         if (!(x)) { \
             fprintf(stderr, "GGML_dadbed9_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-            abort(); \
+            char descr[500]; \
+            sprintf(descr, "GGML_dadbed9_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
+            throw_exception(descr); \
         } \
     } while (0)
 

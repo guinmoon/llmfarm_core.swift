@@ -64,12 +64,13 @@ public class AI {
         }
     }
     
-    public func conversation(_ input: String,  _ tokenCallback: ((String, Double) -> ())?, _ completion: ((String) -> ())?) {
+    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?)  {
         flagResponding = true
         aiQueue.async {
             guard let completion = completion else { return }
             
             // Model output
+            
             let output = try? self.model.predict(input, { str, time in
                 DispatchQueue.main.async {
                     tokenCallback?(str, time)
@@ -85,8 +86,9 @@ public class AI {
             
             DispatchQueue.main.async {
                 self.flagResponding = false
-                completion(output ?? "[Error]")
+                completion(output ?? "/[Error]/")
             }
+
         }
     }
 }

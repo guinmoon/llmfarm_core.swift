@@ -207,6 +207,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+
 #define GGML_FILE_MAGIC   0x67676d6c // "ggml"
 #define GGML_FILE_VERSION 1
 
@@ -240,11 +241,23 @@
 
 #define GGML_PAD(x, n) (((x) + (n) - 1) & ~((n) - 1))
 
+
+//#define GGML_ASSERT(x) \
+//    do { \
+//        if (!(x)) { \
+//            fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
+//            abort(); \
+//        } \
+//    } while (0)
+
+#include "exception_helper.h"
 #define GGML_ASSERT(x) \
     do { \
         if (!(x)) { \
             fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-            abort(); \
+            char descr[500]; \
+            sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
+            throw_exception(descr); \
         } \
     } while (0)
 

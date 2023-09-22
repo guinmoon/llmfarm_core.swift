@@ -18,6 +18,15 @@
 #define metal_printf(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
+//#define GGML_ASSERT(x) \
+//    do { \
+//        if (!(x)) { \
+//            fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
+//            [NSException raise:@"Metal Exception" format:@"Metal Exception"];\
+//        } \
+//    } while (0)
+
+
 #define UNUSED(x) (void)(x)
 
 #define GGML_MAX_CONCUR (2*GGML_MAX_NODES)
@@ -179,6 +188,7 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
         //NSString * path = [[NSBundle mainBundle] pathForResource:@"../../examples/metal/metal" ofType:@"metal"];
 //        NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
 //        NSString * path   = [bundle pathForResource:@"ggml-metal" ofType:@"metal"];
+//        GGML_ASSERT(false);
         NSString * path = [SWIFTPM_MODULE_BUNDLE pathForResource:@"ggml-metal" ofType:@"metal" inDirectory:@"metal"];
         metal_printf("%s: loading '%s'\n", __func__, [path UTF8String]);
 

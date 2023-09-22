@@ -43,6 +43,7 @@ public class RWKV: LLMBase {
         if self.context == nil {
             return false
         }
+//        rwkv_gpu_offload_layers(self.context,100)
         self.promptFormat = .None
         
         return true

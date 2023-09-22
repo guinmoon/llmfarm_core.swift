@@ -16,34 +16,34 @@ NSString *Get_Machine_Hardware_Name(void) {
     return [NSString stringWithUTF8String:sysinfo.machine];
 }
 
-void handleSignal(int sig) {
-    if (sig == SIGTERM) {
-        // Caught a SIGTERM
-    }
-    if (sig == SIGABRT){
-        printf("SIGABRT");
-    }
-    /*
-      SIGTERM is a clear directive to quit, so we exit
-      and return the signal number for us to inspect if we desire.
-      We can actually omit the exit(), and everything
-      will still build normally.
-
-      If you Force Quit the application, it will still eventually
-      exit, suggesting a follow-up SIGKILL is sent.
-    */
-    exit(sig);
-}
-
-/**
- This will let us set a handler for a specific signal (SIGTERM in this case)
- */
-bool setSignalHandler() {
-    if (signal(SIGTERM, handleSignal) == SIG_ERR) {
-        NSLog(@"Failed to set a signal handler.");
-        return  true;
-    } else {
-        NSLog(@"Successfully set a signal handler.");
-        return false;
-    }
-}
+//void handleSignal(int sig) {
+//    if (sig == SIGTERM) {
+//        // Caught a SIGTERM
+//    }
+//    if (sig == SIGABRT){
+//        printf("SIGABRT");
+//    }
+//    /*
+//      SIGTERM is a clear directive to quit, so we exit
+//      and return the signal number for us to inspect if we desire.
+//      We can actually omit the exit(), and everything
+//      will still build normally.
+//
+//      If you Force Quit the application, it will still eventually
+//      exit, suggesting a follow-up SIGKILL is sent.
+//    */
+//    exit(sig);
+//}
+//
+///**
+// This will let us set a handler for a specific signal (SIGTERM in this case)
+// */
+//bool setSignalHandler() {
+//    if (signal(SIGTERM, handleSignal) == SIG_ERR) {
+//        NSLog(@"Failed to set a signal handler.");
+//        return  true;
+//    } else {
+//        NSLog(@"Successfully set a signal handler.");
+//        return false;
+//    }
+//}

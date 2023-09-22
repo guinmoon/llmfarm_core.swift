@@ -3717,7 +3717,7 @@ static bool llama_eval_internal(
             const char * cgraph_fname) {
 
     GGML_ASSERT((!tokens && embd) || (tokens && !embd)); // NOLINT
-
+    
     GGML_ASSERT(n_tokens > 0);
     GGML_ASSERT(n_past >= 0);
     // TODO: keep the values of n_batch and n_ctx
@@ -6266,7 +6266,7 @@ struct llama_model * llama_load_model_from_file(
                              const char * path_model,
             struct llama_context_params   params) {
     ggml_time_init();
-
+    
     llama_model * model = new llama_model;
 
     ggml_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
@@ -6959,7 +6959,7 @@ int llama_eval(
         LLAMA_LOG_ERROR("%s: failed to eval\n", __func__);
         return 1;
     }
-
+    
     // get a more accurate load time, upon first eval
     // TODO: fix this
     if (!ctx->has_evaluated_once) {
