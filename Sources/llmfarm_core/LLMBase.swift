@@ -51,15 +51,23 @@ public class LLMBase: Model {
         // Load model at path
         //        self.context = gptneox_init_from_file(path, params)
         //        let test = test_fn()
-        let load_res = try llm_load_model(path:path,contextParams:contextParams,params: params)
-        if load_res != true{
+        var load_res:Bool? = false
+        var exception = tryBlock {
+            load_res = try? self.llm_load_model(path:path,contextParams:contextParams,params: params)
+        }
+        if exception != nil || load_res != true{
             throw ModelLoadError.modelLoadError
         }
         
         print("%s: seed = %d\n", params.seed);
         
         print(String(cString: print_system_info()))
-        try llm_init_logits()
+        exception = tryBlock {
+            _ = try? self.llm_init_logits()
+        }
+        if exception != nil{
+            throw ModelError.failedToEval
+        }
         print("Logits inited.")
     }
     
@@ -258,7 +266,12 @@ public class LLMBase: Model {
             inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
             
             inputTokens.removeFirst(evalCount)
-            _ = try llm_eval(inputBatch: inputBatch)
+            let exception = tryBlock {
+                _ = try? self.llm_eval(inputBatch: inputBatch)
+            }
+            if exception != nil{
+                throw ModelError.failedToEval
+            }
             nPast += Int32(evalCount)
         }
         // Output
@@ -269,23 +282,29 @@ public class LLMBase: Model {
         var outputEnabled = true
         while outputEnabled {
             // Pull a generation from context
-            let outputToken = llm_sample(
-                ctx: context,
-                last_n_tokens: &outputRepeatTokens,
-                temp: params.temp,
-                top_k: params.top_k,
-                top_p: params.top_p,
-                tfs_z: params.tfs_z,
-                typical_p: params.typical_p,
-                repeat_last_n: params.repeat_last_n,
-                repeat_penalty: params.repeat_penalty,
-                alpha_presence: params.presence_penalty,
-                alpha_frequency: params.frequence_penalty,
-                mirostat: params.mirostat,
-                mirostat_tau: params.mirostat_tau,
-                mirostat_eta: params.mirostat_eta,
-                penalize_nl: params.penalize_nl
-            )
+            var outputToken:Int32 = -1
+            let exception = tryBlock {
+                outputToken = self.llm_sample(
+                    ctx: self.context,
+                    last_n_tokens: &outputRepeatTokens,
+                    temp: params.temp,
+                    top_k: params.top_k,
+                    top_p: params.top_p,
+                    tfs_z: params.tfs_z,
+                    typical_p: params.typical_p,
+                    repeat_last_n: params.repeat_last_n,
+                    repeat_penalty: params.repeat_penalty,
+                    alpha_presence: params.presence_penalty,
+                    alpha_frequency: params.frequence_penalty,
+                    mirostat: params.mirostat,
+                    mirostat_tau: params.mirostat_tau,
+                    mirostat_eta: params.mirostat_eta,
+                    penalize_nl: params.penalize_nl
+                )
+            }
+            if exception != nil{
+                throw ModelError.failedToEval
+            }
             // Add output token to array
             outputTokens.append(outputToken)
             // Repeat tokens update
@@ -323,7 +342,12 @@ public class LLMBase: Model {
             // Check if we need to run another response eval
             if outputEnabled {
                 // Send generated token back into model for next generation
-                _ = try llm_eval(inputBatch: [outputToken])
+                let exception = tryBlock {
+                    _ = try? self.llm_eval(inputBatch: [outputToken])
+                }
+                if exception != nil{
+                    throw ModelError.failedToEval
+                }
                 // Increment past count
                 nPast += 1
             }

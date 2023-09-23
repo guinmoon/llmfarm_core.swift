@@ -59,8 +59,8 @@ public class AI {
             return true
         }
         catch {
-            print(error)
-            throw ModelLoadError.modelLoadError
+//            print(error)
+            throw error
         }
     }
     
@@ -69,8 +69,16 @@ public class AI {
         aiQueue.async {
             guard let completion = completion else { return }
             
-            // Model output
             
+            if self.model == nil{
+                DispatchQueue.main.async {
+                    self.flagResponding = false
+                    completion("/[Error]/")
+                }
+                return
+            }
+            
+            // Model output
             let output = try? self.model.predict(input, { str, time in
                 DispatchQueue.main.async {
                     tokenCallback?(str, time)
