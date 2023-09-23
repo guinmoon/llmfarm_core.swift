@@ -80,14 +80,14 @@ public class AI {
             
             // Model output
             let output = try? self.model.predict(input, { str, time in
-                DispatchQueue.main.async {
-                    tokenCallback?(str, time)
-                }
                 if self.flagExit {
                     // Reset flag
                     self.flagExit = false
                     // Alert model of exit flag
                     return true
+                }
+                DispatchQueue.main.async {
+                    tokenCallback?(str, time)
                 }
                 return false
             })
