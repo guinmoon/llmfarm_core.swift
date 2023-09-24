@@ -57,6 +57,10 @@ public class LLaMa: LLMBase {
         llama_free_model(model)
     }
     
+    override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
+        return llama_n_ctx(ctx)
+    }
+    
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
         return llama_n_vocab(ctx)
     }

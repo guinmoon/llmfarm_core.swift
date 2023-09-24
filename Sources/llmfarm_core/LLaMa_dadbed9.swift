@@ -46,10 +46,14 @@ public class LLaMa_dadbed9: LLMBase {
         llama_dadbed9_free(context)
     }
     
+    override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
+        return llama_dadbed9_n_ctx(ctx)
+    }
+    
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
         return llama_dadbed9_n_vocab(ctx)
     }
-    
+        
     override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
         return llama_dadbed9_get_logits(ctx);
     }
