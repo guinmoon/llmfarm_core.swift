@@ -55,16 +55,13 @@ public class RWKV: LLMBase {
     
     public override func llm_init_logits() throws -> Bool {
         do{
-            if self.contextParams.warm_prompt.count<1{
-                self.contextParams.warm_prompt = "\n\n\n"
-            }
             let n_vocab = rwkv_get_logits_len(self.context);
             let n_state = rwkv_get_state_len(self.context);
             self.pointerToLogits = UnsafeMutablePointer<Float>.allocate(capacity: n_vocab)
             self.pointerToStateIn = UnsafeMutablePointer<Float>.allocate(capacity: n_state)
             self.pointerToStateOut = UnsafeMutablePointer<Float>.allocate(capacity: n_state)
             rwkv_init_state(self.context, pointerToStateIn);
-            let inputs = llm_tokenize(self.contextParams.warm_prompt)
+            let inputs = [llm_token_bos(),llm_token_eos()]
             if try llm_eval(inputBatch: inputs) == false {
                 throw ModelError.failedToEval
             }

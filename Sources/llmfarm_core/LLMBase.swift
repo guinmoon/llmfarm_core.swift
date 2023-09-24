@@ -198,7 +198,7 @@ public class LLMBase: Model {
     
     func llm_init_logits() throws -> Bool {
         do{
-            let inputs = [llm_token_bos()]
+            let inputs = [llm_token_bos(),llm_token_eos()]
             if try llm_eval(inputBatch: inputs) == false {
                 throw ModelError.failedToEval
             }
@@ -242,6 +242,7 @@ public class LLMBase: Model {
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
         var inputTokens = tokenizePrompt(input, promptFormat)
+        self.session_tokens.append(contentsOf: inputTokens)
         let inputTokensCount = inputTokens.count
         print("Input tokens: \(inputTokens)")
         // Add new input tokens to past array
@@ -325,6 +326,7 @@ public class LLMBase: Model {
                 skipCallback = true
             }
             // Convert token to string and callback
+            self.session_tokens.append(outputToken)
             if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
                 output.append(str)
                 // Per token callback

@@ -28,6 +28,7 @@ public class AI {
     public var modelName: String
     public var chatName: String
     
+    
     public var flagExit = false
     private(set) var flagResponding = false
     
@@ -292,7 +293,7 @@ public class Model {
     public var custom_prompt_format = ""
     public var core_resourses = get_core_bundle_path()
     public var reverse_prompt: [String] = []
-    
+    public var session_tokens: [Int32] = []
     
     // Init
     public init(path: String = "", contextParams: ModelContextParams = .default) throws {

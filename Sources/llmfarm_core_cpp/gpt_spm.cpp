@@ -234,13 +234,29 @@ int32_t rwkv_sample_repeat(int n_logits, float * logits,
     return  smpl;
 }
 
-bool llama_save_state(struct llama_dadbed9_context * ctx, const char * fname){
-    const size_t state_size = llama_dadbed9_get_state_size(ctx);
+bool llama_save_state(struct llama_context * ctx, const char * fname){
+    const size_t state_size = llama_get_state_size(ctx);
     uint8_t * state_mem = new uint8_t[state_size];
     FILE *fp_write = fopen(fname, "wb");
-    llama_dadbed9_copy_state_data(ctx, state_mem); // could also copy directly to memory mapped file
+    llama_copy_state_data(ctx, state_mem); // could also copy directly to memory mapped file
+    fwrite(&state_size, 1, sizeof(state_size), fp_write);
     fwrite(state_mem, 1, state_size, fp_write);
     fclose(fp_write);
+    delete[] state_mem;
+    return  true;
+}
+
+bool llama_load_state(struct llama_context * ctx, const char * fname){
+    FILE *fp_read = fopen(fname, "rb");
+    size_t state_size = 0;
+    fread(&state_size, 1, sizeof(state_size), fp_read);
+    uint8_t * state_mem = new uint8_t[state_size];
+    const size_t ret = fread(state_mem, 1, state_size, fp_read);
+    if (ret != state_size) {
+        fprintf(stderr, "\n%s : failed to read state\n", __func__);
+        GGML_ASSERT(false);
+    }
+    llama_set_state_data(ctx, state_mem);
     delete[] state_mem;
     return  true;
 }

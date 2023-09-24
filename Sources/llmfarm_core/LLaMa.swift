@@ -48,6 +48,7 @@ public class LLaMa: LLMBase {
         if self.context == nil {
             return false
         }
+//        llama_model_apply_lora_from_file(model,"/Users/guinmoon/dev/alpaca_llama_etc/lora-open-llama-3b-v2-q8_0-shakespeare-LATEST.bin",nil,contextParams.numberOfThreads);
         return true
     }
     
