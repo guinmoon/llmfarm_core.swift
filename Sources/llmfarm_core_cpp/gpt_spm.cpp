@@ -1,8 +1,9 @@
-#include "../spm-headers/gpt_spm.h"
+#include "./spm-headers/gpt_spm.h"
 #include "gpt_helpers.h"
-#include "../spm-headers/llama_dadbed9.h"
-#include "../spm-headers/llama.h"
-#include "../spm-headers/rwkv.h"
+#include "./spm-headers/llama_dadbed9.h"
+#include "./spm-headers/llama.h"
+#include "./spm-headers/rwkv.h"
+#include "grammar-parser.h"
 #include "ggml/ggml_dadbed9.h"
 #include <cassert>
 #include <cmath>
@@ -280,38 +281,28 @@ const char * llama_token_to_str(const struct llama_context * ctx, llama_token to
 //    return res.c_str();
 }
 
-//bool llama_load_state(struct llama_context * ctx, const char * fname)
-//{
-//    FILE *fp_read = fopen(fname, "rb");
-//    const size_t ret = fread(state_mem, 1, state_size, fp_read);
-//    llama_set_state_data(ctx, state_mem);  // could also read directly from memory mapped file
-//    fclose(fp_read);
-//    delete[] state_mem;
-//}
-//void rwkv_eval(struct rwkv_context * model) {
-//
-////    struct rwkv_context * model = rwkv_init_from_file(model_path, N_THREADS);
-////    enum rwkv_error_flags error = rwkv_get_last_error(NULL);
-////    ASSERT(error == 0, "Unexpected error %d", error);
-////
-////#ifdef GGML_USE_CUBLAS
-////    ASSERT(rwkv_gpu_offload_layers(model, rwkv_get_n_layer(model)), "Failed to offload layers to GPU");
-////#endif
-//
-//    const size_t n_vocab = rwkv_get_logits_len(model);
-//
-//
-//    float * state = (float * )malloc(sizeof(float) * rwkv_get_state_len(model));
-//    float * logits = (float * )malloc(sizeof(float) * n_vocab);
-//
-//    char * prompt = "\"in";
-//    uint32_t prompt_seq[] = { 10002, 209, 312, 209, 74 };
-//
-//    const size_t prompt_length = strlen(prompt);
-//
-//    rwkv_init_state(model, state);
-//    rwkv_eval_sequence(model, prompt_seq, prompt_length, state, state, logits);
-//
-//}
-//
+
+struct llama_grammar* llama_load_grammar(const char* grammar_path){
+    struct llama_grammar * grammar = NULL;
+    grammar_parser::parse_state parsed_grammar;
+    
+    std::ifstream infile;
+    infile.open(grammar_path, std::ios::binary);
+    infile.seekg(0, std::ios::end);
+    size_t file_size_in_byte = infile.tellg();
+    std::vector<char> grammar_context; // used to store text data
+    grammar_context.resize(file_size_in_byte);
+    infile.seekg(0, std::ios::beg);
+    infile.read(&grammar_context[0], file_size_in_byte);
+    
+    parsed_grammar = grammar_parser::parse(grammar_context.data());
+    // will be empty (default) if there are parse errors
+    if (parsed_grammar.rules.empty()) {
+        return NULL;
+    }
+    grammar_parser::print_grammar(stderr, parsed_grammar);
+    std::vector<const llama_grammar_element *> grammar_rules(parsed_grammar.c_rules());
+    grammar = llama_grammar_init(grammar_rules.data(), grammar_rules.size(), parsed_grammar.symbol_ids.at("root"));
+    return grammar;
+}
 

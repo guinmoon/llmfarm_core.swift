@@ -48,11 +48,19 @@ public class LLaMa: LLMBase {
         if self.context == nil {
             return false
         }
+//        var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 100000)
+//        var tokens_count:Int = 0
+//        llama_load_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",tokens_tmp.mutPtr, 100000,&tokens_count)
+//        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
+//        try? llm_eval(inputBatch:self.session_tokens)
+//        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
 //        llama_model_apply_lora_from_file(model,"/Users/guinmoon/dev/alpaca_llama_etc/lora-open-llama-3b-v2-q8_0-shakespeare-LATEST.bin",nil,contextParams.numberOfThreads);
         return true
     }
     
     deinit {
+//        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
+//        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)
         llama_free(context)
         llama_free_model(model)
     }

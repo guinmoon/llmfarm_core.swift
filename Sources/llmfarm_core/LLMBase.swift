@@ -14,6 +14,8 @@ public enum ModelLoadError: Error {
 
     // Throw when an expected resource is not found
     case contextLoadError
+    
+    case grammarLoadError
 
 //        // Throw in all other cases
 //        case unexpected(code: Int)
@@ -61,6 +63,10 @@ public class LLMBase: Model {
         
         print("%s: seed = %d\n", params.seed);
         
+        if contextParams.grammar_path != ""{
+            try? self.load_grammar(contextParams.grammar_path)
+        }
+        
         print(String(cString: print_system_info()))
         exception = tryBlock {
             _ = try? self.llm_init_logits()
@@ -73,6 +79,10 @@ public class LLMBase: Model {
     
     deinit {
         
+    }
+    
+    public func load_grammar(_ path:String) throws -> Void{
+        self.grammar = llama_load_grammar(path)
     }
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
@@ -133,60 +143,61 @@ public class LLMBase: Model {
             print("GPT sample error logits nil")
             return 0
         }
-        var candidates = Array<llama_dadbed9_token_data>()
+        var candidates = Array<llama_token_data>()
         for i in 0 ..< vocabSize {
-            candidates.append(llama_dadbed9_token_data(id: i, logit: logits[Int(i)], p: 0.0))
+            candidates.append(llama_token_data(id: i, logit: logits[Int(i)], p: 0.0))
         }
-        var candidates_p = llama_dadbed9_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
+        var candidates_p = llama_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
         
         // Apply penalties
         let nl_token = Int(llm_token_nl())
         let nl_logit = logits[nl_token]
         let last_n_repeat = min(min(Int32(last_n_tokens.count), repeat_last_n), n_ctx)
         
-        llama_dadbed9_sample_repetition_penalty(ctx, &candidates_p,
+        llama_sample_repetition_penalty(ctx, &candidates_p,
                     last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
                     Int(repeat_last_n), repeat_penalty)
-        llama_dadbed9_sample_frequency_and_presence_penalties(ctx, &candidates_p,
+        llama_sample_frequency_and_presence_penalties(ctx, &candidates_p,
                     last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
                     Int(last_n_repeat), alpha_frequency, alpha_presence)
         if(!penalize_nl) {
             logits[nl_token] = nl_logit
         }
+        
+        if (self.grammar != nil) {
+            llama_sample_grammar(ctx,  &candidates_p, self.grammar);
+        }
+        
+        var res_token:Int32 = 0
+        
         if(temp <= 0) {
             // Greedy sampling
-            return llama_dadbed9_sample_token_greedy(ctx, &candidates_p)
+            res_token = llama_sample_token_greedy(ctx, &candidates_p)
         } else {
             if(mirostat == 1) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 let mirostat_m = 100
-                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                return llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
+                llama_sample_temperature(ctx, &candidates_p, temp)
+                return llama_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
-                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                return llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
+                llama_sample_temperature(ctx, &candidates_p, temp)
+                return llama_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
             } else {
                 // Temperature sampling
-                llama_dadbed9_sample_top_k(ctx, &candidates_p, top_k, 1)
-                llama_dadbed9_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
-                llama_dadbed9_sample_typical(ctx, &candidates_p, typical_p, 1)
-                llama_dadbed9_sample_top_p(ctx, &candidates_p, top_p, 1)
-                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                return llama_dadbed9_sample_token(ctx, &candidates_p)
+                llama_sample_top_k(ctx, &candidates_p, top_k, 1)
+                llama_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
+                llama_sample_typical(ctx, &candidates_p, typical_p, 1)
+                llama_sample_top_p(ctx, &candidates_p, top_p, 1)
+                llama_sample_temperature(ctx, &candidates_p, temp)
+                res_token = llama_sample_token(ctx, &candidates_p)
             }
         }
-//        if (last_n_tokens.count>0){
-//            let sampl = gpt_base_sample_repeat(ctx,
-//                                               last_n_tokens,
-//                                               last_n_tokens.count,
-//                                               top_k, top_p, temp,
-//                                               repeat_last_n,repeat_penalty);
-//            return sampl
-//        }else{
-//            let sampl = gpt_base_sample(ctx, top_k, top_p, temp)
-//            return sampl
-//        }
+        
+        if (self.grammar != nil) {
+            llama_grammar_accept_token(ctx, self.grammar, res_token);
+        }
+        return res_token
 
     }
     

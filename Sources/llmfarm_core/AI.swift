@@ -178,6 +178,7 @@ public struct ModelContextParams {
     public var embedding = false    // embedding mode only
     public var processorsConunt  = Int32(ProcessInfo.processInfo.processorCount)
     public var use_metal = false
+    public var grammar_path = ""
     
     public var warm_prompt = "\n\n\n"
 
@@ -287,6 +288,7 @@ public typealias ModelToken = Int32
 public class Model {
     
     public var context: OpaquePointer?
+    public var grammar: OpaquePointer?
     public var contextParams: ModelContextParams
     public var sampleParams: ModelSampleParams = .default
     public var promptFormat: ModelPromptStyle = .None
