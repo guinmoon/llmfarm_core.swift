@@ -178,7 +178,7 @@ public struct ModelContextParams {
     public var embedding = false    // embedding mode only
     public var processorsConunt  = Int32(ProcessInfo.processInfo.processorCount)
     public var use_metal = false
-    public var grammar_path = ""
+    public var grammar_path:String? = nil
     
     public var warm_prompt = "\n\n\n"
 

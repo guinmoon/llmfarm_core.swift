@@ -21,6 +21,25 @@ public enum ModelLoadError: Error {
 //        case unexpected(code: Int)
 }
 
+
+//func bridge(_ obj : T) -> UnsafeMutableRawPointer {
+//    return UnsafeMutableRawPointer(Unmanaged.passUnretained(obj).toOpaque())
+//}
+//
+//func bridge(_ ptr : UnsafeMutableRawPointer) -> T? {
+//    return Unmanaged.fromOpaque(ptr).takeUnretainedValue()
+//}
+
+//func bridge<T : AnyObject>(obj : T) -> UnsafeRawPointer {
+//    return UnsafeRawPointer(Unmanaged.passUnretained(obj).toOpaque())
+//}
+//
+//func bridge<T : AnyObject>(ptr : UnsafeRawPointer) -> T {
+//    return Unmanaged<T>.fromOpaque(ptr).takeUnretainedValue()
+//}
+
+
+
 public class LLMBase: Model {
     
     // Used to keep old context until it needs to be rotated or purge out for new tokens
@@ -63,8 +82,8 @@ public class LLMBase: Model {
         
         print("%s: seed = %d\n", params.seed);
         
-        if contextParams.grammar_path != ""{
-            try? self.load_grammar(contextParams.grammar_path)
+        if contextParams.grammar_path != nil && contextParams.grammar_path! != ""{
+            try? self.load_grammar(contextParams.grammar_path!)
         }
         
         print(String(cString: print_system_info()))
@@ -77,12 +96,21 @@ public class LLMBase: Model {
         print("Logits inited.")
     }
     
+    func TestMethod(){
+        
+        }
+    
     deinit {
         
     }
     
     public func load_grammar(_ path:String) throws -> Void{
-        self.grammar = llama_load_grammar(path)
+        let exception = tryBlock {
+            self.grammar = llama_load_grammar(path)
+        }
+        if exception != nil{
+            throw ModelLoadError.grammarLoadError
+        }
     }
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
@@ -113,6 +141,7 @@ public class LLMBase: Model {
     func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
         return gpt_base_n_ctx(ctx)
     }
+    
     
     // Simple topK, topP, temp sampling, with repeat penalty
     func llm_sample(ctx: OpaquePointer!,
@@ -164,9 +193,23 @@ public class LLMBase: Model {
             logits[nl_token] = nl_logit
         }
         
-        if (self.grammar != nil) {
-            llama_sample_grammar(ctx,  &candidates_p, self.grammar);
+//        let swiftTokenCallback : (@convention(c) (Int32 ) -> String?) = {
+//            in_token -> String? in
+//            return self.llm_token_to_str(outputToken:in_token)
+//        }
+        if (self.grammar != nil ) {
+            llama_sample_grammar(ctx,&candidates_p, self.grammar)
         }
+        
+//        if (self.grammar != nil) {
+//            llama_sample_grammar(ctx,&candidates_p, self.grammar, self.llm_token_eos(),bridge(self),
+//                                 {(observer) -> Void in
+//                // Extract pointer to `self` from void pointer:
+//                let mySelf = Unmanaged.fromOpaque(observer!).takeUnretainedValue()
+//                // Call instance method:
+//                mySelf.TestMethod();
+//            });
+//        }
         
         var res_token:Int32 = 0
         
