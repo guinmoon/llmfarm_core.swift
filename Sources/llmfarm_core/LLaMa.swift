@@ -30,12 +30,14 @@ public class LLaMa: LLMBase {
             params.use_mmap = false
         }
         if contextParams.useMlock{
-            params.use_mlock = false
+            params.use_mlock = true
         }
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{
             params.n_gpu_layers = 0
         }
+        params.use_mmap = false
+        
         var exception = tryBlock {
             self.model = llama_load_model_from_file(path, params)
         }
@@ -54,7 +56,7 @@ public class LLaMa: LLMBase {
 //        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
 //        try? llm_eval(inputBatch:self.session_tokens)
 //        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-//        llama_model_apply_lora_from_file(model,"/Users/guinmoon/dev/alpaca_llama_etc/lora-open-llama-3b-v2-q8_0-shakespeare-LATEST.bin",nil,contextParams.numberOfThreads);
+//        llama_model_apply_lora_from_file(model,"/Users/guinmoon/dev/alpaca_llama_etc/lora-open-llama-3b-v2-q8_0-my_finetune-LATEST.bin",nil,6);
         return true
     }
     
