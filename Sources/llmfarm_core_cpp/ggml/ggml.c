@@ -4779,7 +4779,8 @@ static struct ggml_tensor * ggml_new_tensor_impl(
         const int64_t       * ne,
         struct ggml_tensor  * view_src,
         size_t                view_offs) {
-
+        
+    
     assert(n_dims >= 1 && n_dims <= GGML_MAX_DIMS);
 
     // find the base tensor and absolute offset
@@ -4792,8 +4793,16 @@ static struct ggml_tensor * ggml_new_tensor_impl(
     for (int i = 1; i < n_dims; i++) {
         data_size *= ne[i];
     }
-
-    GGML_ASSERT(view_src == NULL || data_size + view_offs <= ggml_nbytes(view_src));
+    
+    do {
+        if (!(view_src == NULL || data_size + view_offs <= ggml_nbytes(view_src))) {
+            fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, "(view_src == NULL || data_size + view_offs <= ggml_nbytes(view_src)");
+            char descr[500];
+            sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, "(view_src == NULL || data_size + view_offs <= ggml_nbytes(view_src)");
+            throw_exception(descr);
+        }
+    } while (0);
+//    GGML_ASSERT(view_src == NULL || data_size + view_offs <= ggml_nbytes(view_src));
 
     void * data = view_src != NULL ? view_src->data : NULL;
     if (data != NULL) {

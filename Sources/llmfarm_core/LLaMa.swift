@@ -85,10 +85,10 @@ public class LLaMa: LLMBase {
             eval_res = llama_eval(self.context, inputBatch, Int32(inputBatch.count), self.nPast, self.contextParams.numberOfThreads)
         }
         if exception != nil{
-            throw ModelError.failedToEval
+            return false
         }
         if eval_res != 0 {
-            throw ModelError.failedToEval
+            return false
         }
         return true
     }

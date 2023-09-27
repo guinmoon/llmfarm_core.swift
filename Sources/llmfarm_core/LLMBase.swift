@@ -321,10 +321,14 @@ public class LLMBase: Model {
             inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
             
             inputTokens.removeFirst(evalCount)
+            var eval_res:Bool? = nil
             let exception = tryBlock {
-                _ = try? self.llm_eval(inputBatch: inputBatch)
+                eval_res = try? self.llm_eval(inputBatch: inputBatch)
             }
             if exception != nil{
+                throw ModelError.failedToEval
+            }
+            if eval_res == false{
                 throw ModelError.failedToEval
             }
             nPast += Int32(evalCount)
@@ -398,10 +402,14 @@ public class LLMBase: Model {
             // Check if we need to run another response eval
             if outputEnabled {
                 // Send generated token back into model for next generation
+                var eval_res:Bool? = nil
                 let exception = tryBlock {
-                    _ = try? self.llm_eval(inputBatch: [outputToken])
+                    eval_res = try? self.llm_eval(inputBatch: [outputToken])
                 }
                 if exception != nil{
+                    throw ModelError.failedToEval
+                }
+                if eval_res == false{
                     throw ModelError.failedToEval
                 }
                 // Increment past count
