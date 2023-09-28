@@ -40,7 +40,17 @@ public enum ModelLoadError: Error {
 
 
 
-public class LLMBase: Model {
+public class LLMBase {
+    
+    public var context: OpaquePointer?
+    public var grammar: OpaquePointer?
+    public var contextParams: ModelContextParams
+    public var sampleParams: ModelSampleParams = .default
+    public var promptFormat: ModelPromptStyle = .None
+    public var custom_prompt_format = ""
+    public var core_resourses = get_core_bundle_path()
+    public var reverse_prompt: [String] = []
+    public var session_tokens: [Int32] = []
     
     // Used to keep old context until it needs to be rotated or purge out for new tokens
     var past: [[ModelToken]] = [] // Will house both queries and responses in order
@@ -49,8 +59,7 @@ public class LLMBase: Model {
     
     
     
-    public override init(path: String, contextParams: ModelContextParams = .default) throws {
-        try super.init()
+    public  init(path: String, contextParams: ModelContextParams = .default) throws {        
         
         self.promptFormat = .None
         
@@ -113,7 +122,7 @@ public class LLMBase: Model {
         }
     }
     
-    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public  func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
         return false
     }
     
@@ -290,7 +299,7 @@ public class LLMBase: Model {
     
     
     
-    public override func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
+    public func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
         let params = sampleParams
         let contextLength = Int32(contextParams.context)
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
@@ -452,7 +461,7 @@ public class LLMBase: Model {
 //        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
 //    }
     
-    public override func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
+    public func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
@@ -469,7 +478,7 @@ public class LLMBase: Model {
         return embeddings
     }
     
-    public override func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) -> [ModelToken] {
+    public func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) -> [ModelToken] {
         switch style {
         case .None:
             return llm_tokenize(input)

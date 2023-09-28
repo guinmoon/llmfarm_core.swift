@@ -23,7 +23,7 @@ public class AI {
     var aiQueue = DispatchQueue(label: "LLMFarm-Main", qos: .userInitiated, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
     
     //var model: Model!
-    public var model: Model!
+    public var model: LLMBase!
     public var modelPath: String
     public var modelName: String
     public var chatName: String
@@ -105,7 +105,7 @@ public class AI {
 
 private typealias _ModelProgressCallback = (_ progress: Float, _ userData: UnsafeMutableRawPointer?) -> Void
 
-public typealias ModelProgressCallback = (_ progress: Float, _ model: Model) -> Void
+public typealias ModelProgressCallback = (_ progress: Float, _ model: LLMBase) -> Void
 
 public func get_model_sample_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelSampleParams{
     var tmp_param = ModelSampleParams.default
@@ -286,42 +286,42 @@ public enum ModelPromptStyle {
 
 public typealias ModelToken = Int32
 
-public class Model {
-    
-    public var context: OpaquePointer?
-    public var grammar: OpaquePointer?
-    public var contextParams: ModelContextParams
-    public var sampleParams: ModelSampleParams = .default
-    public var promptFormat: ModelPromptStyle = .None
-    public var custom_prompt_format = ""
-    public var core_resourses = get_core_bundle_path()
-    public var reverse_prompt: [String] = []
-    public var session_tokens: [Int32] = []
-    
-    // Init
-    public init(path: String = "", contextParams: ModelContextParams = .default) throws {
-        self.contextParams = contextParams
-        self.context = nil
-    }
-    
-    public func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
-        return false
-    }
-    
-    // Predict
-    public func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
-        return ""
-    }
-    
-    public func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
-        return []
-    }
-    
-    
-
-    
-    public func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) -> [ModelToken] {
-        return llm_tokenize(input)
-    }
-    
-}
+//public class Model {
+//
+//    public var context: OpaquePointer?
+//    public var grammar: OpaquePointer?
+//    public var contextParams: ModelContextParams
+//    public var sampleParams: ModelSampleParams = .default
+//    public var promptFormat: ModelPromptStyle = .None
+//    public var custom_prompt_format = ""
+//    public var core_resourses = get_core_bundle_path()
+//    public var reverse_prompt: [String] = []
+//    public var session_tokens: [Int32] = []
+//
+//    // Init
+//    public init(path: String = "", contextParams: ModelContextParams = .default) throws {
+//        self.contextParams = contextParams
+//        self.context = nil
+//    }
+//
+//    public func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+//        return false
+//    }
+//
+//    // Predict
+//    public func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
+//        return ""
+//    }
+//
+//    public func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
+//        return []
+//    }
+//
+//
+//
+//
+//    public func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) -> [ModelToken] {
+//        return llm_tokenize(input)
+//    }
+//
+//}
