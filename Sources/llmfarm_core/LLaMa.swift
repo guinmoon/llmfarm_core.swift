@@ -80,9 +80,9 @@ public class LLaMa: LLMBase {
     }
 
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        var eval_res:Int32 = 1
+        var eval_res:Int32 = 1        
         var exception = tryBlock {
-            eval_res = llama_eval(self.context, inputBatch, Int32(inputBatch.count), self.nPast, self.contextParams.numberOfThreads)
+            eval_res = llama_eval(self.context, inputBatch, Int32(inputBatch.count), min(self.contextParams.context, self.nPast), self.contextParams.numberOfThreads)
         }
         if exception != nil{
             return false

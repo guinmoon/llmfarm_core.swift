@@ -308,10 +308,6 @@ public class LLMBase: Model {
 //        var totalLength = nPast + Int32(inputTokensCount)
         // Input
         var inputBatch: [ModelToken] = []
-        // Inputs tokens eval, input token will not be included in output
-        //        if gpt_neox_init_logits(context, contextParams.numberOfThreads) != 0 {
-        //            throw ModelError.failedToEval
-        //        }
         
         while inputTokens.count > 0 {
             inputBatch.removeAll()
@@ -321,6 +317,13 @@ public class LLMBase: Model {
             inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
             
             inputTokens.removeFirst(evalCount)
+            if self.nPast >= self.contextParams.context{
+                self.nPast = 0
+                let exception = tryBlock {
+                    _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
+                }
+                throw ModelError.contextLimit
+            }
             var eval_res:Bool? = nil
             let exception = tryBlock {
                 eval_res = try? self.llm_eval(inputBatch: inputBatch)
@@ -403,6 +406,14 @@ public class LLMBase: Model {
             if outputEnabled {
                 // Send generated token back into model for next generation
                 var eval_res:Bool? = nil
+                if self.nPast >= self.contextParams.context - 4{
+                    self.nPast = 0
+                    outputToken = self.llm_token_eos()
+                    let exception = tryBlock {
+                        _ = try? self.llm_eval(inputBatch: [outputToken])
+                    }
+                    throw ModelError.contextLimit
+                }
                 let exception = tryBlock {
                     eval_res = try? self.llm_eval(inputBatch: [outputToken])
                 }

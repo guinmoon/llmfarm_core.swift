@@ -269,6 +269,7 @@ public enum ModelError: Error {
     case modelNotFound(String)
     case inputTooLong
     case failedToEval
+    case contextLimit
 }
 
 public enum ModelPromptStyle {
