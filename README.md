@@ -14,10 +14,18 @@ Also used sources from:
 - [x] Metal for llama inference ([dont work](https://github.com/ggerganov/llama.cpp/issues/2407#issuecomment-1699544808) on intel Mac)
 - [x] Model setting templates
 - [x] Sampling from llama.cpp for other inference
-- [ ] classifier-free guidance sampling from llama.cpp 
 - [ ] Other tokenizers support
 - [ ] Restore context state (now only chat history) 
 - [ ] Metal for other inference
+
+# Sampling methods
+- [x] Temperature (temp, tok-k, top-p)
+- [x] [Tail Free Sampling (TFS)](https://www.trentonbricken.com/Tail-Free-Sampling/)
+- [x] [Locally Typical Sampling](https://arxiv.org/abs/2202.00666)
+- [x] [Mirostat](https://arxiv.org/abs/2007.14966)
+- [x] Greedy
+- [x] Grammar (llama and falcon models)
+- [ ] Classifier-Free Guidance
 
 # Inferences
 

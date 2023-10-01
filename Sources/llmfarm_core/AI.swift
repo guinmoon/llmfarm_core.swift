@@ -15,6 +15,7 @@ public enum ModelInference {
     case GPT2
     case Replit
     case Starcoder
+    case Starcoder_gguf
     case RWKV
 }
 
@@ -54,6 +55,8 @@ public class AI {
                 model = try Replit(path: self.modelPath, contextParams: contextParams)
             case .Starcoder:
                 model = try Starcoder(path: self.modelPath, contextParams: contextParams)
+            case .Starcoder_gguf:
+                model = try LLaMa(path: self.modelPath, contextParams: contextParams)
             case .RWKV:
                 model = try RWKV(path: self.modelPath, contextParams: contextParams)
             }
