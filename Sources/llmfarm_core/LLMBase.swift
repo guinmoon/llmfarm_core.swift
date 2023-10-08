@@ -335,12 +335,12 @@ public class LLMBase {
                 inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
                 
                 inputTokens.removeFirst(evalCount)
-                if self.nPast >= self.contextParams.context{
+                if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
                     self.nPast = 0
                     try ExceptionCather.catchException {
                         _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
                     }
-                    throw ModelError.contextLimit
+//                    throw ModelError.contextLimit
                 }
                 var eval_res:Bool? = nil
                 try ExceptionCather.catchException {
@@ -419,12 +419,13 @@ public class LLMBase {
                     // Send generated token back into model for next generation
                     var eval_res:Bool? = nil
                     if self.nPast >= self.contextParams.context - 4{
-                        self.nPast = 0
+                        self.nPast = self.nPast / 2
                         outputToken = self.llm_token_eos()
                         try ExceptionCather.catchException {
                             _ = try? self.llm_eval(inputBatch: [outputToken])
                         }
-                        throw ModelError.contextLimit
+                        print("Context Limit!")
+//                        throw ModelError.contextLimit
                     }
                     try ExceptionCather.catchException {
                         eval_res = try? self.llm_eval(inputBatch: [outputToken])
