@@ -6330,7 +6330,7 @@ struct llama_model * llama_load_model_from_file(
                              const char * path_model,
             struct llama_context_params   params) {
     ggml_time_init();
-    
+//    GGML_ASSERT(false);
     llama_model * model = new llama_model;
 
     ggml_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;

@@ -82,27 +82,33 @@ public class LLMBase {
         //        self.context = gptneox_init_from_file(path, params)
         //        let test = test_fn()
         var load_res:Bool? = false
-        var exception = tryBlock {
-            load_res = try? self.llm_load_model(path:path,contextParams:contextParams,params: params)
-        }
-        if exception != nil || load_res != true{
-            throw ModelLoadError.modelLoadError
-        }
+        do{
+            try ExceptionCather.catchException {
+                load_res = try? self.llm_load_model(path:path,contextParams:contextParams,params: params)
+            }
         
-        print("%s: seed = %d\n", params.seed);
-        
-        if contextParams.grammar_path != nil && contextParams.grammar_path! != ""{
-            try? self.load_grammar(contextParams.grammar_path!)
+            if load_res != true{
+                throw ModelLoadError.modelLoadError
+            }
+            
+            print("%s: seed = %d\n", params.seed);
+            
+            if contextParams.grammar_path != nil && contextParams.grammar_path! != ""{
+                try? self.load_grammar(contextParams.grammar_path!)
+            }
+            
+            print(String(cString: print_system_info()))
+            try ExceptionCather.catchException {
+                _ = try? self.llm_init_logits()
+            }
+    //        if exception != nil{
+    //            throw ModelError.failedToEval
+    //        }
+            print("Logits inited.")
+        }catch {
+            print(error)
+            throw error
         }
-        
-        print(String(cString: print_system_info()))
-        exception = tryBlock {
-            _ = try? self.llm_init_logits()
-        }
-        if exception != nil{
-            throw ModelError.failedToEval
-        }
-        print("Logits inited.")
     }
     
     func TestMethod(){
@@ -114,11 +120,14 @@ public class LLMBase {
     }
     
     public func load_grammar(_ path:String) throws -> Void{
-        let exception = tryBlock {
-            self.grammar = llama_load_grammar(path)
+        do{
+            try ExceptionCather.catchException {
+                self.grammar = llama_load_grammar(path)
+            }
         }
-        if exception != nil{
-            throw ModelLoadError.grammarLoadError
+        catch {
+            print(error)
+            throw error
         }
     }
     
@@ -317,131 +326,126 @@ public class LLMBase {
 //        var totalLength = nPast + Int32(inputTokensCount)
         // Input
         var inputBatch: [ModelToken] = []
-        
-        while inputTokens.count > 0 {
-            inputBatch.removeAll()
-            // See how many to eval (up to batch size??? or can we feed the entire input)
-            // Move tokens to batch
-            let evalCount = min(inputTokens.count, Int(params.n_batch))
-            inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
-            
-            inputTokens.removeFirst(evalCount)
-            if self.nPast >= self.contextParams.context{
-                self.nPast = 0
-                let exception = tryBlock {
-                    _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
-                }
-                throw ModelError.contextLimit
-            }
-            var eval_res:Bool? = nil
-            let exception = tryBlock {
-                eval_res = try? self.llm_eval(inputBatch: inputBatch)
-            }
-            if exception != nil{
-                throw ModelError.failedToEval
-            }
-            if eval_res == false{
-                throw ModelError.failedToEval
-            }
-            nPast += Int32(evalCount)
-        }
-        // Output
-        var outputRepeatTokens: [ModelToken] = []
-        var outputTokens: [ModelToken] = []
-        var output = [String]()
-        // Loop until target count is reached
-        var outputEnabled = true
-        while outputEnabled {
-            // Pull a generation from context
-            var outputToken:Int32 = -1
-            let exception = tryBlock {
-                outputToken = self.llm_sample(
-                    ctx: self.context,
-                    last_n_tokens: &outputRepeatTokens,
-                    temp: params.temp,
-                    top_k: params.top_k,
-                    top_p: params.top_p,
-                    tfs_z: params.tfs_z,
-                    typical_p: params.typical_p,
-                    repeat_last_n: params.repeat_last_n,
-                    repeat_penalty: params.repeat_penalty,
-                    alpha_presence: params.presence_penalty,
-                    alpha_frequency: params.frequence_penalty,
-                    mirostat: params.mirostat,
-                    mirostat_tau: params.mirostat_tau,
-                    mirostat_eta: params.mirostat_eta,
-                    penalize_nl: params.penalize_nl
-                )
-            }
-            if exception != nil{
-                throw ModelError.failedToEval
-            }
-            // Add output token to array
-            outputTokens.append(outputToken)
-            // Repeat tokens update
-            outputRepeatTokens.append(outputToken)
-            if outputRepeatTokens.count > params.repeat_last_n {
-                outputRepeatTokens.removeFirst()
-            }
-            // Check for eos - end early - check eos before bos in case they are the same
-            if outputToken == llm_token_eos() {
-                outputEnabled = false
-                print("[EOS]")
-                break
-            }
-            // Check for bos, skip callback if so, bos = eos for most gptneox so this should typically never occur
-            var skipCallback = false
-            if outputToken == llm_token_bos()  {
-                print("[BOS]")
-                skipCallback = true
-            }
-            // Convert token to string and callback
-            self.session_tokens.append(outputToken)
-            if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
-                output.append(str)
-                // Per token callback
-                let (output, time) = Utils.time {
-                    return str
-                }
-                if callback(output, time) {
-                    // Early exit if requested by callback
-                    print("exit if requested by callback")
-                    //generating = false
-                    outputEnabled = false //outputRemaining = 0
-                    break
-                }
-            }
-            // Check if we need to run another response eval
-            if outputEnabled {
-                // Send generated token back into model for next generation
-                var eval_res:Bool? = nil
-                if self.nPast >= self.contextParams.context - 4{
+        do {
+            while inputTokens.count > 0 {
+                inputBatch.removeAll()
+                // See how many to eval (up to batch size??? or can we feed the entire input)
+                // Move tokens to batch
+                let evalCount = min(inputTokens.count, Int(params.n_batch))
+                inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
+                
+                inputTokens.removeFirst(evalCount)
+                if self.nPast >= self.contextParams.context{
                     self.nPast = 0
-                    outputToken = self.llm_token_eos()
-                    let exception = tryBlock {
-                        _ = try? self.llm_eval(inputBatch: [outputToken])
+                    try ExceptionCather.catchException {
+                        _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
                     }
                     throw ModelError.contextLimit
                 }
-                let exception = tryBlock {
-                    eval_res = try? self.llm_eval(inputBatch: [outputToken])
-                }
-                if exception != nil{
-                    throw ModelError.failedToEval
+                var eval_res:Bool? = nil
+                try ExceptionCather.catchException {
+                    eval_res = try? self.llm_eval(inputBatch: inputBatch)
                 }
                 if eval_res == false{
                     throw ModelError.failedToEval
                 }
-                // Increment past count
-                nPast += 1
+                nPast += Int32(evalCount)
             }
+            // Output
+            var outputRepeatTokens: [ModelToken] = []
+            var outputTokens: [ModelToken] = []
+            var output = [String]()
+            // Loop until target count is reached
+            var outputEnabled = true
+            while outputEnabled {
+                // Pull a generation from context
+                var outputToken:Int32 = -1
+                try ExceptionCather.catchException {
+                    outputToken = self.llm_sample(
+                        ctx: self.context,
+                        last_n_tokens: &outputRepeatTokens,
+                        temp: params.temp,
+                        top_k: params.top_k,
+                        top_p: params.top_p,
+                        tfs_z: params.tfs_z,
+                        typical_p: params.typical_p,
+                        repeat_last_n: params.repeat_last_n,
+                        repeat_penalty: params.repeat_penalty,
+                        alpha_presence: params.presence_penalty,
+                        alpha_frequency: params.frequence_penalty,
+                        mirostat: params.mirostat,
+                        mirostat_tau: params.mirostat_tau,
+                        mirostat_eta: params.mirostat_eta,
+                        penalize_nl: params.penalize_nl
+                    )
+                }
+                // Add output token to array
+                outputTokens.append(outputToken)
+                // Repeat tokens update
+                outputRepeatTokens.append(outputToken)
+                if outputRepeatTokens.count > params.repeat_last_n {
+                    outputRepeatTokens.removeFirst()
+                }
+                // Check for eos - end early - check eos before bos in case they are the same
+                if outputToken == llm_token_eos() {
+                    outputEnabled = false
+                    print("[EOS]")
+                    break
+                }
+                // Check for bos, skip callback if so, bos = eos for most gptneox so this should typically never occur
+                var skipCallback = false
+                if outputToken == llm_token_bos()  {
+                    print("[BOS]")
+                    skipCallback = true
+                }
+                // Convert token to string and callback
+                self.session_tokens.append(outputToken)
+                if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
+                    output.append(str)
+                    // Per token callback
+                    let (output, time) = Utils.time {
+                        return str
+                    }
+                    if callback(output, time) {
+                        // Early exit if requested by callback
+                        print("exit if requested by callback")
+                        //generating = false
+                        outputEnabled = false //outputRemaining = 0
+                        break
+                    }
+                }
+                // Check if we need to run another response eval
+                if outputEnabled {
+                    // Send generated token back into model for next generation
+                    var eval_res:Bool? = nil
+                    if self.nPast >= self.contextParams.context - 4{
+                        self.nPast = 0
+                        outputToken = self.llm_token_eos()
+                        try ExceptionCather.catchException {
+                            _ = try? self.llm_eval(inputBatch: [outputToken])
+                        }
+                        throw ModelError.contextLimit
+                    }
+                    try ExceptionCather.catchException {
+                        eval_res = try? self.llm_eval(inputBatch: [outputToken])
+                    }
+                    if eval_res == false{
+                        throw ModelError.failedToEval
+                    }
+                    // Increment past count
+                    nPast += 1
+                }
+            }
+            // Update past with most recent response
+            past.append(outputTokens)
+            print("Total tokens: \(inputTokensCount + outputTokens.count) (\(inputTokensCount) -> \(outputTokens.count))")
+            print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
+            // Return full string for case without callback
+            return output.joined()
+        }catch{
+            print(error)
+            throw error
         }
-        // Update past with most recent response
-        past.append(outputTokens)
-        print("Total tokens: \(inputTokensCount + outputTokens.count) (\(inputTokensCount) -> \(outputTokens.count))")
-        print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
-        // Return full string for case without callback
-        return output.joined()
     }
     
 //    public func embeddings(_ input: String) throws -> [Float] {

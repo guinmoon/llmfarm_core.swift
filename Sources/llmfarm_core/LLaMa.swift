@@ -37,16 +37,11 @@ public class LLaMa: LLMBase {
             params.n_gpu_layers = 0
         }
         params.use_mmap = false
-        
-        var exception = tryBlock {
-            self.model = llama_load_model_from_file(path, params)
-        }
+        self.model = llama_load_model_from_file(path, params)
         if self.model == nil{
             return false
         }
-        exception = tryBlock {
-            self.context = llama_new_context_with_model(self.model, params)
-        }
+        self.context = llama_new_context_with_model(self.model, params)
         if self.context == nil {
             return false
         }
@@ -80,14 +75,7 @@ public class LLaMa: LLMBase {
     }
 
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        var eval_res:Int32 = 1        
-        var exception = tryBlock {
-            eval_res = llama_eval(self.context, inputBatch, Int32(inputBatch.count), min(self.contextParams.context, self.nPast), self.contextParams.numberOfThreads)
-        }
-        if exception != nil{
-            return false
-        }
-        if eval_res != 0 {
+        if llama_eval(self.context, inputBatch, Int32(inputBatch.count), min(self.contextParams.context, self.nPast), self.contextParams.numberOfThreads) != 0 {
             return false
         }
         return true

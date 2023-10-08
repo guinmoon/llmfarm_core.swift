@@ -68,7 +68,7 @@ public class AI {
         }
     }
     
-    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?)  {
+    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?) {
         flagResponding = true
         aiQueue.async {
             guard let completion = completion else { return }
@@ -83,22 +83,30 @@ public class AI {
             }
             
             // Model output
-            let output = try? self.model.predict(input, { str, time in
-                if self.flagExit {
-                    // Reset flag
-                    self.flagExit = false
-                    // Alert model of exit flag
-                    return true
-                }
+            var output = ""
+            do{
+                output = try self.model.predict(input, { str, time in
+                    if self.flagExit {
+                        // Reset flag
+                        self.flagExit = false
+                        // Alert model of exit flag
+                        return true
+                    }
+                    DispatchQueue.main.async {
+                        tokenCallback?(str, time)
+                    }
+                    return false
+                })
+            }catch{
+                print(error)
                 DispatchQueue.main.async {
-                    tokenCallback?(str, time)
+                    self.flagResponding = false
+                    completion("[Error] \(error)")
                 }
-                return false
-            })
-            
+            }
             DispatchQueue.main.async {
                 self.flagResponding = false
-                completion(output ?? "/[Error]/")
+                completion(output)
             }
 
         }
