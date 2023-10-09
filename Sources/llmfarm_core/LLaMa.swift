@@ -25,6 +25,8 @@ public class LLaMa: LLMBase {
         params.embedding = contextParams.embedding
         if contextParams.use_metal{
             params.n_gpu_layers = 1
+        }else{
+            params.n_gpu_layers = 0
         }
         if !contextParams.useMMap{
             params.use_mmap = false
@@ -36,7 +38,6 @@ public class LLaMa: LLMBase {
         if self.hardware_arch=="x86_64"{
             params.n_gpu_layers = 0
         }
-        params.use_mmap = false
         self.model = llama_load_model_from_file(path, params)
         if self.model == nil{
             return false
