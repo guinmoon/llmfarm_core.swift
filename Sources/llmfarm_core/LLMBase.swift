@@ -190,11 +190,9 @@ public class LLMBase {
             print("GPT sample error logits nil")
             return 0
         }
-        var candidates = Array<llama_dadbed9_token_data>()
-        var candidates_new = Array<llama_token_data>()
+        var candidates = Array<llama_dadbed9_token_data>()        
         for i in 0 ..< vocabSize {
             candidates.append(llama_dadbed9_token_data(id: i, logit: logits[Int(i)], p: 0.0))
-            candidates_new.append(llama_token_data(id: i, logit: logits[Int(i)], p: 0.0))
         }
         var candidates_p = llama_dadbed9_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
         
