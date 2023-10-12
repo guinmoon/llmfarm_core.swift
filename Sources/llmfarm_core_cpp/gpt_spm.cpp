@@ -1,7 +1,7 @@
 #include "./spm-headers/gpt_spm.h"
 #include "gpt_helpers.h"
-#include "./spm-headers/llama_dadbed9.h"
-#include "./spm-headers/llama.h"
+//#include "./spm-headers/llama_dadbed9.h"
+//#include "./spm-headers/llama.h"
 #include "./spm-headers/rwkv.h"
 #include "grammar-parser.h"
 #include "ggml/ggml_dadbed9.h"
@@ -306,3 +306,6 @@ struct llama_grammar* llama_load_grammar(const char* grammar_path){
     return grammar;
 }
 
+void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar ) {
+    llama_sample_grammar(ctx, (llama_token_data_array *)candidates, grammar );
+}

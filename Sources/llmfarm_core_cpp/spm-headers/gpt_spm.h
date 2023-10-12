@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "llama_dadbed9.h"
+#include "llama.h"
 
 #include "../ggml/ggml_dadbed9.h"
 
@@ -15,6 +17,8 @@ extern "C" {
 
 typedef int gpt_token;
 typedef int llama_token;
+
+
 
 const char * print_system_info(void);
 
@@ -146,6 +150,9 @@ bool llama_load_state(struct llama_context * ctx, const char * fname);
 
 struct llama_grammar* llama_load_grammar(const char* grammar_path);
 
+//struct llama_dadbed9_token_data_array;
+
+void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar );
 
 #ifdef __cplusplus
 }

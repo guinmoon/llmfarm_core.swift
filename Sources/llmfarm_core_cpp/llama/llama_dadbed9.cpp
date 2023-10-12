@@ -2830,9 +2830,10 @@ void llama_dadbed9_sample_classifier_free_guidance(
     }
 }
 
-llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float tau, float eta, int m, float * mu) {
+llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float tau, float eta, int m, float * mu,int n_vocab) {
     assert(ctx);
-    auto N = float(llama_dadbed9_n_vocab(ctx));
+//    auto N = float(llama_dadbed9_n_vocab(ctx));
+    auto N = float(n_vocab);
     int64_t t_start_sample_us;
     t_start_sample_us = ggml_dadbed9_time_us();
 

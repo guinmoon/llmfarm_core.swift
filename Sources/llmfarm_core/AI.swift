@@ -78,6 +78,7 @@ public class AI {
                 DispatchQueue.main.async {
                     self.flagResponding = false
                     completion("/[Error]/")
+//                    completion("[Error] Load Model") сделать так
                 }
                 return
             }

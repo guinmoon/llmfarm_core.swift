@@ -444,7 +444,7 @@ extern "C" {
     /// @param eta The learning rate used to update `mu` based on the error between the target and observed surprisal of the sampled word. A larger learning rate will cause `mu` to be updated more quickly, while a smaller learning rate will result in slower updates.
     /// @param m The number of tokens considered in the estimation of `s_hat`. This is an arbitrary value that is used to calculate `s_hat`, which in turn helps to calculate the value of `k`. In the paper, they use `m = 100`, but you can experiment with different values to see how it affects the performance of the algorithm.
     /// @param mu Maximum cross-entropy. This value is initialized to be twice the target cross-entropy (`2 * tau`) and is updated in the algorithm based on the error between the target and observed surprisal.
-    LLAMA_dadbed9_API llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float tau, float eta, int m, float * mu);
+    LLAMA_dadbed9_API llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float tau, float eta, int m, float * mu,int n_vocab);
 
     /// @details Mirostat 2.0 algorithm described in the paper https://arxiv.org/abs/2007.14966. Uses tokens instead of words.
     /// @param candidates A vector of `llama_dadbed9_token_data` containing the candidate tokens, their probabilities (p), and log-odds (logit) for the current position in the generated text.
