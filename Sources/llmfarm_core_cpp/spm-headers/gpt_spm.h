@@ -153,6 +153,7 @@ struct llama_grammar* llama_load_grammar(const char* grammar_path);
 //struct llama_dadbed9_token_data_array;
 
 void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar );
+llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates );
 
 #ifdef __cplusplus
 }

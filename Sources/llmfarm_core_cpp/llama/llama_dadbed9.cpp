@@ -2483,9 +2483,9 @@ void llama_dadbed9_sample_softmax(struct llama_dadbed9_context * ctx, llama_dadb
         candidates->data[i].p /= cum_sum;
     }
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_top_k(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, int k, size_t min_keep) {
@@ -2857,9 +2857,9 @@ llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_con
 
     // Sample the next word X using top-k sampling
     llama_dadbed9_sample_top_k(nullptr, candidates, int(k), 1);
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
     llama_dadbed9_token X = llama_dadbed9_sample_token(ctx, candidates);
     t_start_sample_us = ggml_dadbed9_time_us();
 
@@ -2873,9 +2873,9 @@ llama_dadbed9_token llama_dadbed9_sample_token_mirostat(struct llama_dadbed9_con
     // Update mu using the learning rate and error
     *mu = *mu - eta * e;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
     return X;
 }
 
@@ -2894,9 +2894,9 @@ llama_dadbed9_token llama_dadbed9_sample_token_mirostat_v2(struct llama_dadbed9_
         candidates->size = 1;
     }
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 
     // Normalize the probabilities of the remaining words
     llama_dadbed9_sample_softmax(ctx, candidates);
@@ -2915,9 +2915,9 @@ llama_dadbed9_token llama_dadbed9_sample_token_mirostat_v2(struct llama_dadbed9_
     // Update mu using the learning rate and error
     *mu = *mu - eta * e;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
     return X;
 }
 
@@ -2954,8 +2954,8 @@ llama_dadbed9_token llama_dadbed9_sample_token(struct llama_dadbed9_context * ct
 
     llama_dadbed9_token result = candidates->data[idx].id;
 
-    ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    ctx->n_sample++;
+//    ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    ctx->n_sample++;
     return result;
 }
 

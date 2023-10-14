@@ -3,7 +3,7 @@
 #include <regex>
 #include <map>
 
-static const std::map<std::string, enum ggml_dadbed9_ftype> GGML_FTYPE_MAP = {
+static const std::map<std::string, enum ggml_ftype> GGML_FTYPE_MAP = {
     {"q4_0", GGML_FTYPE_MOSTLY_Q4_0},
     {"q4_1", GGML_FTYPE_MOSTLY_Q4_1},
     {"q5_0", GGML_FTYPE_MOSTLY_Q5_0},
@@ -11,14 +11,14 @@ static const std::map<std::string, enum ggml_dadbed9_ftype> GGML_FTYPE_MAP = {
     {"q8_0", GGML_FTYPE_MOSTLY_Q8_0},
 };
 
-void ggml_dadbed9_print_ftypes(FILE * fp) {
+void ggml_print_ftypes(FILE * fp) {
     for (auto it = GGML_FTYPE_MAP.begin(); it != GGML_FTYPE_MAP.end(); it++) {
         fprintf(fp, "  type = \"%s\" or %d\n", it->first.c_str(), it->second);
     }
 }
 
-enum ggml_dadbed9_ftype ggml_dadbed9_parse_ftype(const char * str) {
-    enum ggml_dadbed9_ftype ftype;
+enum ggml_ftype ggml_parse_ftype(const char * str) {
+    enum ggml_ftype ftype;
     if (str[0] == 'q') {
         const auto it = GGML_FTYPE_MAP.find(str);
         if (it == GGML_FTYPE_MAP.end()) {
@@ -27,20 +27,20 @@ enum ggml_dadbed9_ftype ggml_dadbed9_parse_ftype(const char * str) {
         }
         ftype = it->second;
     } else {
-        ftype = (enum ggml_dadbed9_ftype) atoi(str);
+        ftype = (enum ggml_ftype) atoi(str);
     }
 
     return ftype;
 }
 
-bool ggml_dadbed9_common_quantize_0(
+bool ggml_common_quantize_0(
         std::ifstream & finp,
         std::ofstream & fout,
-        const ggml_dadbed9_ftype ftype,
+        const ggml_ftype ftype,
         const std::vector<std::string> & to_quant,
         const std::vector<std::string> & to_skip) {
 
-    ggml_dadbed9_type qtype = GGML_TYPE_F32;
+    ggml_type qtype = GGML_TYPE_F32;
 
     switch (ftype) {
         case GGML_FTYPE_MOSTLY_Q4_0: qtype = GGML_TYPE_Q4_0; break;
@@ -52,14 +52,19 @@ bool ggml_dadbed9_common_quantize_0(
         case GGML_FTYPE_ALL_F32:
         case GGML_FTYPE_MOSTLY_F16:
         case GGML_FTYPE_MOSTLY_Q4_1_SOME_F16:
+        case GGML_FTYPE_MOSTLY_Q2_K:
+        case GGML_FTYPE_MOSTLY_Q3_K:
+        case GGML_FTYPE_MOSTLY_Q4_K:
+        case GGML_FTYPE_MOSTLY_Q5_K:
+        case GGML_FTYPE_MOSTLY_Q6_K:
                 {
                     fprintf(stderr, "%s: invalid model type %d\n", __func__, ftype);
                     return false;
                 }
     };
 
-    if (!ggml_dadbed9_is_quantized(qtype)) {
-        fprintf(stderr, "%s: invalid quantization type %d (%s)\n", __func__, qtype, ggml_dadbed9_type_name(qtype));
+    if (!ggml_is_quantized(qtype)) {
+        fprintf(stderr, "%s: invalid quantization type %d (%s)\n", __func__, qtype, ggml_type_name(qtype));
         return false;
     }
 
@@ -69,7 +74,7 @@ bool ggml_dadbed9_common_quantize_0(
     std::vector<float> work;
 
     std::vector<uint8_t>     data_u8;
-    std::vector<ggml_dadbed9_fp16_t> data_f16;
+    std::vector<ggml_fp16_t> data_f16;
     std::vector<float>       data_f32;
 
     std::vector<int64_t> hist_all(1 << 4, 0);
@@ -97,7 +102,7 @@ bool ggml_dadbed9_common_quantize_0(
         std::string name(length, 0);
         finp.read (&name[0], length);
 
-        printf("%64s - [%5d, %5d, %5d], type = %6s ", name.data(), ne[0], ne[1], ne[2], ggml_dadbed9_type_name((ggml_dadbed9_type) ttype));
+        printf("%64s - [%5d, %5d, %5d], type = %6s ", name.data(), ne[0], ne[1], ne[2], ggml_type_name((ggml_type) ttype));
 
         bool quantize = false;
 
@@ -122,16 +127,16 @@ bool ggml_dadbed9_common_quantize_0(
 
         if (quantize) {
             if (ttype != GGML_TYPE_F32 && ttype != GGML_TYPE_F16) {
-                fprintf(stderr, "%s: unsupported ttype %d (%s) for integer quantization\n", __func__, ttype, ggml_dadbed9_type_name((ggml_dadbed9_type) ttype));
+                fprintf(stderr, "%s: unsupported ttype %d (%s) for integer quantization\n", __func__, ttype, ggml_type_name((ggml_type) ttype));
                 return false;
             }
 
             if (ttype == GGML_TYPE_F16) {
                 data_f16.resize(nelements);
-                finp.read(reinterpret_cast<char *>(data_f16.data()), nelements * sizeof(ggml_dadbed9_fp16_t));
+                finp.read(reinterpret_cast<char *>(data_f16.data()), nelements * sizeof(ggml_fp16_t));
                 data_f32.resize(nelements);
                 for (int i = 0; i < nelements; ++i) {
-                    data_f32[i] = ggml_dadbed9_fp16_to_fp32(data_f16[i]);
+                    data_f32[i] = ggml_fp16_to_fp32(data_f16[i]);
                 }
             } else {
                 data_f32.resize(nelements);
@@ -160,26 +165,26 @@ bool ggml_dadbed9_common_quantize_0(
             size_t cur_size = 0;
             std::vector<int64_t> hist_cur(1 << 4, 0);
 
-            switch ((ggml_dadbed9_type) ttype) {
+            switch ((ggml_type) ttype) {
                 case GGML_TYPE_Q4_0:
                     {
-                        cur_size = ggml_dadbed9_quantize_q4_0(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
+                        cur_size = ggml_quantize_q4_0(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
                     } break;
                 case GGML_TYPE_Q4_1:
                     {
-                        cur_size = ggml_dadbed9_quantize_q4_1(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
+                        cur_size = ggml_quantize_q4_1(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
                     } break;
                 case GGML_TYPE_Q5_0:
                     {
-                        cur_size = ggml_dadbed9_quantize_q5_0(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
+                        cur_size = ggml_quantize_q5_0(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
                     } break;
                 case GGML_TYPE_Q5_1:
                     {
-                        cur_size = ggml_dadbed9_quantize_q5_1(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
+                        cur_size = ggml_quantize_q5_1(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
                     } break;
                 case GGML_TYPE_Q8_0:
                     {
-                        cur_size = ggml_dadbed9_quantize_q8_0(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
+                        cur_size = ggml_quantize_q8_0(data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
                     } break;
                 case GGML_TYPE_F32:
                 case GGML_TYPE_F16:
@@ -187,9 +192,15 @@ bool ggml_dadbed9_common_quantize_0(
                 case GGML_TYPE_I16:
                 case GGML_TYPE_I32:
                 case GGML_TYPE_Q8_1:
+                case GGML_TYPE_Q2_K:
+                case GGML_TYPE_Q3_K:
+                case GGML_TYPE_Q4_K:
+                case GGML_TYPE_Q5_K:
+                case GGML_TYPE_Q6_K:
+                case GGML_TYPE_Q8_K:
                 case GGML_TYPE_COUNT:
                     {
-                        fprintf(stderr, "%s: unsupported quantization type %d (%s)\n", __func__, ttype, ggml_dadbed9_type_name((ggml_dadbed9_type) ttype));
+                        fprintf(stderr, "%s: unsupported quantization type %d (%s)\n", __func__, ttype, ggml_type_name((ggml_type) ttype));
                         return false;
                     }
             }
@@ -216,7 +227,7 @@ bool ggml_dadbed9_common_quantize_0(
     }
 
     printf("%s: model size  = %8.2f MB\n", __func__, total_size_org/1024.0/1024.0);
-    printf("%s: quant size  = %8.2f MB | ftype = %d (%s)\n", __func__, total_size_new/1024.0/1024.0, ftype, ggml_dadbed9_type_name(qtype));
+    printf("%s: quant size  = %8.2f MB | ftype = %d (%s)\n", __func__, total_size_new/1024.0/1024.0, ftype, ggml_type_name(qtype));
 
     {
         int64_t sum_all = 0;

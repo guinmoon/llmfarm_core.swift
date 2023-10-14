@@ -2,6 +2,8 @@
 #include "gpt_helpers.h"
 //#include "./spm-headers/llama_dadbed9.h"
 //#include "./spm-headers/llama.h"
+#include "ggml/common.h"
+#include "ggml/common-ggml.h"
 #include "./spm-headers/rwkv.h"
 #include "grammar-parser.h"
 #include "ggml/ggml_dadbed9.h"
@@ -27,24 +29,47 @@ gpt_token gpt_base_token_eos() {
     return 0;
 }
 
+//const char * print_system_info(void) {
+//    static std::string s;
+//
+//    s  = "";
+//    s += "AVX = "         + std::to_string(ggml_dadbed9_cpu_has_avx())         + " | ";
+//    s += "AVX2 = "        + std::to_string(ggml_dadbed9_cpu_has_avx2())        + " | ";
+//    s += "AVX512 = "      + std::to_string(ggml_dadbed9_cpu_has_avx512())      + " | ";
+//    s += "AVX512_VBMI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vbmi()) + " | ";
+//    s += "AVX512_VNNI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vnni()) + " | ";
+//    s += "FMA = "         + std::to_string(ggml_dadbed9_cpu_has_fma())         + " | ";
+//    s += "NEON = "        + std::to_string(ggml_dadbed9_cpu_has_neon())        + " | ";
+//    s += "ARM_FMA = "     + std::to_string(ggml_dadbed9_cpu_has_arm_fma())     + " | ";
+//    s += "F16C = "        + std::to_string(ggml_dadbed9_cpu_has_f16c())        + " | ";
+//    s += "FP16_VA = "     + std::to_string(ggml_dadbed9_cpu_has_fp16_va())     + " | ";
+//    s += "WASM_SIMD = "   + std::to_string(ggml_dadbed9_cpu_has_wasm_simd())   + " | ";
+//    s += "BLAS = "        + std::to_string(ggml_dadbed9_cpu_has_blas())        + " | ";
+//    s += "SSE3 = "        + std::to_string(ggml_dadbed9_cpu_has_sse3())        + " | ";
+//    s += "VSX = "         + std::to_string(ggml_dadbed9_cpu_has_vsx())         + " | ";
+//
+//    return s.c_str();
+//}
+
 const char * print_system_info(void) {
     static std::string s;
 
     s  = "";
-    s += "AVX = "         + std::to_string(ggml_dadbed9_cpu_has_avx())         + " | ";
-    s += "AVX2 = "        + std::to_string(ggml_dadbed9_cpu_has_avx2())        + " | ";
-    s += "AVX512 = "      + std::to_string(ggml_dadbed9_cpu_has_avx512())      + " | ";
-    s += "AVX512_VBMI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vbmi()) + " | ";
-    s += "AVX512_VNNI = " + std::to_string(ggml_dadbed9_cpu_has_avx512_vnni()) + " | ";
-    s += "FMA = "         + std::to_string(ggml_dadbed9_cpu_has_fma())         + " | ";
-    s += "NEON = "        + std::to_string(ggml_dadbed9_cpu_has_neon())        + " | ";
-    s += "ARM_FMA = "     + std::to_string(ggml_dadbed9_cpu_has_arm_fma())     + " | ";
-    s += "F16C = "        + std::to_string(ggml_dadbed9_cpu_has_f16c())        + " | ";
-    s += "FP16_VA = "     + std::to_string(ggml_dadbed9_cpu_has_fp16_va())     + " | ";
-    s += "WASM_SIMD = "   + std::to_string(ggml_dadbed9_cpu_has_wasm_simd())   + " | ";
-    s += "BLAS = "        + std::to_string(ggml_dadbed9_cpu_has_blas())        + " | ";
-    s += "SSE3 = "        + std::to_string(ggml_dadbed9_cpu_has_sse3())        + " | ";
-    s += "VSX = "         + std::to_string(ggml_dadbed9_cpu_has_vsx())         + " | ";
+    s += "AVX = "         + std::to_string(ggml_cpu_has_avx())         + " | ";
+    s += "AVX2 = "        + std::to_string(ggml_cpu_has_avx2())        + " | ";
+    s += "AVX512 = "      + std::to_string(ggml_cpu_has_avx512())      + " | ";
+    s += "AVX512_VBMI = " + std::to_string(ggml_cpu_has_avx512_vbmi()) + " | ";
+    s += "AVX512_VNNI = " + std::to_string(ggml_cpu_has_avx512_vnni()) + " | ";
+    s += "FMA = "         + std::to_string(ggml_cpu_has_fma())         + " | ";
+    s += "NEON = "        + std::to_string(ggml_cpu_has_neon())        + " | ";
+    s += "ARM_FMA = "     + std::to_string(ggml_cpu_has_arm_fma())     + " | ";
+    s += "F16C = "        + std::to_string(ggml_cpu_has_f16c())        + " | ";
+    s += "FP16_VA = "     + std::to_string(ggml_cpu_has_fp16_va())     + " | ";
+    s += "WASM_SIMD = "   + std::to_string(ggml_cpu_has_wasm_simd())   + " | ";
+    s += "BLAS = "        + std::to_string(ggml_cpu_has_blas())        + " | ";
+    s += "SSE3 = "        + std::to_string(ggml_cpu_has_sse3())        + " | ";
+    s += "SSSE3 = "       + std::to_string(ggml_cpu_has_ssse3())       + " | ";
+    s += "VSX = "         + std::to_string(ggml_cpu_has_vsx())         + " | ";
 
     return s.c_str();
 }
@@ -155,8 +180,10 @@ void gpt_base_shift_kv_cache(struct gpt_base_context * ctx, int n) {
 
 int32_t gpt_base_sample(struct gpt_base_context * ctx, int top_k, float top_p, float temp) {
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
-    int n_logits = ctx->vocab.id_to_token.size();
-    gpt_vocab::id smpl = gpt_sample_top_k_top_p(n_logits, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()), top_k, top_p, temp, ctx->rng);
+    int n_logits = ctx->vocab.id_to_token.size();    
+
+//    gpt_vocab::id smpl = gpt_sample_top_k_top_p(n_logits, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()), top_k, top_p, temp, ctx->rng);
+    gpt_vocab::id smpl = gpt_sample_top_k_top_p(ctx->vocab, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()), top_k, top_p, temp, ctx->rng);
     if (ctx) {
         ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
     }
@@ -172,7 +199,12 @@ int32_t gpt_base_sample_repeat(struct gpt_base_context * ctx,
                                float repeat_penalty) {
     const int64_t t_start_sample_us = ggml_dadbed9_time_us();
     int n_logits = ctx->vocab.id_to_token.size();
-    gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(n_logits, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()),
+//    gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(n_logits, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()),
+//                                                       last_n_tokens_data,last_n_tokens_data_size,
+//                                                       top_k, top_p, temp,
+//                                                       repeat_last_n,repeat_penalty,
+//                                                       ctx->rng);
+    gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(ctx->vocab, ctx->logits.data() + (ctx->logits.size() - ctx->vocab.id_to_token.size()),
                                                        last_n_tokens_data,last_n_tokens_data_size,
                                                        top_k, top_p, temp,
                                                        repeat_last_n,repeat_penalty,
@@ -213,27 +245,28 @@ void rwkv_init_logits(struct rwkv_context * model) {
 
 }
 
-int32_t rwkv_sample(int n_logits, float * logits, int top_k, float top_p, float temp) {
-    std::mt19937 rng = std::mt19937(time(NULL));
-    gpt_vocab::id smpl = gpt_sample_top_k_top_p(n_logits, logits, top_k, top_p, temp, rng);
-    return  smpl;
-}
+//int32_t rwkv_sample(int n_logits, float * logits, int top_k, float top_p, float temp) {
+//    std::mt19937 rng = std::mt19937(time(NULL));
+////    gpt_vocab::id smpl = gpt_sample_top_k_top_p(n_logits, logits, top_k, top_p, temp, rng);
+//    gpt_vocab::id smpl = gpt_sample_top_k_top_p(n_logits, logits, top_k, top_p, temp, rng);
+//    return  smpl;
+//}
 
 
-int32_t rwkv_sample_repeat(int n_logits, float * logits,
-                               const int32_t * last_n_tokens_data,
-                               size_t last_n_tokens_data_size,
-                               int top_k, float top_p, float temp,
-                               int repeat_last_n,
-                               float repeat_penalty) {
-    std::mt19937 rng = std::mt19937(time(NULL));
-    gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(n_logits, logits,
-                                                       last_n_tokens_data,last_n_tokens_data_size,
-                                                       top_k, top_p, temp,
-                                                       repeat_last_n,repeat_penalty,
-                                                       rng);
-    return  smpl;
-}
+//int32_t rwkv_sample_repeat(int n_logits, float * logits,
+//                               const int32_t * last_n_tokens_data,
+//                               size_t last_n_tokens_data_size,
+//                               int top_k, float top_p, float temp,
+//                               int repeat_last_n,
+//                               float repeat_penalty) {
+//    std::mt19937 rng = std::mt19937(time(NULL));
+//    gpt_vocab::id smpl = gpt_sample_top_k_top_p_repeat(n_logits, logits,
+//                                                       last_n_tokens_data,last_n_tokens_data_size,
+//                                                       top_k, top_p, temp,
+//                                                       repeat_last_n,repeat_penalty,
+//                                                       rng);
+//    return  smpl;
+//}
 
 bool llama_save_state(struct llama_context * ctx, const char * fname){
     const size_t state_size = llama_get_state_size(ctx);
@@ -308,4 +341,9 @@ struct llama_grammar* llama_load_grammar(const char* grammar_path){
 
 void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar ) {
     llama_sample_grammar(ctx, (llama_token_data_array *)candidates, grammar );
+}
+
+
+llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates ) {
+    return llama_sample_token(ctx, (llama_token_data_array *)candidates );
 }
