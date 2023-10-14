@@ -2680,7 +2680,7 @@ void llama_dadbed9_sample_temperature(struct llama_dadbed9_context * ctx, llama_
 //    }
 }
 
-void llama_dadbed9_sample_repetition_penalty(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const llama_dadbed9_token * last_tokens, size_t last_tokens_size, float penalty) {
+void llama_dadbed9_sample_repetition_penalty(llama_dadbed9_token_data_array * candidates, const llama_dadbed9_token * last_tokens, size_t last_tokens_size, float penalty) {
     if (last_tokens_size == 0 || penalty == 1.0f) {
         return;
     }
