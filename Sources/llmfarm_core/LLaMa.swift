@@ -14,35 +14,35 @@ public class LLaMa: LLMBase {
     public var hardware_arch: String=""
     
     public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
-        var params = llama_context_default_params()
-        params.n_ctx = contextParams.context
+        var context_params = llama_context_default_params()
+        var model_params = llama_model_default_params()
+        context_params.n_ctx = UInt32(contextParams.context)
         //        params.n_parts = contextParams.parts
-        params.seed = UInt32(contextParams.seed)
-        params.f16_kv = contextParams.f16Kv
-        params.logits_all = contextParams.logitsAll
-        params.vocab_only = contextParams.vocabOnly
-        params.use_mlock = contextParams.useMlock
-        params.embedding = contextParams.embedding
+        context_params.seed = UInt32(contextParams.seed)
+        context_params.f16_kv = contextParams.f16Kv
+        context_params.logits_all = contextParams.logitsAll
+        model_params.vocab_only = contextParams.vocabOnly
+        model_params.use_mlock = contextParams.useMlock
         if contextParams.use_metal{
-            params.n_gpu_layers = 1
+            model_params.n_gpu_layers = 1
         }else{
-            params.n_gpu_layers = 0
+            model_params.n_gpu_layers = 0
         }
         if !contextParams.useMMap{
-            params.use_mmap = false
+            model_params.use_mmap = false
         }
         if contextParams.useMlock{
-            params.use_mlock = true
+            model_params.use_mlock = true
         }
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{
-            params.n_gpu_layers = 0
+            model_params.n_gpu_layers = 0
         }
-        self.model = llama_load_model_from_file(path, params)
+        self.model = llama_load_model_from_file(path, model_params)
         if self.model == nil{
             return false
         }
-        self.context = llama_new_context_with_model(self.model, params)
+        self.context = llama_new_context_with_model(self.model, context_params)
         if self.context == nil {
             return false
         }
@@ -64,19 +64,20 @@ public class LLaMa: LLMBase {
     }
     
     override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
-        return llama_n_ctx(ctx)
+        return llama_n_ctx(self.context)
     }
     
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
-        return llama_n_vocab(ctx)
+        return llama_n_vocab(self.model)
     }
     
     override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
-        return llama_get_logits(ctx);
+        return llama_get_logits(self.context);
     }
 
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        if llama_eval(self.context, inputBatch, Int32(inputBatch.count), min(self.contextParams.context, self.nPast), self.contextParams.numberOfThreads) != 0 {
+        var mutable_inputBatch = inputBatch
+        if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
             return false
         }
         return true
@@ -119,7 +120,7 @@ public class LLaMa: LLMBase {
 //                                bool   add_bos)
         let n_tokens = Int32(input.utf8.count) + (bos == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
-        let n = llama_tokenize(context, input, Int32(input.utf8.count), &embeddings, n_tokens, bos)
+        let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, bos)
         assert(n >= 0)
         embeddings.removeSubrange(Int(n)..<embeddings.count)
         

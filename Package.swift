@@ -22,7 +22,7 @@ let package = Package(
               path: "Sources/llmfarm_core"),
         .target(
             name: "llmfarm_core_cpp",
-            sources: ["ggml/ggml.c","exception_helper.cpp","ggml/k_quants.c","ggml/ggml-alloc.c","ggml/ggml-metal.m","ggml/common.cpp",
+            sources: ["ggml/ggml.c","exception_helper.cpp","ggml/k_quants.c","ggml/ggml-alloc.c","ggml/ggml-backend.c","ggml/ggml-metal.m","ggml/common.cpp",
                       "gpt_helpers.cpp","gpt_spm.cpp","package_helper.m","grammar-parser.cpp","exception_helper_objc.mm",
                       "ggml/ggml_dadbed9.c","ggml/k_quants_dadbed9.c","ggml/ggml-alloc_dadbed9.c","ggml/ggml-metal_dadbed9.m",
                       "ggml/ggml_d925ed.c","ggml/ggml_d925ed-alloc.c","ggml/ggml_d925ed-metal.m",
@@ -35,13 +35,15 @@ let package = Package(
             publicHeadersPath: "spm-headers",
             //            I'm not sure about some of the flags, please correct it's wrong.
             cSettings: [
-                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp                
+//                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp                
+                .unsafeFlags(["-O3"]), //comment this if you need to Debug llama_cpp
                 .unsafeFlags(["-DNDEBUG"]),
                 .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
 //                .unsafeFlags(["-DGGML_METAL_NDEBUG"]),
                 .unsafeFlags(["-DGGML_USE_ACCELERATE"]),
                 .unsafeFlags(["-DGGML_USE_METAL"]),
                 .unsafeFlags(["-DGGML_USE_K_QUANTS"]),
+                .unsafeFlags(["-DSWIFT_PACKAGE"]),
                 .unsafeFlags(["-pthread"]),
                 .unsafeFlags(["-fno-objc-arc"]),
                 .unsafeFlags(["-w"]),    // ignore all warnings

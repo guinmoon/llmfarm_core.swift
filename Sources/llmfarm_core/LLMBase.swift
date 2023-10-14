@@ -190,21 +190,21 @@ public class LLMBase {
             print("GPT sample error logits nil")
             return 0
         }
-        var candidates = Array<llama_dadbed9_token_data>()        
+        var candidates = Array<llama_token_data>()
         for i in 0 ..< vocabSize {
-            candidates.append(llama_dadbed9_token_data(id: i, logit: logits[Int(i)], p: 0.0))
+            candidates.append(llama_token_data(id: i, logit: logits[Int(i)], p: 0.0))
         }
-        var candidates_p = llama_dadbed9_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
+        var candidates_p = llama_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
         
         // Apply penalties
         let nl_token = Int(llm_token_nl())
         let nl_logit = logits[nl_token]
         let last_n_repeat = min(min(Int32(last_n_tokens.count), repeat_last_n), n_ctx)
         
-        llama_dadbed9_sample_repetition_penalty(ctx, &candidates_p,
+        llama_sample_repetition_penalty(ctx, &candidates_p,
                     last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
                     Int(repeat_last_n), repeat_penalty)
-        llama_dadbed9_sample_frequency_and_presence_penalties(ctx, &candidates_p,
+        llama_sample_frequency_and_presence_penalties(ctx, &candidates_p,
                     last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
                     Int(last_n_repeat), alpha_frequency, alpha_presence)
         if(!penalize_nl) {
@@ -216,7 +216,7 @@ public class LLMBase {
 //            return self.llm_token_to_str(outputToken:in_token)
 //        }
         if (self.grammar != nil ) {
-            llama_sample_grammar_for_dadbed9(ctx,&candidates_p, self.grammar)
+            llama_sample_grammar(ctx,&candidates_p, self.grammar)
         }
         
 //        if (self.grammar != nil) {
@@ -233,27 +233,25 @@ public class LLMBase {
         
         if(temp <= 0) {
             // Greedy sampling
-            res_token = llama_dadbed9_sample_token_greedy(ctx, &candidates_p)
+            res_token = llama_sample_token_greedy(ctx, &candidates_p)
         } else {
             if(mirostat == 1) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 let mirostat_m = 100
-                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-//                return llama_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
-//                let point_to_token_arra:UnsafeMutablePointer<llama_dadbed9_token_data_array> =  candidates.mutPtr as! UnsafeMutablePointer<llama_dadbed9_token_data_array>
-                return llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
+                llama_sample_temp(ctx, &candidates_p, temp)
+                return llama_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
-                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                return llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
+                llama_sample_temp(ctx, &candidates_p, temp)
+                return llama_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
             } else {
                 // Temperature sampling
-                llama_dadbed9_sample_top_k(ctx, &candidates_p, top_k, 1)
-                llama_dadbed9_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
-                llama_dadbed9_sample_typical(ctx, &candidates_p, typical_p, 1)
-                llama_dadbed9_sample_top_p(ctx, &candidates_p, top_p, 1)
-                llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                res_token = llama_dadbed9_sample_token(ctx, &candidates_p)
+                llama_sample_top_k(ctx, &candidates_p, top_k, 1)
+                llama_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
+                llama_sample_typical(ctx, &candidates_p, typical_p, 1)
+                llama_sample_top_p(ctx, &candidates_p, top_p, 1)
+                llama_sample_temp(ctx, &candidates_p, temp)
+                res_token = llama_sample_token(ctx, &candidates_p)
             }
         }
         
@@ -316,6 +314,9 @@ public class LLMBase {
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
         var inputTokens = tokenizePrompt(input, promptFormat)
+        if inputTokens.count == 0{
+            return "Empty input."
+        }
         self.session_tokens.append(contentsOf: inputTokens)
         let inputTokensCount = inputTokens.count
         print("Input tokens: \(inputTokens)")

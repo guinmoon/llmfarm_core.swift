@@ -2508,9 +2508,9 @@ void llama_dadbed9_sample_top_k(struct llama_dadbed9_context * ctx, llama_dadbed
     }
     candidates->size = k;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_top_p(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float p, size_t min_keep) {
@@ -2540,9 +2540,9 @@ void llama_dadbed9_sample_top_p(struct llama_dadbed9_context * ctx, llama_dadbed
     // Resize the output vector to keep only the top-p tokens
     candidates->size = last_idx;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_tail_free(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, float z, size_t min_keep) {
@@ -2599,9 +2599,9 @@ void llama_dadbed9_sample_tail_free(struct llama_dadbed9_context * ctx, llama_da
     // Resize the output vector to keep only the tokens above the tail location
     candidates->size = last_idx;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 
@@ -2663,9 +2663,9 @@ void llama_dadbed9_sample_typical(struct llama_dadbed9_context * ctx, llama_dadb
     std::copy(new_candidates.begin(), new_candidates.end(), candidates->data);
     candidates->size = new_candidates.size();
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_temperature(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates_p, float temp) {
@@ -2675,9 +2675,9 @@ void llama_dadbed9_sample_temperature(struct llama_dadbed9_context * ctx, llama_
         candidates_p->data[i].logit /= temp;
     }
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_repetition_penalty(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const llama_dadbed9_token * last_tokens, size_t last_tokens_size, float penalty) {
@@ -2704,9 +2704,9 @@ void llama_dadbed9_sample_repetition_penalty(struct llama_dadbed9_context * ctx,
 
     candidates->sorted = false;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_frequency_and_presence_penalties(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const llama_dadbed9_token * last_tokens_p, size_t last_tokens_size, float alpha_frequency, float alpha_presence) {
@@ -2735,9 +2735,9 @@ void llama_dadbed9_sample_frequency_and_presence_penalties(struct llama_dadbed9_
 
     candidates->sorted = false;
 
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//    }
 }
 
 void llama_dadbed9_sample_grammar(struct llama_dadbed9_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_dadbed9_grammar * grammar) {
@@ -2930,10 +2930,10 @@ llama_dadbed9_token llama_dadbed9_sample_token_greedy(struct llama_dadbed9_conte
     });
 
     llama_dadbed9_token result = max_iter->id;
-    if (ctx) {
-        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
-        ctx->n_sample++;
-    }
+//    if (ctx) {
+//        ctx->t_sample_us += ggml_dadbed9_time_us() - t_start_sample_us;
+//        ctx->n_sample++;
+//    }
     return result;
 }
 
