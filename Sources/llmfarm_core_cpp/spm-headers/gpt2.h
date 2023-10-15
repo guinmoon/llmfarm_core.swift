@@ -48,7 +48,7 @@ void gpt2_free(struct gpt2_context * ctx);
 
 struct gpt_context_params;
 
-struct gpt2_context * gpt2_init_from_file(const char * path_model, struct gpt_context_params params);
+struct gpt2_context * gpt2_init_from_file(const char * path_model, struct gpt_context_params   params, int n_gpu_layers);
 
 //void gpt2_shift_kv_cache(struct gpt2_context * ctx, int n);
 

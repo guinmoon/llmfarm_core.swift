@@ -23,16 +23,11 @@ public class LLaMa: LLMBase {
         context_params.logits_all = contextParams.logitsAll
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
+        model_params.use_mmap = contextParams.useMMap
         if contextParams.use_metal{
             model_params.n_gpu_layers = 1
         }else{
             model_params.n_gpu_layers = 0
-        }
-        if !contextParams.useMMap{
-            model_params.use_mmap = false
-        }
-        if contextParams.useMlock{
-            model_params.use_mlock = true
         }
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{

@@ -103,7 +103,9 @@ public class LLaMa_dadbed9: LLMBase {
 
         var embeddings: [llama_dadbed9_token] = Array<llama_dadbed9_token>(repeating: llama_dadbed9_token(), count: input.utf8.count)
         let n = llama_dadbed9_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
-        assert(n >= 0)
+        if n<=0{
+            return []
+        }
         embeddings.removeSubrange(Int(n)..<embeddings.count)
         
         if eos {

@@ -11,7 +11,7 @@ Also used sources from:
 - [x] MacOS (13+)
 - [x] iOS (16+)
 - [x] Various inferences
-- [x] Metal for llama inference ([dont work](https://github.com/ggerganov/llama.cpp/issues/2407#issuecomment-1699544808) on intel Mac)
+- [x] Metal ([dont work](https://github.com/ggerganov/llama.cpp/issues/2407#issuecomment-1699544808) on intel Mac)
 - [x] Model setting templates
 - [x] Sampling from llama.cpp for other inference
 - [ ] Other tokenizers support
@@ -29,7 +29,7 @@ Also used sources from:
 
 # Inferences
 
-- [x] [LLaMA](https://arxiv.org/abs/2302.13971)
+- [x] [LLaMA](https://arxiv.org/abs/2302.13971) 
 - [x] [GPTNeoX](https://huggingface.co/docs/transformers/model_doc/gpt_neox)
 - [x] [Replit](https://huggingface.co/replit/replit-code-v1-3b)
 - [x] [GPT2](https://huggingface.co/docs/transformers/model_doc/gpt2) + [Cerebras](https://arxiv.org/abs/2304.03208)
