@@ -157,12 +157,18 @@ bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & 
         printf("%s: n_embd  = %d\n", __func__, hparams.n_embd);
         printf("%s: n_head  = %d\n", __func__, hparams.n_head);
         printf("%s: n_layer = %d\n", __func__, hparams.n_layer);
-        printf("%s: ftype   = %d\n", __func__, hparams.ftype);
+        printf("%s: ftype   = %d\n", __func__, hparams.ftype);        
         printf("%s: qntvr   = %d\n", __func__, qntvr);
-
+        
+//        GGML_TYPE_Q5_1
+        if (hparams.ftype == 2009){
+            printf("%s: Disable Metal for  Q5_1 = %d\n", __func__, hparams.ftype);
+            n_gpu_layers = 0;
+        }
         hparams.ftype %= GGML_QNT_VERSION_FACTOR;
+        
     }
-
+   
     // load vocab
     {
         int32_t n_vocab = 0;

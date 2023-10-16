@@ -25,6 +25,17 @@
 
 #define GGML_MAX_CONCUR (2*GGML_MAX_NODES)
 
+//#define GGML_ASSERT(x) \
+//    do { \
+//        if (!(x)) { \
+//            fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
+//            char descr[700]; \
+//            sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
+//NSException *exception = [NSException exceptionWithName:@"GGML_ASSERT" reason:@"#x " userInfo:nil]; \
+//            @throw exception; \
+//        } \
+//    } while (0)
+
 struct ggml_metal_buffer {
     const char * name;
 
@@ -466,7 +477,7 @@ bool ggml_metal_add_buffer(
         GGML_METAL_LOG_ERROR("%s: error: too many buffers\n", __func__);
         return false;
     }
-
+    
     if (data) {
         // verify that the buffer does not overlap with any of the existing buffers
         for (int i = 0; i < ctx->n_buffers; ++i) {
@@ -572,7 +583,7 @@ void ggml_metal_graph_find_concurrency(
         struct ggml_cgraph * gf, bool check_mem) {
     int search_depth = gf->n_nodes; //we only find concurrency in this range to avoid wasting too much time
     int nodes_unused[GGML_MAX_CONCUR];
-
+    
     for (int i = 0; i < GGML_MAX_CONCUR; i++) { ctx->concur_list[i] = 0; }
     for (int i = 0; i < gf->n_nodes;     i++) { nodes_unused[i]     = 1; }
     ctx->concur_list_len = 0;
@@ -669,7 +680,6 @@ void ggml_metal_graph_compute(
     MTLComputePassDescriptor * edesc = MTLComputePassDescriptor.computePassDescriptor;
 
     const bool has_concur = ctx->concur_list_len && ctx->concur_list_len <= GGML_MAX_CONCUR;
-
     const int n_nodes  = has_concur ? ctx->concur_list_len      : gf->n_nodes;
     edesc.dispatchType = has_concur ? MTLDispatchTypeConcurrent : MTLDispatchTypeSerial;
 
@@ -1044,7 +1054,7 @@ void ggml_metal_graph_compute(
                                 !ggml_is_transposed(src1) &&
                                 src1t == GGML_TYPE_F32 &&
                                 ne00 % 32 == 0 && ne00 >= 64 &&
-                                ne11 > ne11_mm_min) {
+                                ne11 > ne11_mm_min) {                                
                                 //printf("matrix: ne00 = %6d, ne01 = %6d, ne02 = %6d, ne11 = %6d, ne12 = %6d\n", ne00, ne01, ne02, ne11, ne12);
                                 switch (src0->type) {
                                     case GGML_TYPE_F32:  [encoder setComputePipelineState:ctx->pipeline_mul_mm_f32_f32];  break;
