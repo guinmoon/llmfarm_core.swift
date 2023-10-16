@@ -392,15 +392,15 @@ public class LLMBase {
     func llm_init_logits() throws -> Bool {
         do{
             let inputs = [llm_token_bos(),llm_token_eos()]
-            if try llm_eval(inputBatch: inputs) == false {
-                throw ModelError.failedToEval
+            try ExceptionCather.catchException {
+                _ = try? llm_eval(inputBatch: inputs)
             }
             return true
         }
         catch{
             print(error)
+            throw error
         }
-        return false
     }
     
 //    public func llm_init_logits() throws -> Bool {

@@ -43,8 +43,13 @@ public class GPT2: LLMBase {
     }
     
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        if gpt2_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
-            throw ModelError.failedToEval
+        do{
+            try ExceptionCather.catchException {
+                gpt2_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads)
+            }
+        }catch{
+            print(error)
+            throw error
         }
         return true
     }

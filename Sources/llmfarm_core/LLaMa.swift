@@ -24,6 +24,8 @@ public class LLaMa: LLMBase {
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap
+//        context_params.rope_freq_base = 10000.0
+//        context_params.rope_freq_scale = 1
         if contextParams.use_metal{
             model_params.n_gpu_layers = 1
         }else{
