@@ -532,7 +532,7 @@ public class LLMBase {
                     }
                     if callback(output, time) {
                         // Early exit if requested by callback
-                        print("exit if requested by callback")
+                        print(" * exit requested by callback *")
                         //generating = false
                         outputEnabled = false //outputRemaining = 0
                         break
@@ -555,6 +555,7 @@ public class LLMBase {
                         eval_res = try? self.llm_eval(inputBatch: [outputToken])
                     }
                     if eval_res == false{
+                        print("Eval res false")
                         throw ModelError.failedToEval
                     }
                     // Increment past count

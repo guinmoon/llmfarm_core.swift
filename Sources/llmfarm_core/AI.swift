@@ -63,7 +63,7 @@ public class AI {
             return true
         }
         catch {
-//            print(error)
+            //            print(error)
             throw error
         }
     }
@@ -77,8 +77,7 @@ public class AI {
             if self.model == nil{
                 DispatchQueue.main.async {
                     self.flagResponding = false
-                    completion("/[Error]/")
-//                    completion("[Error] Load Model") сделать так
+                    completion("[Error] Load Model")
                 }
                 return
             }
@@ -86,18 +85,20 @@ public class AI {
             // Model output
             var output = ""
             do{
-                output = try self.model.predict(input, { str, time in
-                    if self.flagExit {
-                        // Reset flag
-                        self.flagExit = false
-                        // Alert model of exit flag
-                        return true
-                    }
-                    DispatchQueue.main.async {
-                        tokenCallback?(str, time)
-                    }
-                    return false
-                })
+                try ExceptionCather.catchException {
+                    output = try! self.model.predict(input, { str, time in
+                        if self.flagExit {
+                            // Reset flag
+                            self.flagExit = false
+                            // Alert model of exit flag
+                            return true
+                        }
+                        DispatchQueue.main.async {
+                            tokenCallback?(str, time)
+                        }
+                        return false
+                    })
+                }
             }catch{
                 print(error)
                 DispatchQueue.main.async {
@@ -109,7 +110,7 @@ public class AI {
                 self.flagResponding = false
                 completion(output)
             }
-
+            
         }
     }
 }
@@ -170,7 +171,7 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
         tmp_param.context = model_config["context"] as! Int32
     }
     if (model_config["numberOfThreads"] != nil && model_config["numberOfThreads"] as! Int32 != 0){
-        tmp_param.numberOfThreads = model_config["numberOfThreads"] as! Int32
+        tmp_param.n_threads = model_config["numberOfThreads"] as! Int32
     }
     
     return tmp_param
@@ -180,8 +181,8 @@ public struct ModelContextParams {
     public var context: Int32 = 512    // text context
     public var parts: Int32 = -1   // -1 for default
     public var seed: UInt32 = 0xFFFFFFFF      // RNG seed, 0 for random
-    public var numberOfThreads: Int32 = 1
-
+    public var n_threads: Int32 = 1
+    
     public var f16Kv = true         // use fp16 for KV cache
     public var logitsAll = false    // the llama_eval() call computes all logits, not just the last one
     public var vocabOnly = false    // only load the vocabulary, no weights
@@ -193,16 +194,16 @@ public struct ModelContextParams {
     public var grammar_path:String? = nil
     
     public var warm_prompt = "\n\n\n"
-
+    
     public static let `default` = ModelContextParams()
-
+    
     public init(context: Int32 = 2048 /*512*/, parts: Int32 = -1, seed: UInt32 = 0xFFFFFFFF, numberOfThreads: Int32 = 0, f16Kv: Bool = true, logitsAll: Bool = false, vocabOnly: Bool = false, useMlock: Bool = false,useMMap: Bool = true, embedding: Bool = false) {
         self.context = context
         self.parts = parts
         self.seed = seed
         // Set numberOfThreads to processorCount, processorCount is actually thread count of cpu
-        self.numberOfThreads = Int32(numberOfThreads) == Int32(0) ? processorsConunt : numberOfThreads
-//        self.numberOfThreads = processorsConunt
+        self.n_threads = Int32(numberOfThreads) == Int32(0) ? processorsConunt : numberOfThreads
+        //        self.numberOfThreads = processorsConunt
         self.f16Kv = f16Kv
         self.logitsAll = logitsAll
         self.vocabOnly = vocabOnly

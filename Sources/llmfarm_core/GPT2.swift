@@ -43,7 +43,7 @@ public class GPT2: LLMBase {
     }
     
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        let res = gpt2_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads)
+        let res = gpt2_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads)
         if res != 0 {
             return false
         }

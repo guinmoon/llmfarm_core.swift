@@ -23,7 +23,7 @@ public class Replit: LLMBase {
     }
     
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        if replit_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
+        if replit_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads) != 0 {
             throw ModelError.failedToEval
         }
         return true

@@ -17,10 +17,11 @@ public class LLaMa: LLMBase {
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
         context_params.n_ctx = UInt32(contextParams.context)
-        //        params.n_parts = contextParams.parts
         context_params.seed = UInt32(contextParams.seed)
         context_params.f16_kv = contextParams.f16Kv
+        context_params.n_threads = UInt32(contextParams.n_threads)
         context_params.logits_all = contextParams.logitsAll
+//        context_params.n_batch = contextParams.
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap

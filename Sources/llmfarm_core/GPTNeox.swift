@@ -23,7 +23,7 @@ public class GPTNeoX: LLMBase {
     }
     
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        if gpt_neox_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.numberOfThreads) != 0 {
+        if gpt_neox_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads) != 0 {
             throw ModelError.failedToEval
         }
         return true
