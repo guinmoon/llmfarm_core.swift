@@ -30,6 +30,7 @@ public class AI {
     public var chatName: String
     
     
+    
     public var flagExit = false
     private(set) var flagResponding = false
     
@@ -39,7 +40,7 @@ public class AI {
         self.chatName = _chatName
     }
     
-    public func loadModel(_ aiModel: ModelInference, contextParams: ModelContextParams = .default) throws -> Bool {
+    public func loadModel(_ aiModel: ModelInference, contextParams: ModelAndContextParams = .default) throws -> Bool {
         print("AI init")
         do{
             switch aiModel {
@@ -120,6 +121,26 @@ private typealias _ModelProgressCallback = (_ progress: Float, _ userData: Unsaf
 
 public typealias ModelProgressCallback = (_ progress: Float, _ model: LLMBase) -> Void
 
+func get_path_by_lora_name(_ model_name:String, dest:String = "lora_adapters") -> String? {
+    //#if os(iOS) || os(watchOS) || os(tvOS)
+    do {
+        let fileManager = FileManager.default
+        let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+        let destinationURL = documentsPath!.appendingPathComponent(dest)
+        try fileManager.createDirectory (at: destinationURL, withIntermediateDirectories: true, attributes: nil)
+        let path = destinationURL.appendingPathComponent(model_name).path
+        if fileManager.fileExists(atPath: path){
+            return path
+        }else{
+            return nil
+        }
+        
+    } catch {
+        print(error)
+    }
+    return nil
+}
+
 public func get_model_sample_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelSampleParams{
     var tmp_param = ModelSampleParams.default
     if (model_config["n_batch"] != nil){
@@ -165,23 +186,44 @@ public func get_model_sample_param_by_config(_ model_config:Dictionary<String, A
     return tmp_param
 }
 
-public func get_model_context_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelContextParams{
-    var tmp_param = ModelContextParams.default
+public func get_model_context_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelAndContextParams{
+    var tmp_param = ModelAndContextParams.default
     if (model_config["context"] != nil){
         tmp_param.context = model_config["context"] as! Int32
     }
     if (model_config["numberOfThreads"] != nil && model_config["numberOfThreads"] as! Int32 != 0){
         tmp_param.n_threads = model_config["numberOfThreads"] as! Int32
     }
-    
+    if model_config["lora_adapters"] != nil{
+        let tmp_adapters = model_config["lora_adapters"]! as? [Dictionary<String, Any>]
+        if tmp_adapters != nil{
+            for adapter in tmp_adapters!{
+                var adapter_file: String? = nil
+                var scale: Float? = nil
+                if adapter["adapter"] != nil{
+                    adapter_file = adapter["adapter"]! as? String
+                }
+                if adapter["scale"] != nil{
+                    scale = adapter["scale"]! as? Float
+                }
+                if adapter_file != nil && scale != nil{
+                    let adapter_path = get_path_by_lora_name(adapter_file!)
+                    if adapter_path != nil{
+                        tmp_param.lora_adapters.append((adapter_path!,scale!))
+                    }
+                }
+            }
+        }            
+    }
     return tmp_param
 }
 
-public struct ModelContextParams {
+public struct ModelAndContextParams {
     public var context: Int32 = 512    // text context
     public var parts: Int32 = -1   // -1 for default
     public var seed: UInt32 = 0xFFFFFFFF      // RNG seed, 0 for random
     public var n_threads: Int32 = 1
+    public var lora_adapters: [(String,Float)] = []
     
     public var f16Kv = true         // use fp16 for KV cache
     public var logitsAll = false    // the llama_eval() call computes all logits, not just the last one
@@ -195,7 +237,7 @@ public struct ModelContextParams {
     
     public var warm_prompt = "\n\n\n"
     
-    public static let `default` = ModelContextParams()
+    public static let `default` = ModelAndContextParams()
     
     public init(context: Int32 = 2048 /*512*/, parts: Int32 = -1, seed: UInt32 = 0xFFFFFFFF, numberOfThreads: Int32 = 0, f16Kv: Bool = true, logitsAll: Bool = false, vocabOnly: Bool = false, useMlock: Bool = false,useMMap: Bool = true, embedding: Bool = false) {
         self.context = context

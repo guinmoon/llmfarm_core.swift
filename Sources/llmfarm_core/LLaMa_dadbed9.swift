@@ -12,7 +12,7 @@ public class LLaMa_dadbed9: LLMBase {
 
     public var hardware_arch: String=""
     
-    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var params = llama_dadbed9_context_default_params()
         params.n_ctx = contextParams.context
 //        params.n_parts = contextParams.parts

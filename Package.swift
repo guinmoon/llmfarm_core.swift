@@ -39,7 +39,7 @@ let package = Package(
                 .unsafeFlags(["-O3"]),
                 .unsafeFlags(["-DNDEBUG"]),
                 .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
-//                .unsafeFlags(["-DGGML_METAL_NDEBUG"]),
+                .unsafeFlags(["-DGGML_METAL_NDEBUG"]),
                 .unsafeFlags(["-DGGML_USE_ACCELERATE"]),
                 .unsafeFlags(["-DGGML_USE_METAL"]),
                 .unsafeFlags(["-DGGML_USE_K_QUANTS"]),

@@ -13,7 +13,7 @@ public class LLaMa: LLMBase {
     public var model: OpaquePointer?
     public var hardware_arch: String=""
     
-    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
         context_params.n_ctx = UInt32(contextParams.context)
@@ -27,6 +27,7 @@ public class LLaMa: LLMBase {
         model_params.use_mmap = contextParams.useMMap
 //        context_params.rope_freq_base = 10000.0
 //        context_params.rope_freq_scale = 1
+        
         if contextParams.use_metal{
             model_params.n_gpu_layers = 1
         }else{
@@ -36,10 +37,20 @@ public class LLaMa: LLMBase {
         if self.hardware_arch=="x86_64"{
             model_params.n_gpu_layers = 0
         }
+        
+        if contextParams.lora_adapters.count>0{
+            model_params.use_mmap = false
+        }
+                        
         self.model = llama_load_model_from_file(path, model_params)
         if self.model == nil{
             return false
         }
+        
+        for lora in contextParams.lora_adapters{            
+            llama_model_apply_lora_from_file(model,lora.0,lora.1,nil,6);
+        }
+        
         self.context = llama_new_context_with_model(self.model, context_params)
         if self.context == nil {
             return false
@@ -50,7 +61,7 @@ public class LLaMa: LLMBase {
 //        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
 //        try? llm_eval(inputBatch:self.session_tokens)
 //        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-//        llama_model_apply_lora_from_file(model,"/Users/guinmoon/dev/alpaca_llama_etc/lora-open-llama-3b-v2-q8_0-my_finetune-LATEST.bin",nil,6);
+
         return true
     }
     

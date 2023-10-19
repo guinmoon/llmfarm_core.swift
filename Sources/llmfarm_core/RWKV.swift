@@ -18,7 +18,7 @@ public class RWKV: LLMBase {
     
     
     
-    public override init(path: String, contextParams: ModelContextParams = .default) throws {
+    public override init(path: String, contextParams: ModelAndContextParams = .default) throws {
         let core_resourses = get_core_bundle_path()
         let config_from_str = TokenizerConfig(
             vocab: URL(fileURLWithPath: core_resourses! + "/tokenizers/20B_tokenizer_vocab.json"),
@@ -38,7 +38,7 @@ public class RWKV: LLMBase {
         
     }
     
-    public override func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
         self.context = rwkv_init_from_file(path, UInt32(contextParams.n_threads))
         if self.context == nil {
             return false

@@ -44,13 +44,14 @@ public class LLMBase {
     
     public var context: OpaquePointer?
     public var grammar: OpaquePointer?
-    public var contextParams: ModelContextParams
+    public var contextParams: ModelAndContextParams
     public var sampleParams: ModelSampleParams = .default
     public var promptFormat: ModelPromptStyle = .None
     public var custom_prompt_format = ""
     public var core_resourses = get_core_bundle_path()
     public var reverse_prompt: [String] = []
     public var session_tokens: [Int32] = []
+
     
     // Used to keep old context until it needs to be rotated or purge out for new tokens
     var past: [[ModelToken]] = [] // Will house both queries and responses in order
@@ -59,7 +60,7 @@ public class LLMBase {
     
     
     
-    public  init(path: String, contextParams: ModelContextParams = .default) throws {        
+    public  init(path: String, contextParams: ModelAndContextParams = .default) throws {        
         
         self.promptFormat = .None
         
@@ -131,7 +132,7 @@ public class LLMBase {
         }
     }
     
-    public  func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public  func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
         return false
     }
     

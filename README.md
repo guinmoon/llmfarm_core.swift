@@ -14,6 +14,9 @@ Also used sources from:
 - [x] Various sampling methods
 - [x] Metal ([dont work](https://github.com/ggerganov/llama.cpp/issues/2407#issuecomment-1699544808) on intel Mac)
 - [x] Model setting templates
+- [x] LoRA adapters support ([read more](https://github.com/guinmoon/LLMFarm/lora.md))
+- [ ] LoRA train support
+- [ ] LoRA export as model support
 - [ ] Other tokenizers support
 - [ ] Restore context state (now only chat history) 
 
@@ -27,6 +30,7 @@ Also used sources from:
 - [x] [RWKV](https://huggingface.co/docs/transformers/model_doc/rwkv) (20B tokenizer)
 - [x] [Falcon](https://github.com/cmp-nct/ggllm.cpp) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 - [x] [MPT](https://huggingface.co/guinmoon/mpt-7b-storywriter-GGUF) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [Bloom](https://huggingface.co/bigscience/bloom-1b7) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 
 # Sampling methods
 - [x] Temperature (temp, tok-k, top-p)
