@@ -161,10 +161,10 @@ bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & 
         printf("%s: qntvr   = %d\n", __func__, qntvr);
         
 //        GGML_TYPE_Q5_1
-        if (hparams.ftype == 2009){
-            printf("%s: Disable Metal for  Q5_1 = %d\n", __func__, hparams.ftype);
-            n_gpu_layers = 0;
-        }
+//        if (hparams.ftype == 2009){
+//            printf("%s: Disable Metal for  Q5_1 = %d\n", __func__, hparams.ftype);
+//            n_gpu_layers = 0;
+//        }
         hparams.ftype %= GGML_QNT_VERSION_FACTOR;
         
     }

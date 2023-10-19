@@ -246,12 +246,11 @@
     do { \
         if (!(x)) { \
             fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-            char descr[700]; \
+            char descr[500]; \
             sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
             throw_exception(descr); \
         } \
     } while (0)
-
 
 #ifndef NDEBUG
 #define GGML_UNREACHABLE() GGML_ASSERT(!"statement should not be reached")
