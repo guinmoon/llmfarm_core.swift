@@ -14,7 +14,7 @@ Also used sources from:
 - [x] Various sampling methods
 - [x] Metal ([dont work](https://github.com/ggerganov/llama.cpp/issues/2407#issuecomment-1699544808) on intel Mac)
 - [x] Model setting templates
-- [x] LoRA adapters support ([read more](https://github.com/guinmoon/LLMFarm/lora.md))
+- [x] LoRA adapters support ([read more](https://github.com/guinmoon/LLMFarm/blob/main/lora.md))
 - [ ] LoRA train support
 - [ ] LoRA export as model support
 - [ ] Other tokenizers support
