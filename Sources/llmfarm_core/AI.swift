@@ -84,10 +84,10 @@ public class AI {
             }
             
             // Model output
-            var output = ""
+            var output:String? = ""
             do{
                 try ExceptionCather.catchException {
-                    output = try! self.model.predict(input, { str, time in
+                    output = try? self.model.predict(input, { str, time in
                         if self.flagExit {
                             // Reset flag
                             self.flagExit = false
@@ -109,7 +109,7 @@ public class AI {
             }
             DispatchQueue.main.async {
                 self.flagResponding = false
-                completion(output)
+                completion(output ?? "[Error]")
             }
             
         }
