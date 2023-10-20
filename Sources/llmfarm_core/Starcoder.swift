@@ -20,7 +20,7 @@ public class Starcoder: LLMBase {
     }
     
     deinit {
-        gpt2_free(context)
+        starcoder_free(context)
     }
     
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{

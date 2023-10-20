@@ -592,7 +592,7 @@ public class LLMBase {
 //        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
 //    }
     
-    public func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
+    public func llm_tokenize(_ input: String, bos: Bool = true, eos: Bool = false) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
@@ -620,7 +620,11 @@ public class LLMBase {
         case .Custom:
             var formated_input = self.custom_prompt_format.replacingOccurrences(of: "{{prompt}}", with: input)
             formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
-            return llm_tokenize(formated_input, bos: true)
+            var bos = true
+            if formated_input.contains("<s>"){
+                bos = false
+            }
+            return llm_tokenize(formated_input, bos: bos)
         case .ChatBase:
             return llm_tokenize("<human>: " + input + "\n<bot>:")
         case .OpenAssistant:
