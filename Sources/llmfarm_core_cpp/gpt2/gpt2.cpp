@@ -39,7 +39,7 @@ static void ggml_log_callback_default(ggml_log_level level, const char * text, v
 }
 
 // default hparams (GPT-2 117M)
-struct gpt2_hparams {
+struct gpt2_hparams:gpt_base_hparams {
     int32_t n_vocab = 50257;
     int32_t n_ctx   = 1024;
     int32_t n_embd  = 768;
@@ -101,6 +101,9 @@ struct gpt2_model {
     ~gpt2_model() {
         if (ctx) {
             ggml_free(ctx);
+            ggml_backend_buffer_free(buffer_w);
+            ggml_backend_buffer_free(buffer_kv);            
+            ggml_backend_free(backend);
         }
     }
 };
@@ -110,6 +113,9 @@ struct gpt2_context:gpt_base_context {
     struct ggml_allocr * allocr = NULL;
     ggml_backend_buffer_t buf_compute = NULL;
     std::vector<uint8_t> compute_buffer;
+    ~gpt2_context(){
+        ggml_backend_buffer_free(buf_compute);
+    }
 };
 
 void gpt2_free(struct gpt2_context * ctx) {

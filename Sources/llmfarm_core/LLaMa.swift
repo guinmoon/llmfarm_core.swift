@@ -130,8 +130,12 @@ public class LLaMa: LLMBase {
         let n_tokens = Int32(input.utf8.count) + (bos == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
         let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, bos, false)
-        assert(n >= 0)
-        embeddings.removeSubrange(Int(n)..<embeddings.count)
+        if n<=0{
+            return []
+        }
+        if Int(n) <= embeddings.count {
+            embeddings.removeSubrange(Int(n)..<embeddings.count)
+        }
         
         if eos {
             embeddings.append(llama_token_eos(self.context))

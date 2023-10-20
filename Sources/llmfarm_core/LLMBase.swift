@@ -599,8 +599,12 @@ public class LLMBase {
         
         var embeddings = Array<ModelToken>(repeating: gpt_token(), count: input.utf8.count)
         let n = gpt_base_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
-        assert(n >= 0)
-        embeddings.removeSubrange(Int(n)..<embeddings.count)
+        if n<=0{
+            return []
+        }
+        if Int(n) <= embeddings.count {
+            embeddings.removeSubrange(Int(n)..<embeddings.count)
+        }
         
         if eos {
             embeddings.append(gpt_base_token_eos())
