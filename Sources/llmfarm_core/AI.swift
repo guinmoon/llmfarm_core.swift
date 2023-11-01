@@ -231,7 +231,7 @@ public struct ModelAndContextParams {
     public var useMlock = false     // force system to keep model in RAM
     public var useMMap = true     // if disabled dont use MMap file
     public var embedding = false    // embedding mode only
-    public var processorsConunt  = Int32(ProcessInfo.processInfo.processorCount)
+    public var processorsCount  = Int32(ProcessInfo.processInfo.processorCount)
     public var use_metal = false
     public var grammar_path:String? = nil
     
@@ -244,8 +244,8 @@ public struct ModelAndContextParams {
         self.parts = parts
         self.seed = seed
         // Set numberOfThreads to processorCount, processorCount is actually thread count of cpu
-        self.n_threads = Int32(numberOfThreads) == Int32(0) ? processorsConunt : numberOfThreads
-        //        self.numberOfThreads = processorsConunt
+        self.n_threads = Int32(numberOfThreads) == Int32(0) ? processorsCount : numberOfThreads
+        //        self.numberOfThreads = processorsCount
         self.f16Kv = f16Kv
         self.logitsAll = logitsAll
         self.vocabOnly = vocabOnly
