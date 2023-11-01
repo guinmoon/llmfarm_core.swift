@@ -1,3 +1,4 @@
+#include "../spm-headers/finetune.h"
 #include "../ggml/ggml.h"
 #include "../ggml/ggml-alloc.h"
 #include "llama.h"
@@ -1529,7 +1530,7 @@ static int64_t get_parameter_count(struct my_llama_lora* lora) {
     return nx;
 }
 
-int run_finetune(int argc, char ** argv) {
+int run_finetune(int argc, char ** argv, bool(*swift_callback)(const char*)) {
     struct train_params params = get_default_train_params();
 
     if (!train_params_parse(argc, argv, &params)) {
@@ -1625,7 +1626,7 @@ int run_finetune(int argc, char ** argv) {
         if (params.common.custom_n_ctx) {
             model.hparams.n_ctx = params.common.n_ctx;
         }
-
+    
         const bool opt_param_count_changed = (
            (lora.hparams.n_rank_attention_norm != n_rank_attention_norm)
         || (lora.hparams.n_rank_wq             != n_rank_wq)
@@ -1893,6 +1894,7 @@ int run_finetune(int argc, char ** argv) {
     opt_cb_data.iter_at_last_epoch     = -1;
     opt_cb_data.last_time              = ggml_time_ms();
     opt_cb_data.millis_per_iter        = 0.0;
+    opt_cb_data.swiftcallback = swift_callback;
 
     // measure required memory for work buffer
     size_t max_work_size = ggml_graph_plan(gb, params.common.n_threads).work_size + GGML_OBJECT_SIZE;
@@ -1934,4 +1936,8 @@ int run_finetune(int argc, char ** argv) {
     llama_free(lctx);
     llama_free_model(lmodel);
     return 0;
+}
+
+int test_tune(){
+    printf("Test");
 }

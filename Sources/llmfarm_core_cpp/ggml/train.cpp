@@ -1367,6 +1367,8 @@ void finish_processing_train_args(struct train_params_common * params) {
     }
 }
 
+
+
 void train_opt_callback(void * vdata, int accum_step, float * sched, bool * cancel) {
     struct train_opt_callback_data * data   = (struct train_opt_callback_data *) vdata;
     struct train_params_common     * params = data->params;
@@ -1374,7 +1376,11 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
     struct ggml_opt_context        * opt    = train->opt;
     int n_batch = params->n_batch;
     int n_ctx = params->n_ctx;
-
+            
+    bool swift_callback_res = false;
+    
+    swift_callback_res = data->swiftcallback("Begin");
+    
     if (accum_step == 0) {
         // time measurement
         int64_t now = ggml_time_ms();
@@ -1386,9 +1392,9 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
                 const double gain = 0.7;
                 data->millis_per_iter = data->millis_per_iter*(1.0-gain) + dt*gain;
             }
-        }
-
+        }        
         double remaining_millis = 0.0;
+        
         if (data->millis_per_iter > 0.0) {
             const int n_iter = params->adam_n_iter;
             const int done_iter = opt->iter - data->first_iter;
@@ -1429,7 +1435,17 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
         printf("%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
             __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
             *sched, opt->loss_after);
-
+        
+        char descr[500]; \
+        sprintf(descr, "%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
+                __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
+                *sched, opt->loss_after);
+        swift_callback_res = data->swiftcallback(descr);
+        if (swift_callback_res == true){
+            *cancel = true;
+        }
+        
+        
 
         if (data->millis_per_iter > 0) {
             printf(" dt=");
@@ -1471,6 +1487,12 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
     if (train->shuffle_next_sample >= train->shuffle_sample_count) {
         ++train->train_epochs;
         printf("%s: reshuffle samples. completed epochs: %llu\n", __func__, (long long unsigned) train->train_epochs);
+        char descr[500]; \
+        sprintf(descr, "%s: reshuffle samples. completed epochs: %llu\n", __func__, (long long unsigned) train->train_epochs);
+        swift_callback_res = data->swiftcallback(descr);
+        if (swift_callback_res == true){
+            *cancel = true;
+        }
         // note: we may have used some samples from the current shuffling more than once
         train->shuffle_rng_state_current = train->shuffle_rng_state_next;
         train->shuffle_rng_state_next = shuffle_samples(
