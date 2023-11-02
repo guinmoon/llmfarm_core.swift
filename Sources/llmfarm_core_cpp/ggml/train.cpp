@@ -1379,7 +1379,7 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
             
     bool swift_callback_res = false;
     
-    swift_callback_res = data->swiftcallback("Begin");
+//    swift_callback_res = data->swiftcallback("Begin");
     
     if (accum_step == 0) {
         // time measurement
