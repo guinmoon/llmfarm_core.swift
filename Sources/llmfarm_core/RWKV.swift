@@ -1,9 +1,6 @@
 //
 //  RWKV.swift
-//  Mia
-//
-//  Created by Byron Everson on 4/15/23.
-//
+//  Created by Guinmoon.
 
 import Foundation
 import llmfarm_core_cpp

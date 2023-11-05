@@ -1,9 +1,6 @@
 //
 //  LLaMa.swift
-//  Mia
-//
-//  Created by Byron Everson on 4/15/23.
-//
+//  Created by Guinmoon.
 
 import Foundation
 import llmfarm_core_cpp
@@ -25,6 +22,8 @@ public class LLaMa: LLMBase {
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap
+        var progress_callback_user_data:Int32 = 0
+//        model_params.progress_callback_user_data = progress_callback_user_data
 //        context_params.rope_freq_base = 10000.0
 //        context_params.rope_freq_scale = 1
         

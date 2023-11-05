@@ -1,9 +1,6 @@
 //
-//  LLaMa.swift
-//  Mia
-//
-//  Created by Byron Everson on 4/15/23.
-//
+//  LLaMa_dadbed9.swift
+//  Created by Guinmoon.
 
 import Foundation 
 import llmfarm_core_cpp

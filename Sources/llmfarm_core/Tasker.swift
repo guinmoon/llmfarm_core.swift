@@ -1,9 +1,6 @@
 //
 //  Tasker.swift
-//  Mia
-//
-//  Created by Byron Everson on 3/2/23.
-//
+//  Created by Guinmoon.
 
 import Foundation
 //import MetalKit

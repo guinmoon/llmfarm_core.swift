@@ -1,9 +1,6 @@
 //
 //  Model.swift
-//  Mia
-//
-//  Created by Byron Everson on 12/25/22.
-//
+//  Created by Guinmoon.
 
 import Foundation
 import llmfarm_core_cpp

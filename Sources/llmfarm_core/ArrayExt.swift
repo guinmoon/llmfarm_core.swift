@@ -1,9 +1,6 @@
 //
 //  ArrayExt.swift
-//  Mia
-//
-//  Created by Byron Everson on 2/22/23.
-//
+//  Created by Guinmoon.
 
 import Accelerate
 

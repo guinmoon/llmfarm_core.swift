@@ -1,9 +1,6 @@
 //
-//  GPTNeoX.swift
-//  Mia
-//
-//  Created by Byron Everson on 4/19/23.
-//
+//  GPT2.swift
+//  Created by Guinmoon.
 
 import Foundation
 import llmfarm_core_cpp

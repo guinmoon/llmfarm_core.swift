@@ -1,8 +1,6 @@
 //
 //  FineTune.swift
-//  Mia
-//
-//  Created by Byron Everson on 4/19/23.
+//  Created by Guinmoon.
 //
 
 import Foundation
