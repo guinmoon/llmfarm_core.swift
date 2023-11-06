@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-int run_finetune(int argc, char ** argv, bool(*swift_callback)(const char*));
+int run_finetune(int argc, char ** argv,bool use_metal, bool(*swift_callback)(const char*));
 int test_tune();
 
 
