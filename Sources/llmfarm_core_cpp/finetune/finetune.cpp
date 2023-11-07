@@ -1544,7 +1544,7 @@ int run_finetune(int argc, char ** argv,bool use_metal, bool(*swift_callback)(co
     srand(params.common.seed);
 
     struct llama_model_params llama_mparams = llama_model_default_params();
-//    llama_mparams.n_gpu_layers = 1;
+    llama_mparams.n_gpu_layers = 0;
     llama_mparams.vocab_only = false;
 
     printf("%s: model base = '%s'\n", __func__, params.fn_model_base);
