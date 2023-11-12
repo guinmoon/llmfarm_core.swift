@@ -28,7 +28,7 @@ public class LLaMa_FineTune: FineTune {
     //        tuneQueue.async{
             self.retain_new_self_ptr()
             try ExceptionCather.catchException {
-                let result = run_finetune(Int32(args.count), &cargs,true,
+                let result = run_finetune(Int32(args.count), &cargs,self.use_metal,
                                             { c_str in
                     let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
                     if c_str != nil{

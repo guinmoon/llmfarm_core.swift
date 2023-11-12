@@ -20,6 +20,7 @@ public class FineTune {
     public var batch:Int32 = 512
     public var ctx:Int32 = 512
     public var use_checkpointing:Bool = true
+    public var use_metal:Bool = false
     @Published var tune_log: [String] = []
     public var cancel: Bool = false
 
@@ -29,7 +30,8 @@ public class FineTune {
     public  init(_ model_base: String, _ lora_out: String,_ train_data:String, 
                     threads: Int32 = default_thread_count,
                     adam_iter:Int32 = 30,batch:Int32 = 4, ctx:Int32 = 64,
-                    use_checkpointing:Bool = true ) {
+                    use_checkpointing:Bool = true,
+                    use_metal:Bool = false) {
         self.model_base = model_base
         self.lora_out = lora_out
         self.train_data = train_data
@@ -41,6 +43,7 @@ public class FineTune {
         self.batch = batch
         self.ctx = ctx
         self.use_checkpointing = use_checkpointing
+        self.use_metal = use_metal
     }
     
     public func finetune(_ progressCallback: ((String)  -> ())?) throws{
