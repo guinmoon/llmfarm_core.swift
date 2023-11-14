@@ -212,15 +212,89 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
             }
         }            
     }
+    
+    if (model_config["reverse_prompt"] != nil){
+        let splited_revrse_prompt = String(model_config["reverse_prompt"]! as! String).components(separatedBy: [";"])
+        for word in splited_revrse_prompt{
+            let trimed_word = word.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimed_word==""{
+                continue
+            }
+            var exist = false
+            for r_word in tmp_param.reverse_prompt{
+                if r_word == trimed_word{
+                    exist = true
+                    break
+                }
+            }
+            if !exist{
+                tmp_param.reverse_prompt.append(trimed_word)
+            }
+        }
+    }
+
+    if (model_config["prompt_format"] != nil && model_config["prompt_format"]! as! String != "auto"
+            && model_config["prompt_format"]! as! String != "{{prompt}}"){
+            tmp_param.custom_prompt_format = model_config["prompt_format"]! as! String
+            tmp_param.promptFormat = .Custom
+    }
+    
+    if (model_config["use_metal"] != nil){
+        tmp_param.use_metal = model_config["use_metal"] as! Bool
+    }
+    if (model_config["mlock"] != nil){
+        tmp_param.useMlock = model_config["mlock"] as! Bool
+    }
+    if (model_config["mmap"] != nil){
+        tmp_param.useMMap = model_config["mmap"] as! Bool
+    }
+    if (model_config["add_bos_token"] != nil){
+        tmp_param.add_bos_token = model_config["add_bos_token"] as! Bool
+    }
+    if (model_config["add_eos_token"] != nil){
+        tmp_param.add_eos_token = model_config["add_eos_token"] as! Bool
+    }
+    if (model_config["parse_special_tokens"] != nil){
+        tmp_param.parse_special_tokens = model_config["parse_special_tokens"] as! Bool
+    }
+
+    if (model_config["model"] as! String).hasSuffix(".gguf"){
+            tmp_param.model_inference = ModelInference.LLama_gguf
+    }else{
+        if model_config["model_inference"] as! String == "llama"{
+            tmp_param.model_inference = ModelInference.LLama_bin
+        }
+        if model_config["model_inference"] as! String == "gptneox" {
+            tmp_param.model_inference = ModelInference.GPTNeox
+        }
+        if model_config["model_inference"] as! String == "rwkv" {
+            tmp_param.model_inference = ModelInference.RWKV
+        }
+        if model_config["model_inference"] as! String == "gpt2" {
+            tmp_param.model_inference = ModelInference.GPT2
+        }
+        if model_config["model_inference"] as! String == "replit" {
+            tmp_param.model_inference = ModelInference.Replit
+        }
+        if model_config["model_inference"] as! String == "starcoder" {
+            tmp_param.model_inference = ModelInference.Starcoder
+        }
+    }
+
     return tmp_param
 }
 
 public struct ModelAndContextParams {
+    public var model_inference = ModelInference.LLama_gguf
+
     public var context: Int32 = 512    // text context
     public var parts: Int32 = -1   // -1 for default
     public var seed: UInt32 = 0xFFFFFFFF      // RNG seed, 0 for random
     public var n_threads: Int32 = 1
     public var lora_adapters: [(String,Float)] = []
+
+    public var promptFormat: ModelPromptStyle = .None
+    public var custom_prompt_format = ""
     
     public var f16Kv = true         // use fp16 for KV cache
     public var logitsAll = false    // the llama_eval() call computes all logits, not just the last one
@@ -231,12 +305,27 @@ public struct ModelAndContextParams {
     public var processorsConunt  = Int32(ProcessInfo.processInfo.processorCount)
     public var use_metal = false
     public var grammar_path:String? = nil
+    public var add_bos_token = true
+    public var add_eos_token = false
+    public var parse_special_tokens = true
+    
     
     public var warm_prompt = "\n\n\n"
+
+    public var reverse_prompt: [String] = []
     
     public static let `default` = ModelAndContextParams()
     
-    public init(context: Int32 = 2048 /*512*/, parts: Int32 = -1, seed: UInt32 = 0xFFFFFFFF, numberOfThreads: Int32 = 0, f16Kv: Bool = true, logitsAll: Bool = false, vocabOnly: Bool = false, useMlock: Bool = false,useMMap: Bool = true, embedding: Bool = false) {
+    public init(    context: Int32 = 2048 /*512*/,
+                    parts: Int32 = -1, 
+                    seed: UInt32 = 0xFFFFFFFF, 
+                    numberOfThreads: Int32 = 0,
+                    f16Kv: Bool = true, 
+                    logitsAll: Bool = false, 
+                    vocabOnly: Bool = false,
+                    useMlock: Bool = false,
+                    useMMap: Bool = true, 
+                    embedding: Bool = false) {
         self.context = context
         self.parts = parts
         self.seed = seed
@@ -327,13 +416,13 @@ public enum ModelError: Error {
 public enum ModelPromptStyle {
     case None
     case Custom
-    case ChatBase
-    case OpenAssistant
-    case StableLM_Tuned
-    case LLaMa
-    case LLaMa_QA
-    case Dolly_b3
-    case RedPajama_chat
+    // case ChatBase
+    // case OpenAssistant
+    // case StableLM_Tuned
+    // case LLaMa
+    // case LLaMa_QA
+    // case Dolly_b3
+    // case RedPajama_chat
 }
 
 public typealias ModelToken = Int32

@@ -31,7 +31,7 @@ public class GPT2: LLMBase {
         if self.context == nil {
             return false
         }
-        self.promptFormat = .None
+        self.contextParams.promptFormat = .None
         return true
     }
     

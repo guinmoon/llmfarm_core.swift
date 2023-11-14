@@ -704,8 +704,7 @@ int replit_tokenize(
         struct replit_context * ctx,
                   const char * text,
                  gpt_token * tokens,
-                         int   n_max_tokens,
-                        bool   add_bos) {
+                         int   n_max_tokens) {
 //    replit_tokenizer_tokenize(replit_tokenizer & tokenizer, const std::string & text)
     auto res = replit_tokenizer_tokenize(ctx->vocab, text);
     

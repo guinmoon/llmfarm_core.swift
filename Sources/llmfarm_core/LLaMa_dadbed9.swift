@@ -93,19 +93,19 @@ public class LLaMa_dadbed9: LLMBase {
 
     
     
-    public override func llm_tokenize(_ input: String, bos: Bool = true, eos: Bool = false) -> [ModelToken] {
+    public override func llm_tokenize(_ input: String) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
 
         var embeddings: [llama_dadbed9_token] = Array<llama_dadbed9_token>(repeating: llama_dadbed9_token(), count: input.utf8.count)
-        let n = llama_dadbed9_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
+        let n = llama_dadbed9_tokenize(context, input, &embeddings, Int32(input.utf8.count), self.contextParams.add_bos_token)
         if n<=0{
             return []
         }
         embeddings.removeSubrange(Int(n)..<embeddings.count)
         
-        if eos {
+        if self.contextParams.add_eos_token {
 //            embeddings.append(llama_dadbed9_token_eos(self.context))
             embeddings.append(llama_dadbed9_token_eos())
         }

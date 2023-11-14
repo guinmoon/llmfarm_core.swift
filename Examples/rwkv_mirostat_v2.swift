@@ -23,14 +23,12 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
 var input_text = "State the meaning of life."
 
 let ai = AI(_modelPath: "q4_1-RWKV-4-Raven-1B5-v12-Eng98%-Other2%-20230520-ctx4096.bin",_chatName: "chat")
-var params:ModelContextParams = .default
-
-try? ai.loadModel(ModelInference.RWKV,contextParams: params)
-ai.model.promptFormat = .None
-
+var params:ModelAndContextParams = .default
+params.promptFormat = .None
 ai.model.sampleParams.mirostat = 2
 ai.model.sampleParams.mirostat_eta = 0.1
 ai.model.sampleParams.mirostat_tau = 5.0
 
+try? ai.loadModel(ModelInference.RWKV,contextParams: params)
 
 let output = try? ai.model.predict(input_text, mainCallback)

@@ -114,7 +114,7 @@ public class LLaMa: LLMBase {
 
     
     
-    public override func llm_tokenize(_ input: String, bos: Bool = true, eos: Bool = false) -> [ModelToken] {
+    public override func llm_tokenize(_ input: String) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
@@ -126,9 +126,9 @@ public class LLaMa: LLMBase {
 //                         llama_token * tokens,
 //                                 int   n_max_tokens,
 //                                bool   add_bos)
-        let n_tokens = Int32(input.utf8.count) + (bos == true ? 1 : 0)
+        let n_tokens = Int32(input.utf8.count) + (self.contextParams.add_bos_token == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
-        let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, bos, true)
+        let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, self.contextParams.add_bos_token, self.contextParams.parse_special_tokens)
         if n<=0{
             return []
         }
@@ -136,7 +136,7 @@ public class LLaMa: LLMBase {
             embeddings.removeSubrange(Int(n)..<embeddings.count)
         }
         
-        if eos {
+        if self.contextParams.add_eos_token {
             embeddings.append(llama_token_eos(self.context))
         }
         

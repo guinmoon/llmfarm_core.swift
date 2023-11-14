@@ -41,7 +41,7 @@ public class RWKV: LLMBase {
             return false
         }
 //        rwkv_gpu_offload_layers(self.context,100)
-        self.promptFormat = .None
+//        self.promptFormat = .None
         
         return true
     }
@@ -99,7 +99,7 @@ public class RWKV: LLMBase {
         return tokenizer_to_str.decode(tokens: [outputToken])
     }
     
-    public override func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
+    public override func llm_tokenize(_ input: String) -> [ModelToken] {
         if input.count == 0 {
             return []
         }

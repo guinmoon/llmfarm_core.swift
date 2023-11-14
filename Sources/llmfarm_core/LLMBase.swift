@@ -42,11 +42,8 @@ public class LLMBase {
     public var context: OpaquePointer?
     public var grammar: OpaquePointer?
     public var contextParams: ModelAndContextParams
-    public var sampleParams: ModelSampleParams = .default
-    public var promptFormat: ModelPromptStyle = .None
-    public var custom_prompt_format = ""
-    public var core_resourses = get_core_bundle_path()
-    public var reverse_prompt: [String] = []
+    public var sampleParams: ModelSampleParams = .default    
+    public var core_resourses = get_core_bundle_path()    
     public var session_tokens: [Int32] = []
 
     
@@ -57,10 +54,7 @@ public class LLMBase {
     
     
     
-    public  init(path: String, contextParams: ModelAndContextParams = .default) throws {        
-        
-        self.promptFormat = .None
-        
+    public  init(path: String, contextParams: ModelAndContextParams = .default) throws {                                
         self.contextParams = contextParams
         //        var params = gptneox_context_default_params()
         var params = gpt_context_default_params()
@@ -209,24 +203,10 @@ public class LLMBase {
             logits[nl_token] = nl_logit
         }
         
-//        let swiftTokenCallback : (@convention(c) (Int32 ) -> String?) = {
-//            in_token -> String? in
-//            return self.llm_token_to_str(outputToken:in_token)
-//        }
         if (self.grammar != nil ) {
 //            llama_sample_grammar(ctx,&candidates_p, self.grammar)
              llama_sample_grammar_for_dadbed9(ctx,&candidates_p, self.grammar)
         }
-        
-//        if (self.grammar != nil) {
-//            llama_sample_grammar(ctx,&candidates_p, self.grammar, self.llm_token_eos(),bridge(self),
-//                                 {(observer) -> Void in
-//                // Extract pointer to `self` from void pointer:
-//                let mySelf = Unmanaged.fromOpaque(observer!).takeUnretainedValue()
-//                // Call instance method:
-//                mySelf.TestMethod();
-//            });
-//        }
         
         var res_token:Int32 = 0
         
@@ -275,113 +255,6 @@ public class LLMBase {
 
     }
     
-    func llm_sample_WIP(ctx: OpaquePointer!,
-                last_n_tokens: inout [ModelToken],
-                temp: Float32,
-                top_k: Int32,
-                top_p: Float32,
-                tfs_z: Float32,
-                typical_p: Float32,
-                repeat_last_n: Int32,
-                repeat_penalty: Float32,
-                alpha_presence: Float32,
-                alpha_frequency: Float32,
-                mirostat: Int32,
-                mirostat_tau: Float32,
-                mirostat_eta: Float32,
-                penalize_nl: Bool) -> ModelToken {
-        // Model input context size
-        let n_ctx = llm_get_n_ctx(ctx: ctx)
-        // Auto params
-        
-        let top_k = top_k <= 0 ? llm_n_vocab(ctx) : top_k
-        let repeat_last_n = repeat_last_n < 0 ? n_ctx : repeat_last_n
-        
-        //
-        let vocabSize = llm_n_vocab(ctx)
-        guard let logits = llm_get_logits(ctx) else {
-            print("GPT sample error logits nil")
-            return 0
-        }
-        var candidates = Array<llama_token_data>()
-        for i in 0 ..< vocabSize {
-            candidates.append(llama_token_data(id: i, logit: logits[Int(i)], p: 0.0))
-        }
-        var candidates_p = llama_token_data_array(data: candidates.mutPtr, size: candidates.count, sorted: false)
-        
-        // Apply penalties
-        let nl_token = Int(llm_token_nl())
-        let nl_logit = logits[nl_token]
-        let last_n_repeat = min(min(Int32(last_n_tokens.count), repeat_last_n), n_ctx)
-        
-        llama_sample_repetition_penalty(ctx, &candidates_p,
-                    last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
-                    Int(repeat_last_n), repeat_penalty)
-        llama_sample_frequency_and_presence_penalties(ctx, &candidates_p,
-                    last_n_tokens.mutPtr.advanced(by: last_n_tokens.count - Int(repeat_last_n)),
-                    Int(last_n_repeat), alpha_frequency, alpha_presence)
-        if(!penalize_nl) {
-            logits[nl_token] = nl_logit
-        }
-        
-//        let swiftTokenCallback : (@convention(c) (Int32 ) -> String?) = {
-//            in_token -> String? in
-//            return self.llm_token_to_str(outputToken:in_token)
-//        }
-        if (self.grammar != nil ) {
-            llama_sample_grammar(ctx,&candidates_p, self.grammar)
-//             llama_sample_grammar_for_dadbed9(ctx,&candidates_p, self.grammar)
-        }
-        
-//        if (self.grammar != nil) {
-//            llama_sample_grammar(ctx,&candidates_p, self.grammar, self.llm_token_eos(),bridge(self),
-//                                 {(observer) -> Void in
-//                // Extract pointer to `self` from void pointer:
-//                let mySelf = Unmanaged.fromOpaque(observer!).takeUnretainedValue()
-//                // Call instance method:
-//                mySelf.TestMethod();
-//            });
-//        }
-        
-        var res_token:Int32 = 0
-        
-        if(temp <= 0) {
-            // Greedy sampling
-            res_token = llama_sample_token_greedy(ctx, &candidates_p)
-        } else {
-            if(mirostat == 1) {
-                var mirostat_mu: Float = 2.0 * mirostat_tau
-                let mirostat_m = 100
-                llama_sample_temperature(ctx, &candidates_p, temp)
-                return llama_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
-            } else if(mirostat == 2) {
-                var mirostat_mu: Float = 2.0 * mirostat_tau
-                llama_sample_temperature(ctx, &candidates_p, temp)
-                return llama_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
-            } else {
-                // Temperature sampling
-                llama_sample_top_k(ctx, &candidates_p, top_k, 1)
-                llama_sample_tail_free(ctx, &candidates_p, tfs_z, 1)
-                llama_sample_typical(ctx, &candidates_p, typical_p, 1)
-                llama_sample_top_p(ctx, &candidates_p, top_p, 1)
-                llama_sample_temperature(ctx, &candidates_p, temp)
-                var class_name = String(describing: self)
-                if class_name != "llmfarm_core.LLaMa"{
-                    res_token = llama_sample_token(ctx, &candidates_p)
-                }else{
-                    res_token = llama_sample_token(ctx, &candidates_p)
-                }
-            }
-        }
-        
-        if (self.grammar != nil) {
-            llama_grammar_accept_token(ctx, self.grammar, res_token);
-        }
-        return res_token
-
-    }
-    
-
     
     public func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         return false
@@ -432,7 +305,7 @@ public class LLMBase {
         let contextLength = Int32(contextParams.context)
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
-        var inputTokens = tokenizePrompt(input, promptFormat)
+        var inputTokens = tokenizePrompt(input, self.contextParams.promptFormat)
         if inputTokens.count == 0{
             return "Empty input."
         }
@@ -589,13 +462,13 @@ public class LLMBase {
 //        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
 //    }
     
-    public func llm_tokenize(_ input: String, bos: Bool = true, eos: Bool = false) -> [ModelToken] {
+    public func llm_tokenize(_ input: String) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
         
         var embeddings = Array<ModelToken>(repeating: gpt_token(), count: input.utf8.count)
-        let n = gpt_base_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
+        let n = gpt_base_tokenize(context, input, &embeddings, Int32(input.utf8.count), self.contextParams.add_bos_token)
         if n<=0{
             return []
         }
@@ -603,7 +476,7 @@ public class LLMBase {
             embeddings.removeSubrange(Int(n)..<embeddings.count)
         }
         
-        if eos {
+        if self.contextParams.add_eos_token {
             embeddings.append(gpt_base_token_eos())
         }
         
@@ -615,36 +488,32 @@ public class LLMBase {
         case .None:
             return llm_tokenize(input)
         case .Custom:
-            var formated_input = self.custom_prompt_format.replacingOccurrences(of: "{{prompt}}", with: input)
+            var formated_input = self.contextParams.custom_prompt_format.replacingOccurrences(of: "{{prompt}}", with: input)
             formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
-            var bos = true
-            if formated_input.contains("<s>"){
-                bos = false
-            }
-            return llm_tokenize(formated_input, bos: bos)
-        case .ChatBase:
-            return llm_tokenize("<human>: " + input + "\n<bot>:")
-        case .OpenAssistant:
-            let inputTokens = llm_tokenize("<|prompter|>" + input + "<|endoftext|>" + "<|assistant|>")
-            return inputTokens
-        case .RedPajama_chat:
-            return llm_tokenize("<human>:\n" + input + "\n<bot>:")
-        case .Dolly_b3:
-            let  INSTRUCTION_KEY = "### Instruction:";
-            let  RESPONSE_KEY    = "### Response:";
-            let  INTRO_BLURB     = "Below is an instruction that describes a task. Write a response that appropriately completes the request.";
-            let inputTokens = llm_tokenize(INTRO_BLURB + INSTRUCTION_KEY + input + RESPONSE_KEY)
-            return inputTokens
-        case .StableLM_Tuned:
-            let inputTokens = llm_tokenize("<|USER|>" + input + "<|ASSISTANT|>")
-            return inputTokens
-        case .LLaMa:
-            let input = " " + input
-            return llm_tokenize(input, bos: true)
-        case .LLaMa_QA:
-            let input = "Question: " + input + "\n\nAnswer: "
-            return llm_tokenize(input, bos: true)
-        }
+            return llm_tokenize(formated_input)
+        // case .ChatBase:
+        //     return llm_tokenize("<human>: " + input + "\n<bot>:")
+        // case .OpenAssistant:
+        //     let inputTokens = llm_tokenize("<|prompter|>" + input + "<|endoftext|>" + "<|assistant|>")
+        //     return inputTokens
+        // case .RedPajama_chat:
+        //     return llm_tokenize("<human>:\n" + input + "\n<bot>:")
+        // case .Dolly_b3:
+        //     let  INSTRUCTION_KEY = "### Instruction:";
+        //     let  RESPONSE_KEY    = "### Response:";
+        //     let  INTRO_BLURB     = "Below is an instruction that describes a task. Write a response that appropriately completes the request.";
+        //     let inputTokens = llm_tokenize(INTRO_BLURB + INSTRUCTION_KEY + input + RESPONSE_KEY)
+        //     return inputTokens
+        // case .StableLM_Tuned:
+        //     let inputTokens = llm_tokenize("<|USER|>" + input + "<|ASSISTANT|>")
+        //     return inputTokens
+        // case .LLaMa:
+        //     let input = " " + input
+        //     return llm_tokenize(input, bos: true)
+        // case .LLaMa_QA:
+        //     let input = "Question: " + input + "\n\nAnswer: "
+        //     return llm_tokenize(input, bos: true)
+         }
     }
 }
 

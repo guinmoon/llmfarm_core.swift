@@ -75,19 +75,16 @@ public class Replit: LLMBase {
         return nil
     }
     
-    public override func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
+    public override func llm_tokenize(_ input: String) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
         
         var embeddings = Array<ModelToken>(repeating: gpt_token(), count: input.utf8.count)
-        let n = replit_tokenize(context, input, &embeddings, Int32(input.utf8.count), bos)
+        let n = replit_tokenize(context, input, &embeddings, Int32(input.utf8.count))
         assert(n >= 0)
         embeddings.removeSubrange(Int(n)..<embeddings.count)
         
-        if eos {
-            embeddings.append(gpt_base_token_eos())
-        }
         
         return embeddings
     }

@@ -12,7 +12,7 @@ public class Starcoder: LLMBase {
         if self.context == nil {
             return false
         }
-        self.promptFormat = .None
+//        self.promptFormat = .None
         return true
     }
     

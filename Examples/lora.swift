@@ -23,12 +23,13 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
 var input_text = "From fairest creatures"
 
 let ai = AI(_modelPath: "alpaca_llama_etc/openllama-3b-v2-q8_0.gguf",_chatName: "chat")
-var params:ModelContextParams = .default
+var params:ModelAndContextParams = .default
 params.use_metal = true
-
+params.promptFormat = .Custom
+params.custom_prompt_format = "### Instruction:{{prompt}}### Response:"
 params.lora_adapters.append(("lora-open-llama-3b-v2-q8_0-shakespeare-LATEST.bin",1.0 ))
 
 try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
-ai.model.promptFormat = .LLaMa
+
 
 let output = try? ai.model.predict(input_text, mainCallback)

@@ -28,8 +28,7 @@ int replit_tokenize(
         struct replit_context * ctx,
                   const char * text,
                     replit_token * tokens,
-                         int   n_max_tokens,
-                    bool   add_bos);
+                         int   n_max_tokens);
 
 struct replit_context * replit_init_from_file(const char * path_model, struct gpt_context_params params);
 
