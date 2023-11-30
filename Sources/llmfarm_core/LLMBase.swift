@@ -222,7 +222,7 @@ public class LLMBase {
                 if class_name != "llmfarm_core.LLaMa"{
                     res_token =  llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
                 }else{
-                    res_token =  llama_sample_token_mirostat_for_dadbed9(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
+                    res_token =  llama_sample_token_mirostat_for_dadbed9(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
                 }
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau

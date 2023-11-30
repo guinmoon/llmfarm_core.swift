@@ -7552,11 +7552,11 @@ void llama_sample_classifier_free_guidance(
     }
 }
 
-llama_token llama_sample_token_mirostat(struct llama_context * ctx, llama_token_data_array * candidates, float tau, float eta, int m, float * mu, int vocabSize) {
+llama_token llama_sample_token_mirostat(struct llama_context * ctx, llama_token_data_array * candidates, float tau, float eta, int m, float * mu) {
     GGML_ASSERT(ctx);
 
-//    auto N = float(llama_n_vocab(llama_get_model(ctx)));
-    auto N = float(vocabSize);
+    auto N = float(llama_n_vocab(llama_get_model(ctx)));
+//    auto N = float(vocabSize);
     int64_t t_start_sample_us;
     t_start_sample_us = ggml_time_us();
 

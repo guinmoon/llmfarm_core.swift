@@ -645,8 +645,7 @@ extern "C" {
                            float   tau,
                            float   eta,
                              int   m,
-                           float * mu,
-                           int vocabSize);
+                           float * mu);
 
     /// @details Mirostat 2.0 algorithm described in the paper https://arxiv.org/abs/2007.14966. Uses tokens instead of words.
     /// @param candidates A vector of `llama_token_data` containing the candidate tokens, their probabilities (p), and log-odds (logit) for the current position in the generated text.

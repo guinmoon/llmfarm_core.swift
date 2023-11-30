@@ -349,8 +349,8 @@ llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dad
 }
 
 
-llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu,int vocabSize ) {
-    return llama_sample_token_mirostat(ctx, (llama_token_data_array *)candidates,tau,eta,m,mu,vocabSize );
+llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu) {
+    return llama_sample_token_mirostat(ctx, (llama_token_data_array *)candidates,tau,eta,m,mu );
 }
 
 llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) {
