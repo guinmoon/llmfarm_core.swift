@@ -9,6 +9,8 @@
 #include "ggml.h"
 #include "llama.h"
 
+#define LLAMA_TRAIN_MAX_NODES 16384
+
 typedef std::string mt19937_state;
 
 struct train_state {
@@ -44,6 +46,7 @@ struct train_params_common {
     int n_batch;
     int n_gradient_accumulation;
     int n_epochs;
+    int n_gpu_layers;
 
     bool custom_n_ctx;
 
@@ -106,7 +109,6 @@ struct train_opt_callback_data {
     int                          iter_at_last_epoch;
     int64_t                      last_time;
     double                       millis_per_iter;
-    bool (*swiftcallback)(const char*);
 };
 
 struct train_state * init_train_state();

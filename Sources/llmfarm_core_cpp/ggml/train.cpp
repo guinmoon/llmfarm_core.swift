@@ -32,6 +32,7 @@ struct train_state  * init_train_state() {
     state->opt = new struct ggml_opt_context;
     state->opt->ctx = NULL;
     state->opt->params = ggml_opt_default_params(GGML_OPT_ADAM);
+    state->opt->params.graph_size = LLAMA_TRAIN_MAX_NODES;
     state->opt->loss_after = 0.0f;
 
     return state;
@@ -236,8 +237,8 @@ int64_t get_example_targets_batch(
     int64_t used_samples = 0;
 
     ggml_set_f32(target_probs, 0.0f);
-    llama_token bos = llama_token_bos(lctx);
-    llama_token eos = llama_token_eos(lctx);
+    llama_token bos = llama_token_bos(llama_get_model(lctx));
+    llama_token eos = llama_token_eos(llama_get_model(lctx));
     // printf("%s: example_id=%d n_batch=%d n_train_samples=%zu\n", __func__, example_id, n_batch, n_train_samples);
     for (int k=0; k<n_batch; ++k) {
         // printf("%s: batch %d\n", __func__, k);
@@ -924,7 +925,7 @@ size_t tokenize_file(
         for (llama_token token=0; token < n_vocab; ++token) {
             max_token_text_size = std::max(
                 max_token_text_size,
-                strlen(llama_token_get_text(lctx, token)));
+                strlen(llama_token_get_text(llama_get_model(lctx), token)));
         }
 
         // upper bound of context byte length.
@@ -1045,6 +1046,7 @@ struct train_params_common get_default_train_params_common() {
     params.n_batch    =    8;
     params.n_gradient_accumulation = 1;
     params.n_epochs   = -1;
+    params.n_gpu_layers = 0;
 
     params.custom_n_ctx = false;
 
@@ -1080,6 +1082,7 @@ struct train_params_common get_default_train_params_common() {
     params.adam_beta2          = 0.999f;
     params.adam_gclip          = 1.0f;
     params.adam_eps_f          = 0.0f;
+
     return params;
 }
 
@@ -1133,6 +1136,7 @@ void print_common_train_usage(int /*argc*/, char ** /*argv*/, const struct train
     fprintf(stderr, "  --adam-beta2 N             AdamW beta2 in interval [0,1). How much to smooth the second moment of gradients. (default %f)\n", params->adam_beta2);
     fprintf(stderr, "  --adam-gclip N             AdamW gradient clipping. Disabled when zero. (default %f)\n", params->adam_gclip);
     fprintf(stderr, "  --adam-epsf N              AdamW epsilon for convergence test. Disabled when <= zero. (default %f)\n", params->adam_eps_f);
+    fprintf(stderr, "  -ngl N, --n-gpu-layers N   Number of model layers to offload to GPU (default %d)", params->n_gpu_layers);
     fprintf(stderr, "\n");
 }
 
@@ -1352,6 +1356,17 @@ bool consume_common_train_arg(
             return true;
         }
         params->adam_gclip = std::stof(argv[i]);
+    } else if (arg == "-ngl" || arg == "--n-gpu-layers") {
+            if (++i >= argc) {
+                *invalid_param = true;
+                return true;
+            }
+#ifdef LLAMA_SUPPORTS_GPU_OFFLOAD
+            params->n_gpu_layers = std::stoi(argv[i]);
+#else
+            fprintf(stderr, "warning: not compiled with GPU offload support, --n-gpu-layers option will be ignored\n");
+            fprintf(stderr, "warning: see main README.md for information on enabling GPU BLAS support\n");
+#endif
     } else if (arg == "-h" || arg == "--help") {
         params->print_usage = true;
         return true;
@@ -1367,8 +1382,6 @@ void finish_processing_train_args(struct train_params_common * params) {
     }
 }
 
-
-
 void train_opt_callback(void * vdata, int accum_step, float * sched, bool * cancel) {
     struct train_opt_callback_data * data   = (struct train_opt_callback_data *) vdata;
     struct train_params_common     * params = data->params;
@@ -1376,11 +1389,7 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
     struct ggml_opt_context        * opt    = train->opt;
     int n_batch = params->n_batch;
     int n_ctx = params->n_ctx;
-            
-    bool swift_callback_res = false;
-    
-//    swift_callback_res = data->swiftcallback("Begin");
-    
+
     if (accum_step == 0) {
         // time measurement
         int64_t now = ggml_time_ms();
@@ -1392,9 +1401,9 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
                 const double gain = 0.7;
                 data->millis_per_iter = data->millis_per_iter*(1.0-gain) + dt*gain;
             }
-        }        
+        }
+
         double remaining_millis = 0.0;
-        
         if (data->millis_per_iter > 0.0) {
             const int n_iter = params->adam_n_iter;
             const int done_iter = opt->iter - data->first_iter;
@@ -1431,21 +1440,11 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
 
         int impr_plot = -(int)(1 + (opt->loss_before - opt->loss_after) * 10.0f + 0.5f);
         if (impr_plot > 0) impr_plot = 0;
-        if (std::isnan(opt->loss_before) || std::isnan(opt->loss_before)) impr_plot = 0;
+        if (std::isnan(opt->loss_before) || std::isnan(opt->loss_after)) impr_plot = 0;
         printf("%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
             __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
             *sched, opt->loss_after);
-        
-        char descr[500]; \
-        sprintf(descr, "%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
-                __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
-                *sched, opt->loss_after);
-        swift_callback_res = data->swiftcallback(descr);
-        if (swift_callback_res == true){
-            *cancel = true;
-        }
-        
-        
+
 
         if (data->millis_per_iter > 0) {
             printf(" dt=");
@@ -1487,12 +1486,6 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
     if (train->shuffle_next_sample >= train->shuffle_sample_count) {
         ++train->train_epochs;
         printf("%s: reshuffle samples. completed epochs: %llu\n", __func__, (long long unsigned) train->train_epochs);
-        char descr[500]; \
-        sprintf(descr, "%s: reshuffle samples. completed epochs: %llu\n", __func__, (long long unsigned) train->train_epochs);
-        swift_callback_res = data->swiftcallback(descr);
-        if (swift_callback_res == true){
-            *cancel = true;
-        }
         // note: we may have used some samples from the current shuffling more than once
         train->shuffle_rng_state_current = train->shuffle_rng_state_next;
         train->shuffle_rng_state_next = shuffle_samples(

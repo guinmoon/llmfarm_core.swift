@@ -126,7 +126,7 @@ void gpt2_free(struct gpt2_context * ctx) {
 
 
 // load the model's weights from a file
-bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & vocab, int n_gpu_layers) {
+bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & vocab, int n_ctx, int n_gpu_layers) {
     printf("%s: loading model from '%s'\n", __func__, fname.c_str());
 
     auto fin = std::ifstream(fname, std::ios::binary);
@@ -163,18 +163,12 @@ bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & 
         printf("%s: n_embd  = %d\n", __func__, hparams.n_embd);
         printf("%s: n_head  = %d\n", __func__, hparams.n_head);
         printf("%s: n_layer = %d\n", __func__, hparams.n_layer);
-        printf("%s: ftype   = %d\n", __func__, hparams.ftype);        
+        printf("%s: ftype   = %d\n", __func__, hparams.ftype);
         printf("%s: qntvr   = %d\n", __func__, qntvr);
-        
-//        GGML_TYPE_Q5_1
-//        if (hparams.ftype == 2009){
-//            printf("%s: Disable Metal for  Q5_1 = %d\n", __func__, hparams.ftype);
-//            n_gpu_layers = 0;
-//        }
+
         hparams.ftype %= GGML_QNT_VERSION_FACTOR;
-        
     }
-   
+
     // load vocab
     {
         int32_t n_vocab = 0;
@@ -374,6 +368,9 @@ bool gpt2_model_load(const std::string & fname, gpt2_model & model, gpt_vocab & 
         }
     }
 
+    // override the default training context with the user-provided
+    model.hparams.n_ctx = n_ctx;
+
     // key + value memory
     {
         const auto & hparams = model.hparams;
@@ -528,7 +525,7 @@ struct ggml_cgraph * gpt2_graph(
     const int n_head  = hparams.n_head;
 
     // since we are using ggml-alloc, this buffer only needs enough space to hold the ggml_tensor and ggml_cgraph structs, but not the tensor data
-    static size_t buf_size = ggml_tensor_overhead()*GGML_MAX_NODES + ggml_graph_overhead();
+    static size_t buf_size = ggml_tensor_overhead()*GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead();
     static std::vector<uint8_t> buf(buf_size);
 
     struct ggml_init_params params = {
@@ -876,7 +873,7 @@ struct gpt2_context * gpt2_init_from_file(const char * path_model, struct gpt_co
 
     ctx->rng = std::mt19937(params.seed);
 
-    if (!gpt2_model_load(path_model, ctx->model, ctx->vocab, n_gpu_layers)) {
+    if (!gpt2_model_load(path_model, ctx->model, ctx->vocab,params.n_ctx, n_gpu_layers)) {
         fprintf(stderr, "%s: failed to load model\n", __func__);
         delete ctx;
         return nullptr;

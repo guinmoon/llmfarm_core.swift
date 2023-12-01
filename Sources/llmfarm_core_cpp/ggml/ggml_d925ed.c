@@ -3,7 +3,7 @@
 #include "ggml_d925ed.h"
 
 #ifdef GGML_USE_K_QUANTS
-#include "k_quants.h"
+#include "k_quants_dadbed9.h"
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -1721,10 +1721,10 @@ static const ggml_d925ed_type_traits_t type_traits[GGML_d925ed_TYPE_COUNT] = {
         .blck_size                = QK_K,
         .type_size                = sizeof(block_q2_K),
         .is_quantized             = true,
-        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_q2_K,
-        .from_float               = quantize_row_q2_K,
-        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_q2_K_reference,
-        .vec_dot                  = ggml_vec_dot_q2_K_q8_K,
+        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_dadbed9_q2_K,
+        .from_float               = quantize_row_dadbed9_q2_K,
+        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_dadbed9_q2_K_reference,
+        .vec_dot                  = ggml_dadbed9_vec_dot_q2_K_q8_K,
         .vec_dot_type             = GGML_d925ed_TYPE_Q8_K,
     },
     [GGML_d925ed_TYPE_Q3_K] = {
@@ -1732,10 +1732,10 @@ static const ggml_d925ed_type_traits_t type_traits[GGML_d925ed_TYPE_COUNT] = {
         .blck_size                = QK_K,
         .type_size                = sizeof(block_q3_K),
         .is_quantized             = true,
-        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_q3_K,
-        .from_float               = quantize_row_q3_K,
-        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_q3_K_reference,
-        .vec_dot                  = ggml_vec_dot_q3_K_q8_K,
+        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_dadbed9_q3_K,
+        .from_float               = quantize_row_dadbed9_q3_K,
+        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_dadbed9_q3_K_reference,
+        .vec_dot                  = ggml_dadbed9_vec_dot_q3_K_q8_K,
         .vec_dot_type             = GGML_d925ed_TYPE_Q8_K,
     },
     [GGML_d925ed_TYPE_Q4_K] = {
@@ -1743,10 +1743,10 @@ static const ggml_d925ed_type_traits_t type_traits[GGML_d925ed_TYPE_COUNT] = {
         .blck_size                = QK_K,
         .type_size                = sizeof(block_q4_K),
         .is_quantized             = true,
-        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_q4_K,
-        .from_float               = quantize_row_q4_K,
-        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_q4_K_reference,
-        .vec_dot                  = ggml_vec_dot_q4_K_q8_K,
+        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_dadbed9_q4_K,
+        .from_float               = quantize_row_dadbed9_q4_K,
+        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_dadbed9_q4_K_reference,
+        .vec_dot                  = ggml_dadbed9_vec_dot_q4_K_q8_K,
         .vec_dot_type             = GGML_d925ed_TYPE_Q8_K,
     },
     [GGML_d925ed_TYPE_Q5_K] = {
@@ -1754,10 +1754,10 @@ static const ggml_d925ed_type_traits_t type_traits[GGML_d925ed_TYPE_COUNT] = {
         .blck_size                = QK_K,
         .type_size                = sizeof(block_q5_K),
         .is_quantized             = true,
-        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_q5_K,
-        .from_float               = quantize_row_q5_K,
-        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_q5_K_reference,
-        .vec_dot                  = ggml_vec_dot_q5_K_q8_K,
+        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_dadbed9_q5_K,
+        .from_float               = quantize_row_dadbed9_q5_K,
+        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_dadbed9_q5_K_reference,
+        .vec_dot                  = ggml_dadbed9_vec_dot_q5_K_q8_K,
         .vec_dot_type             = GGML_d925ed_TYPE_Q8_K,
     },
     [GGML_d925ed_TYPE_Q6_K] = {
@@ -1765,10 +1765,10 @@ static const ggml_d925ed_type_traits_t type_traits[GGML_d925ed_TYPE_COUNT] = {
         .blck_size                = QK_K,
         .type_size                = sizeof(block_q6_K),
         .is_quantized             = true,
-        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_q6_K,
-        .from_float               = quantize_row_q6_K,
-        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_q6_K_reference,
-        .vec_dot                  = ggml_vec_dot_q6_K_q8_K,
+        .to_float                 = (ggml_d925ed_to_float_t) dequantize_row_dadbed9_q6_K,
+        .from_float               = quantize_row_dadbed9_q6_K,
+        .from_float_reference     = (ggml_d925ed_from_float_t) quantize_row_dadbed9_q6_K_reference,
+        .vec_dot                  = ggml_dadbed9_vec_dot_q6_K_q8_K,
         .vec_dot_type             = GGML_d925ed_TYPE_Q8_K,
     },
     [GGML_d925ed_TYPE_Q8_K] = {
@@ -1776,7 +1776,7 @@ static const ggml_d925ed_type_traits_t type_traits[GGML_d925ed_TYPE_COUNT] = {
         .blck_size                = QK_K,
         .type_size                = sizeof(block_q8_K),
         .is_quantized             = true,
-        .from_float               = quantize_row_q8_K,
+        .from_float               = quantize_row_dadbed9_q8_K,
     }
 #endif
 };
@@ -19547,31 +19547,31 @@ size_t ggml_d925ed_quantize_chunk(enum ggml_d925ed_type type, const float * src,
             {
                 GGML_d925ed_ASSERT(start % QK_K == 0);
                 block_q2_K * block = (block_q2_K*)dst + start / QK_K;
-                result = ggml_quantize_q2_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q2_K(src + start, block, n, n, hist);
             } break;
         case GGML_d925ed_TYPE_Q3_K:
             {
                 GGML_d925ed_ASSERT(start % QK_K == 0);
                 block_q3_K * block = (block_q3_K*)dst + start / QK_K;
-                result = ggml_quantize_q3_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q3_K(src + start, block, n, n, hist);
             } break;
         case GGML_d925ed_TYPE_Q4_K:
             {
                 GGML_d925ed_ASSERT(start % QK_K == 0);
                 block_q4_K * block = (block_q4_K*)dst + start / QK_K;
-                result = ggml_quantize_q4_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q4_K(src + start, block, n, n, hist);
             } break;
         case GGML_d925ed_TYPE_Q5_K:
             {
                 GGML_d925ed_ASSERT(start % QK_K == 0);
                 block_q5_K * block = (block_q5_K*)dst + start / QK_K;
-                result = ggml_quantize_q5_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q5_K(src + start, block, n, n, hist);
             } break;
         case GGML_d925ed_TYPE_Q6_K:
             {
                 GGML_d925ed_ASSERT(start % QK_K == 0);
                 block_q6_K * block = (block_q6_K*)dst + start / QK_K;
-                result = ggml_quantize_q6_K(src + start, block, n, n, hist);
+                result = ggml_dadbed9_quantize_q6_K(src + start, block, n, n, hist);
             } break;
 #endif
         case GGML_d925ed_TYPE_F16:
