@@ -242,7 +242,6 @@
 #define GGML_PAD(x, n) (((x) + (n) - 1) & ~((n) - 1))
 
 #include "exception_helper.h"
-
 #define GGML_ASSERT(x) \
     do { \
         if (!(x)) { \
@@ -1283,6 +1282,14 @@ extern "C" {
     GGML_API struct ggml_tensor * ggml_soft_max_inplace(
             struct ggml_context * ctx,
             struct ggml_tensor  * a);
+
+    // fused soft_max(a*scale + mask)
+    // mask is optional
+    GGML_API struct ggml_tensor * ggml_soft_max_ext(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a,
+            struct ggml_tensor  * mask,
+            float                 scale);
 
     GGML_API struct ggml_tensor * ggml_soft_max_back(
             struct ggml_context * ctx,

@@ -13,7 +13,6 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -34,26 +33,23 @@ let package = Package(
                 .copy("metal")
             ],
             publicHeadersPath: "spm-headers",
-            //            I'm not sure about some of the flags, please correct it's wrong.
             cSettings: [
-                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp                
-//                .unsafeFlags(["-O3"]),
-                .unsafeFlags(["-DNDEBUG"]),
-//                .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
-                .unsafeFlags(["-DHAVE_BUGGY_APPLE_LINKER"]),
-                .unsafeFlags(["-DGGML_METAL_NDEBUG"]),
-                .unsafeFlags(["-DGGML_USE_ACCELERATE"]),
-                .unsafeFlags(["-DACCELERATE_NEW_LAPACK"]),
-                .unsafeFlags(["-DACCELERATE_LAPACK_ILP64"]),
-                .unsafeFlags(["-DGGML_USE_METAL"]),
-                .unsafeFlags(["-DSWIFT_PACKAGE"]),
+                .define("SWIFT_PACKAGE"),
+                .define("GGML_USE_ACCELERATE"),
+                .define("ACCELERATE_NEW_LAPACK"),
+                .define("ACCELERATE_LAPACK_ILP64"),
+                .define("GGML_USE_METAL"),
+//                .define("HAVE_BUGGY_APPLE_LINKER"),
+                .define("GGML_METAL_NDEBUG"),
+                .define("NDEBUG"),
+                //.define("GGML_QKK_64"), // Dont forget to comment this if you dont use QKK_64
+                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp
+                .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
                 .unsafeFlags(["-pthread"]),
                 .unsafeFlags(["-fno-objc-arc"]),
                 .unsafeFlags(["-Wno-shorten-64-to-32"]),
-                .define("GGML_USE_ACCELERATE"),
-//                .unsafeFlags(["-fsanitize=thread"]),
                 .unsafeFlags(["-w"]),    // ignore all warnings
-                //                .unsafeFlags(["-DGGML_QKK_64"]), // Dont forget to comment this if you dont use QKK_64
+
                 
             ],
             linkerSettings: [

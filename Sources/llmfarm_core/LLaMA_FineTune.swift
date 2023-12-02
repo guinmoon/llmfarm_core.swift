@@ -21,6 +21,9 @@ public class LLaMa_FineTune: FineTune {
         if self.use_checkpointing{
             args.append("--use-checkpointing")
         }
+        if self.use_metal {
+            args.append("-ngl 1")
+        }
         do{
             print(args)
             var cargs = args.map { strdup($0) }
@@ -28,7 +31,7 @@ public class LLaMa_FineTune: FineTune {
     //        tuneQueue.async{
             self.retain_new_self_ptr()
             try ExceptionCather.catchException {
-                let result = run_finetune(Int32(args.count), &cargs,self.use_metal,
+                let result = run_finetune(Int32(args.count), &cargs,
                                             { c_str in
                     let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
                     if c_str != nil{

@@ -33,9 +33,9 @@ public class LLaMa: LLMBase {
             model_params.n_gpu_layers = 0
         }
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
-        if self.hardware_arch=="x86_64"{
-            model_params.n_gpu_layers = 0
-        }
+//        if self.hardware_arch=="x86_64"{
+//            model_params.n_gpu_layers = 0
+//        }
         
         if contextParams.lora_adapters.count>0{
             model_params.use_mmap = false

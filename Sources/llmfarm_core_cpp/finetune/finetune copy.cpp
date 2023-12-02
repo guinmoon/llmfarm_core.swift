@@ -1530,7 +1530,7 @@ static int64_t get_parameter_count(struct my_llama_lora* lora) {
     return nx;
 }
 
-int run_finetune(int argc, char ** argv,bool use_metal, bool(*swift_callback)(const char*)) {
+int run_finetune(int argc, char ** argv, bool(*swift_callback)(const char*)) {
     struct train_params params = get_default_train_params();
 
     if (!train_params_parse(argc, argv, &params)) {
