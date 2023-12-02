@@ -28,7 +28,7 @@ public class LLaMa: LLMBase {
 //        context_params.rope_freq_scale = 1
         
         if contextParams.use_metal{
-            model_params.n_gpu_layers = 1
+            model_params.n_gpu_layers = 100
         }else{
             model_params.n_gpu_layers = 0
         }

@@ -22,7 +22,8 @@ public class LLaMa_FineTune: FineTune {
             args.append("--use-checkpointing")
         }
         if self.use_metal {
-            args.append("-ngl 1")
+            args.append("-ngl")
+            args.append("10")
         }
         do{
             print(args)

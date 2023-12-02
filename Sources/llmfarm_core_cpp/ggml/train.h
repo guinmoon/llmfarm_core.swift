@@ -109,6 +109,7 @@ struct train_opt_callback_data {
     int                          iter_at_last_epoch;
     int64_t                      last_time;
     double                       millis_per_iter;
+    bool (*swiftcallback)(const char*);
 };
 
 struct train_state * init_train_state();

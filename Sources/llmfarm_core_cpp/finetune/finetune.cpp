@@ -1897,6 +1897,7 @@ int run_finetune(int argc, char ** argv, bool(*swift_callback)(const char*)) {
     opt_cb_data.iter_at_last_epoch     = -1;
     opt_cb_data.last_time              = ggml_time_ms();
     opt_cb_data.millis_per_iter        = 0.0;
+    opt_cb_data.swiftcallback = swift_callback;
 
     // measure required memory for work buffer
     size_t max_work_size = ggml_graph_plan(gb, params.common.n_threads).work_size + GGML_OBJECT_SIZE;

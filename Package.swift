@@ -40,7 +40,7 @@ let package = Package(
                 .define("ACCELERATE_LAPACK_ILP64"),
                 .define("GGML_USE_METAL"),
 //                .define("HAVE_BUGGY_APPLE_LINKER"),
-                .define("GGML_METAL_NDEBUG"),
+//                .define("GGML_METAL_NDEBUG"),
                 .define("NDEBUG"),
                 //.define("GGML_QKK_64"), // Dont forget to comment this if you dont use QKK_64
                 .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp

@@ -17,8 +17,8 @@ public class FineTune {
     public var train_data: String = ""
     public var threads:Int32 = default_thread_count
     public var adam_iter:Int32 = 1
-    public var batch:Int32 = 512
-    public var ctx:Int32 = 512
+    public var batch:Int32 = 4
+    public var ctx:Int32 = 64
     public var use_checkpointing:Bool = true
     public var use_metal:Bool = false
     @Published var tune_log: [String] = []
