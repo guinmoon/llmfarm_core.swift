@@ -15,6 +15,8 @@ public class FineTune {
     public var model_base: String = ""
     public var lora_out: String = ""
     public var train_data: String = ""
+    public var export_model: String = ""
+    public var export_scale: Float = 1.0
     public var threads:Int32 = default_thread_count
     public var adam_iter:Int32 = 1
     public var batch:Int32 = 4
@@ -31,7 +33,7 @@ public class FineTune {
                     threads: Int32 = default_thread_count,
                     adam_iter:Int32 = 30,batch:Int32 = 4, ctx:Int32 = 64,
                     use_checkpointing:Bool = true,
-                    use_metal:Bool = false) {
+                 use_metal:Bool = false,export_model:String = "") {
         self.model_base = model_base
         self.lora_out = lora_out
         self.train_data = train_data
@@ -44,6 +46,7 @@ public class FineTune {
         self.ctx = ctx
         self.use_checkpointing = use_checkpointing
         self.use_metal = use_metal
+        self.export_model = export_model
     }
     
     public func finetune(_ progressCallback: ((String)  -> ())?) throws{

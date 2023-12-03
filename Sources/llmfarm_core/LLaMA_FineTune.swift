@@ -54,6 +54,36 @@ public class LLaMa_FineTune: FineTune {
         }
     }
     
+    public func export_lora(_ progressCallback: ((String)  -> ())?) throws{
+        var args = ["progr_name", "-m", self.model_base, "-o", self.export_model,
+            "-t", String(self.threads), "-s",self.lora_out, String(self.export_scale)]
+        do{
+            print(args)
+            var cargs = args.map { strdup($0) }
+            self.progressCallback = progressCallback
+    //        tuneQueue.async{
+            self.retain_new_self_ptr()
+            try ExceptionCather.catchException {
+                let result = export_lora_main(Int32(args.count), &cargs,
+                                            { progress in
+                    let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
+                    let for_print = String(progress)
+                    LLaMa_FineTune_obj.tune_log.append(for_print)
+                    LLaMa_FineTune_obj.progressCallback!(for_print)
+                    print("\nProgress: \(progress)")
+                    LLaMa_FineTune_obj.retain_new_self_ptr()
+                    return LLaMa_FineTune_obj.cancel
+                })
+            }
+            for ptr in cargs { free(ptr) }
+    //        }
+        }
+        catch{
+            print(error)
+            throw error
+        }
+    }
+    
     private func retain_new_self_ptr(){
         LLaMa_FineTune_obj_ptr = Unmanaged.passRetained(self).toOpaque()
     }

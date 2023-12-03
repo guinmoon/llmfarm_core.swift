@@ -23,7 +23,7 @@ let package = Package(
             name: "llmfarm_core_cpp",
             sources: ["ggml/ggml.c","exception_helper.cpp","ggml/ggml-quants.c","ggml/ggml-alloc.c","ggml/ggml-backend.c","ggml/ggml-metal.m","ggml/common.cpp",
                       "gpt_helpers.cpp","gpt_spm.cpp","package_helper.m","grammar-parser.cpp","exception_helper_objc.mm",
-                      "ggml/train.cpp","finetune/finetune.cpp","llama/llama.cpp",
+                      "ggml/train.cpp","finetune/finetune.cpp","finetune/export-lora.cpp","llama/llama.cpp",
                       "ggml/ggml_d925ed.c","ggml/ggml_d925ed-alloc.c","ggml/ggml_d925ed-metal.m","rwkv/rwkv.cpp",
                       "ggml/ggml_dadbed9.c","ggml/k_quants_dadbed9.c","ggml/ggml-alloc_dadbed9.c","ggml/ggml-metal_dadbed9.m",
                       "gptneox/gptneox.cpp","gpt2/gpt2.cpp","replit/replit.cpp","starcoder/starcoder.cpp","llama/llama_dadbed9.cpp"
