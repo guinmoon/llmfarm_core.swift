@@ -18,7 +18,7 @@ public class FineTune {
     public var export_model: String = ""
     public var export_scale: Float = 1.0
     public var threads:Int32 = default_thread_count
-    public var adam_iter:Int32 = 1
+    public var adam_iter:Int32 = 30
     public var batch:Int32 = 4
     public var ctx:Int32 = 64
     public var use_checkpointing:Bool = true
