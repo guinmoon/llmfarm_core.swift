@@ -15,7 +15,7 @@ Also used sources from:
 - [x] Metal ([dont work](https://github.com/ggerganov/llama.cpp/issues/2407#issuecomment-1699544808) on intel Mac)
 - [x] Model setting templates
 - [x] LoRA adapters support ([read more](https://github.com/guinmoon/LLMFarm/blob/main/lora.md))
-- [ ] LoRA train support
+- [x] LoRA train support
 - [ ] LoRA export as model support
 - [ ] Restore context state (now only chat history) 
 
@@ -30,6 +30,9 @@ Also used sources from:
 - [x] [Falcon](https://github.com/cmp-nct/ggllm.cpp) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 - [x] [MPT](https://huggingface.co/guinmoon/mpt-7b-storywriter-GGUF) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 - [x] [Bloom](https://huggingface.co/bigscience/bloom-1b7) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [StableLM-3b-4e1t](https://huggingface.co/stabilityai/stablelm-3b-4e1t) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [Qwen](https://huggingface.co/Qwen/Qwen-7B) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+  
 
 # Sampling methods
 - [x] Temperature (temp, tok-k, top-p)
