@@ -27,6 +27,9 @@ public class GPT2: LLMBase {
         if self.hardware_arch=="x86_64"{
             n_gpu_layers = 0
         }
+//TEMPORARY FIX
+        n_gpu_layers = 0
+//        
         self.context = gpt2_init_from_file(path, context_params,n_gpu_layers)
         if self.context == nil {
             return false
