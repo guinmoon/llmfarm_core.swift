@@ -89,6 +89,7 @@ struct gpt_context_params {
     gpt_progress_callback progress_callback;
     // context pointer passed to the progress callback
     void * progress_callback_user_data;
+    int32_t n_thread;
 };
 
 struct gpt_context_params gpt_context_default_params();

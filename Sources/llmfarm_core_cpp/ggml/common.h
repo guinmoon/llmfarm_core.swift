@@ -46,6 +46,9 @@ struct gpt_params {
     int32_t n_gpu_layers     = 0;
 };
 
+
+
+
 bool gpt_params_parse(int argc, char ** argv, gpt_params & params);
 
 void gpt_print_usage(int argc, char ** argv, const gpt_params & params);
