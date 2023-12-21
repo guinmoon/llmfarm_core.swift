@@ -9,6 +9,7 @@ public enum ModelInference {
     case LLama_bin
     case LLama_gguf
     case GPTNeox
+    case GPTNeox_gguf
     case GPT2
     case Replit
     case Starcoder
@@ -39,31 +40,32 @@ public class AI {
     
     public func loadModel(_ aiModel: ModelInference, contextParams: ModelAndContextParams = .default) throws -> Bool {
         print("AI init")
-            do{
-                switch aiModel {
-                case .LLama_bin:
-                    model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
-                case .LLama_gguf:
-                    model = try LLaMa(path: self.modelPath, contextParams: contextParams)
-                case .GPTNeox:
-                    model = try GPTNeoX(path: self.modelPath, contextParams: contextParams)
-                case .GPT2:
-                    model = try GPT2(path: self.modelPath, contextParams: contextParams)
-                case .Replit:
-                    model = try Replit(path: self.modelPath, contextParams: contextParams)
-                case .Starcoder:
-                    model = try Starcoder(path: self.modelPath, contextParams: contextParams)
-                case .Starcoder_gguf:
-                    model = try LLaMa(path: self.modelPath, contextParams: contextParams)
-                case .RWKV:
-                    model = try RWKV(path: self.modelPath, contextParams: contextParams)
-                }
-                return true
+        do{
+            switch aiModel {
+            case .LLama_bin:
+                self.model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
+            case .LLama_gguf:
+                self.model = try LLaMa(path: self.modelPath, contextParams: contextParams)
+            case .GPTNeox:
+                self.model = try GPTNeoX(path: self.modelPath, contextParams: contextParams)
+            case .GPTNeox_gguf:
+                self.model = try LLaMa(path: self.modelPath, contextParams: contextParams)
+            case .GPT2:
+                self.model = try GPT2(path: self.modelPath, contextParams: contextParams)
+            case .Replit:
+                self.model = try Replit(path: self.modelPath, contextParams: contextParams)
+            case .Starcoder:
+                self.model = try Starcoder(path: self.modelPath, contextParams: contextParams)
+            case .Starcoder_gguf:
+                self.model = try LLaMa(path: self.modelPath, contextParams: contextParams)
+            case .RWKV:
+                self.model = try RWKV(path: self.modelPath, contextParams: contextParams)
             }
-            catch {
-                throw error
-            }
-        
+            return true
+        }
+        catch {
+            throw error
+        }
     }
     
     public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?) {
