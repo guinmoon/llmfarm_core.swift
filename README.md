@@ -92,7 +92,7 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
 var input_text = "State the meaning of life."
 
 let ai = AI(_modelPath: "llama-2-7b.q4_K_M.gguf",_chatName: "chat")
-var params:ModelContextParams = .default
+var params:ModelAndContextParams = .default
 params.use_metal = true
 
 try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
