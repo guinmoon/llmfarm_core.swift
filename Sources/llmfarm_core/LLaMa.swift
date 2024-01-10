@@ -9,6 +9,7 @@ public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
     public var hardware_arch: String=""
+    private var temporary_invalid_cchars: [CChar]  = []
     
     public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
         var context_params = llama_context_default_params()
@@ -91,12 +92,50 @@ public class LLaMa: LLMBase {
         return true
     }
     
-    public override func llm_token_to_str(outputToken:Int32) -> String? {
-        if let cStr = llama_token_to_str(context, outputToken){
-//            print(String(cString: cStr))
-            return String(cString: cStr)
+    
+    private func token_to_piece(token: Int32) -> [CChar] {
+        let result = UnsafeMutablePointer<Int8>.allocate(capacity: 8)
+        result.initialize(repeating: Int8(0), count: 8)
+        defer {
+            result.deallocate()
         }
-        return nil
+        let nTokens = llama_token_to_piece(model, token, result, 8)
+        
+        if nTokens < 0 {
+            let newResult = UnsafeMutablePointer<Int8>.allocate(capacity: Int(-nTokens))
+            newResult.initialize(repeating: Int8(0), count: Int(-nTokens))
+            defer {
+                newResult.deallocate()
+            }
+            let nNewTokens = llama_token_to_piece(model, token, newResult, -nTokens)
+            let bufferPointer = UnsafeBufferPointer(start: newResult, count: Int(nNewTokens))
+            return Array(bufferPointer)
+        } else {
+            let bufferPointer = UnsafeBufferPointer(start: result, count: Int(nTokens))
+            return Array(bufferPointer)
+        }
+    }
+    
+    public override func llm_token_to_str(outputToken:Int32) -> String? {
+//        if let cStr = llama_token_to_str(context, outputToken){
+//            return String(cString: cStr)
+//        }
+        //        return nil
+        let new_token_cchars = token_to_piece(token: outputToken)
+        temporary_invalid_cchars.append(contentsOf: new_token_cchars)
+        let new_token_str: String
+        if let string = String(validatingUTF8: temporary_invalid_cchars + [0]) {
+            temporary_invalid_cchars.removeAll()
+            new_token_str = string
+        } else if (0 ..< temporary_invalid_cchars.count).contains(where: {$0 != 0 && String(validatingUTF8: Array(temporary_invalid_cchars.suffix($0)) + [0]) != nil}) {
+            // in this case, at least the suffix of the temporary_invalid_cchars can be interpreted as UTF8 string
+            let string = String(cString: temporary_invalid_cchars + [0])
+            temporary_invalid_cchars.removeAll()
+            new_token_str = string
+        } else {
+            new_token_str = ""
+        }
+        return new_token_str
     }
     
     public override func llm_token_nl() -> ModelToken{
