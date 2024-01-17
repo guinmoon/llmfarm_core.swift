@@ -1,0 +1,9 @@
+@@ -155,7 +155,7 @@
+             ggml_metal_log_callback(level, buffer, ggml_metal_log_user_data);
+         } else {
+             char* buffer2 = malloc(len+1);
+-            vsnprintf(buffer2, len+1, format, args);
++//            vsnprintf(buffer2, len+1, format, args);
+             buffer2[len] = 0;
+             ggml_metal_log_callback(level, buffer2, ggml_metal_log_user_data);
+             free(buffer2);

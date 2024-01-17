@@ -407,29 +407,6 @@ void print_duration(double fmillis) {
     printf("%02lld:%02lld:%02lld", (long long int) hours, (long long int) minutes, (long long int) seconds);
 }
 
-void sprint_duration(double fmillis,char* descr) {
-    if (fmillis < 1000.0f) {
-        sprintf(descr+strlen(descr),"%.1fms", (float) fmillis);
-        return;
-    }
-    const int64_t one_sec  = 1000;
-    const int64_t one_min  = one_sec  * 60;
-    const int64_t one_hour = one_min  * 60;
-    const int64_t one_day  = one_hour * 24;
-
-    int64_t millis  = (int64_t) fmillis;
-    int64_t days    = millis/one_day;
-    int64_t hours   = (millis - days*one_day)/one_hour;
-    int64_t minutes = (millis - days*one_day - hours*one_hour)/one_min;
-    int64_t seconds = (millis - days*one_day - hours*one_hour - minutes*one_min)/one_sec;
-
-    // to print int64_t either cast to (long long int) or use macro PRId64 from <inttypes.h>
-    if (days > 0) {
-        sprintf(descr+strlen(descr),"%lldd ", (long long int) days);
-    }
-    sprintf(descr+strlen(descr),"%02lld:%02lld:%02lld", (long long int) hours, (long long int) minutes, (long long int) seconds);
-}
-
 float cosine_decay(int64_t step, int64_t decay_steps, float minimum) {
     if (step > decay_steps) {
         step = decay_steps;
@@ -1414,7 +1391,6 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
     struct ggml_opt_context        * opt    = train->opt;
     int n_batch = params->n_batch;
     int n_ctx = params->n_ctx;
-    char descr[500];
 
     if (accum_step == 0) {
         // time measurement
@@ -1467,39 +1443,27 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
         int impr_plot = -(int)(1 + (opt->loss_before - opt->loss_after) * 10.0f + 0.5f);
         if (impr_plot > 0) impr_plot = 0;
         if (std::isnan(opt->loss_before) || std::isnan(opt->loss_after)) impr_plot = 0;
-//        printf("%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
-//            __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
-//            *sched, opt->loss_after);
-        descr[0] = '\0';
-        sprintf(descr, "%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
-                __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
-                *sched, opt->loss_after);
-        *cancel = data->swiftcallback(descr);
-        descr[0] = '\0';
-        
+        printf("%s: iter=%6d sample=%zu/%zu sched=%f loss=%f",
+            __func__, opt->iter, std::min(1+train->shuffle_next_sample, train->shuffle_sample_count), train->shuffle_sample_count,
+            *sched, opt->loss_after);
+
+
         if (data->millis_per_iter > 0) {
-//            printf(" dt=");
-            auto res = sprintf(descr," dt=");
-            sprint_duration(data->millis_per_iter,descr);
-//            printf(" eta=");
-            sprintf(descr+strlen(descr)," eta=");
-            sprint_duration(remaining_millis,descr);
+            printf(" dt=");
+            print_duration(data->millis_per_iter);
+            printf(" eta=");
+            print_duration(remaining_millis);
         }
+
         float improvement = opt->loss_before - opt->loss_after;
         const float plot_scale = 10.0f;
         int bar_len = (int)(1 + improvement*plot_scale + 0.5);
-//        printf(" |");
-        sprintf(descr+strlen(descr)," |");
+        printf(" |");
         for (int i=0; i<bar_len; ++i) {
-//            printf("-");
-            sprintf(descr+strlen(descr),"-");
+            printf("-");
         }
-//        printf(">");
-        sprintf(descr+strlen(descr),">");
-//        printf("\n");
-        sprintf(descr+strlen(descr),"\n");
-        *cancel = data->swiftcallback(descr);
-        descr[0] = '\0';
+        printf(">");
+        printf("\n");
     }
 
     int64_t used_samples = get_example_targets_batch(
@@ -1524,8 +1488,6 @@ void train_opt_callback(void * vdata, int accum_step, float * sched, bool * canc
     if (train->shuffle_next_sample >= train->shuffle_sample_count) {
         ++train->train_epochs;
         printf("%s: reshuffle samples. completed epochs: %llu\n", __func__, (long long unsigned) train->train_epochs);
-        sprintf(descr, "%s: reshuffle samples. completed epochs: %llu\n", __func__, (long long unsigned) train->train_epochs);
-        *cancel = data->swiftcallback(descr);
         // note: we may have used some samples from the current shuffling more than once
         train->shuffle_rng_state_current = train->shuffle_rng_state_next;
         train->shuffle_rng_state_next = shuffle_samples(

@@ -16,7 +16,7 @@ public class LLaMa: LLMBase {
         var model_params = llama_model_default_params()
         context_params.n_ctx = UInt32(contextParams.context)
         context_params.seed = UInt32(contextParams.seed)
-        context_params.f16_kv = contextParams.f16Kv
+//        context_params.f16_kv = contextParams.f16Kv
         context_params.n_threads = UInt32(contextParams.n_threads)
         context_params.logits_all = contextParams.logitsAll
 //        context_params.n_batch = contextParams.
@@ -73,7 +73,7 @@ public class LLaMa: LLMBase {
     }
     
     override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
-        return llama_n_ctx(self.context)
+        return Int32(llama_n_ctx(self.context))
     }
     
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{

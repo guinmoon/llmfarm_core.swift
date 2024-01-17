@@ -253,14 +253,13 @@
 
 #define GGML_PAD(x, n) (((x) + (n) - 1) & ~((n) - 1))
 
-#include "exception_helper.h"
 #define GGML_ASSERT(x) \
     do { \
         if (!(x)) { \
+            fflush(stdout); \
             fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-            char descr[500]; \
-            sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
-            throw_exception(descr); \
+            ggml_print_backtrace(); \
+            abort(); \
         } \
     } while (0)
 

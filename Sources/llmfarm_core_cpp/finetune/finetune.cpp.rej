@@ -1,0 +1,14 @@
+@@ -1,8 +1,9 @@
+-#include "ggml.h"
+-#include "ggml-alloc.h"
++#include "../spm-headers/finetune.h"
++#include "../ggml/ggml.h"
++#include "../ggml/ggml-alloc.h"
+ #include "llama.h"
+-#include "common.h"
+-#include "train.h"
++#include "../ggml/common.h"
++#include "../ggml/train.h"
+ #include <unordered_map>
+ #include <vector>
+ #include <cassert>

@@ -28,7 +28,7 @@ public class GPT2: LLMBase {
             n_gpu_layers = 0
         }
 //TEMPORARY FIX
-        n_gpu_layers = 0
+//        n_gpu_layers = 0
 //        
         self.context = gpt2_init_from_file(path, context_params,n_gpu_layers)
         if self.context == nil {
