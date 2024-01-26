@@ -21,11 +21,11 @@ let package = Package(
               path: "Sources/llmfarm_core"),
         .target(
             name: "llmfarm_core_cpp",
-            sources: ["ggml/ggml.c","exception_helper.mm","ggml/ggml-quants.c","ggml/ggml-alloc.c","ggml/ggml-backend.c","ggml/ggml-metal.m","ggml/common.mm",
+            sources: ["ggml/ggml.m","exception_helper.mm","ggml/ggml-quants.m","ggml/ggml-alloc.m","ggml/ggml-backend.m","ggml/ggml-metal.m","ggml/common.mm",
                       "gpt_helpers.mm","gpt_spm.mm","package_helper.m","grammar-parser.mm","exception_helper_objc.mm",
                       "ggml/train.mm","finetune/finetune.mm","finetune/export-lora.mm","llama/llama.mm",
-                      "ggml/ggml_d925ed.c","ggml/ggml_d925ed-alloc.c","ggml/ggml_d925ed-metal.m","rwkv/rwkv.mm",
-                      "ggml/ggml_dadbed9.c","ggml/k_quants_dadbed9.c","ggml/ggml-alloc_dadbed9.c","ggml/ggml-metal_dadbed9.m",
+                      "ggml/ggml_d925ed.m","ggml/ggml_d925ed-alloc.m","ggml/ggml_d925ed-metal.m","rwkv/rwkv.mm",
+                      "ggml/ggml_dadbed9.m","ggml/k_quants_dadbed9.m","ggml/ggml-alloc_dadbed9.m","ggml/ggml-metal_dadbed9.m",
                       "gptneox/gptneox.mm","gpt2/gpt2.mm","replit/replit.mm","starcoder/starcoder.mm","llama/llama_dadbed9.mm"
                       ],
             resources: [
