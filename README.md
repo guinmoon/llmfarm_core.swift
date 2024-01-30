@@ -29,10 +29,15 @@ Also used sources from:
 - [x] [RWKV](https://huggingface.co/docs/transformers/model_doc/rwkv) (20B tokenizer)
 - [x] [Falcon](https://github.com/cmp-nct/ggllm.cpp) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 - [x] [MPT](https://huggingface.co/guinmoon/mpt-7b-storywriter-GGUF) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
-- [x] [Bloom](https://huggingface.co/bigscience/bloom-1b7) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [Bloom](https://huggingface.co/guinmoon/bloomz-1b7-gguf) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 - [x] [StableLM-3b-4e1t](https://huggingface.co/stabilityai/stablelm-3b-4e1t) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
 - [x] [Qwen](https://huggingface.co/Qwen/Qwen-7B) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [Yi models](https://huggingface.co/models?search=01-ai/Yi) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [Deepseek models](https://huggingface.co/models?search=deepseek-ai/deepseek) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [Mixtral MoE](https://huggingface.co/models?search=mistral-ai/Mixtral) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
+- [x] [PLaMo-13B](https://github.com/ggerganov/llama.cpp/pull/3557) <img src="dist/metal-96x96_2x.png" width="16px" heigth="16px">
   
+Note: For *Falcon, Alpaca, GPT4All, Chinese LLaMA / Alpaca and Chinese LLaMA-2 / Alpaca-2, Vigogne (French), Vicuna, Koala, OpenBuddy (Multilingual), Pygmalion/Metharme, WizardLM, Baichuan 1 & 2 + derivations, Aquila 1 & 2, Mistral AI v0.1, Refact, Persimmon 8B, MPT, Bloom* select `llama inferece` in model settings.
 
 # Sampling methods
 - [x] Temperature (temp, tok-k, top-p)
@@ -89,14 +94,20 @@ func mainCallback(_ str: String, _ time: Double) -> Bool {
     return false
 }
 
-var input_text = "State the meaning of life."
 
-let ai = AI(_modelPath: "llama-2-7b.q4_K_M.gguf",_chatName: "chat")
-var params:ModelContextParams = .default
+
+let ai = AI(_modelPath: "/Users/guinmoon/dev/alpaca_llama_etc/llama-2-7b-chat-q4_K_M.gguf",_chatName: "chat")
+var params:ModelAndContextParams = .default
+params.promptFormat = .Custom
+params.custom_prompt_format = """
+SYSTEM: You are a helpful, respectful and honest assistant.
+USER: State the meaning of life
+ASSISTANT:
+"""
+var input_text = "State the meaning of life"
 params.use_metal = true
 
-try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
-ai.model.promptFormat = .LLaMa
+_ = try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
 
 let output = try? ai.model.predict(input_text, mainCallback)
 
