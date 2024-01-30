@@ -73,7 +73,7 @@ To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `P
 
 # Usage
 
-## [More examples in the examples directory](/Examples)
+## [More examples in the Demo Project](/DemoProject)
 
 ### Example generate output from a prompt
 
