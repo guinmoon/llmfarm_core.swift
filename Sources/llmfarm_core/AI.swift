@@ -185,6 +185,15 @@ public func get_model_sample_param_by_config(_ model_config:Dictionary<String, A
     return tmp_param
 }
 
+extension String {
+    func removingLeadingSpaces() -> String {
+        guard let index = firstIndex(where: { !CharacterSet(charactersIn: String($0)).isSubset(of: .whitespaces) }) else {
+            return self
+        }
+        return String(self[index...])
+    }
+}
+
 public func get_model_context_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelAndContextParams{
     var tmp_param = ModelAndContextParams.default
     if (model_config["context"] != nil){
@@ -238,6 +247,20 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     if (model_config["prompt_format"] != nil && model_config["prompt_format"]! as! String != "auto"
             && model_config["prompt_format"]! as! String != "{{prompt}}"){
             tmp_param.custom_prompt_format = model_config["prompt_format"]! as! String
+            if tmp_param.custom_prompt_format.contains("[system]") {
+                let beg_i = tmp_param.custom_prompt_format.distance(of:"[system]")! + 9
+                var end_i = -1
+                for i in (beg_i...tmp_param.custom_prompt_format.count){
+                    if tmp_param.custom_prompt_format[i..<i+1] == ")"{
+                        end_i = i
+                        break
+                    }
+                }
+                if end_i != -1{
+                    tmp_param.system_prompt = tmp_param.custom_prompt_format[beg_i...end_i-1]
+                }
+                tmp_param.custom_prompt_format = String(tmp_param.custom_prompt_format[end_i+2..<tmp_param.custom_prompt_format.count]).removingLeadingSpaces()
+            }
             tmp_param.promptFormat = .Custom
     }
     
@@ -297,6 +320,7 @@ public struct ModelAndContextParams {
 
     public var promptFormat: ModelPromptStyle = .None
     public var custom_prompt_format = ""
+    public var system_prompt = ""
     
     public var f16Kv = true         // use fp16 for KV cache
     public var logitsAll = false    // the llama_eval() call computes all logits, not just the last one
