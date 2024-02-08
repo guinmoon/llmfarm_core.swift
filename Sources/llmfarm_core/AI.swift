@@ -194,6 +194,26 @@ extension String {
     }
 }
 
+public func get_system_prompt(_ prompt_format_in: String) -> (String,String){
+    var prompt_format = prompt_format_in
+    var system_prompt = ""
+    if prompt_format_in.contains("[system](") {
+        let beg_i = prompt_format_in.distance(of:"[system](")! + 9
+        var end_i = -1
+        for i in (beg_i...prompt_format_in.count){
+            if prompt_format_in[i..<i+1] == ")"{
+                end_i = i
+                break
+            }
+        }
+        if end_i != -1{
+            system_prompt = prompt_format_in[beg_i...end_i-1]
+        }
+        prompt_format = String(prompt_format_in[end_i+2..<prompt_format_in.count]).removingLeadingSpaces()
+    }
+    return (prompt_format,system_prompt)
+}
+
 public func get_model_context_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelAndContextParams{
     var tmp_param = ModelAndContextParams.default
     if (model_config["context"] != nil){
@@ -247,20 +267,7 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     if (model_config["prompt_format"] != nil && model_config["prompt_format"]! as! String != "auto"
             && model_config["prompt_format"]! as! String != "{{prompt}}"){
             tmp_param.custom_prompt_format = model_config["prompt_format"]! as! String
-            if tmp_param.custom_prompt_format.contains("[system]") {
-                let beg_i = tmp_param.custom_prompt_format.distance(of:"[system]")! + 9
-                var end_i = -1
-                for i in (beg_i...tmp_param.custom_prompt_format.count){
-                    if tmp_param.custom_prompt_format[i..<i+1] == ")"{
-                        end_i = i
-                        break
-                    }
-                }
-                if end_i != -1{
-                    tmp_param.system_prompt = tmp_param.custom_prompt_format[beg_i...end_i-1]
-                }
-                tmp_param.custom_prompt_format = String(tmp_param.custom_prompt_format[end_i+2..<tmp_param.custom_prompt_format.count]).removingLeadingSpaces()
-            }
+            (tmp_param.custom_prompt_format,tmp_param.system_prompt) = get_system_prompt(tmp_param.custom_prompt_format)
             tmp_param.promptFormat = .Custom
     }
     
@@ -453,42 +460,3 @@ public enum ModelPromptStyle {
 
 public typealias ModelToken = Int32
 
-//public class Model {
-//
-//    public var context: OpaquePointer?
-//    public var grammar: OpaquePointer?
-//    public var contextParams: ModelContextParams
-//    public var sampleParams: ModelSampleParams = .default
-//    public var promptFormat: ModelPromptStyle = .None
-//    public var custom_prompt_format = ""
-//    public var core_resourses = get_core_bundle_path()
-//    public var reverse_prompt: [String] = []
-//    public var session_tokens: [Int32] = []
-//
-//    // Init
-//    public init(path: String = "", contextParams: ModelContextParams = .default) throws {
-//        self.contextParams = contextParams
-//        self.context = nil
-//    }
-//
-//    public func llm_load_model(path: String = "", contextParams: ModelContextParams = .default, params:gpt_context_params ) throws -> Bool{
-//        return false
-//    }
-//
-//    // Predict
-//    public func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
-//        return ""
-//    }
-//
-//    public func llm_tokenize(_ input: String, bos: Bool = false, eos: Bool = false) -> [ModelToken] {
-//        return []
-//    }
-//
-//
-//
-//
-//    public func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) -> [ModelToken] {
-//        return llm_tokenize(input)
-//    }
-//
-//}
