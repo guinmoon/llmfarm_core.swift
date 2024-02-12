@@ -489,6 +489,7 @@ public class LLMBase {
             return llm_tokenize(input)
         case .Custom:
             var formated_input = self.contextParams.custom_prompt_format.replacingOccurrences(of: "{{prompt}}", with: input)
+            formated_input = formated_input.replacingOccurrences(of: "{prompt}", with: input)
             formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
             return llm_tokenize(formated_input)
         // case .ChatBase:
