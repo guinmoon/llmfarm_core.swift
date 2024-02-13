@@ -103,6 +103,7 @@ struct gpt2_model {
     ~gpt2_model() {
         if (ctx_w) {
             ggml_free(ctx_w);
+            ggml_free(ctx_kv);
             ggml_backend_buffer_free(buffer_w);
             ggml_backend_buffer_free(buffer_kv);            
             ggml_backend_free(backend);
@@ -113,11 +114,11 @@ struct gpt2_model {
 struct gpt2_context:gpt_base_context {
     gpt2_model model;
     ggml_gallocr_t allocr = NULL;
-    ggml_backend_buffer_t buf_compute = NULL;
+//    ggml_backend_buffer_t buf_compute = NULL;
     std::vector<uint8_t> compute_buffer;
     ~gpt2_context(){
-//        ggml_allocr_free(allocr);
-        ggml_backend_buffer_free(buf_compute);
+        ggml_gallocr_free(allocr);
+//        ggml_backend_buffer_free(buf_compute);
     }
 };
 
@@ -840,9 +841,7 @@ struct gpt2_context * gpt2_init_from_file(const char * path_model, struct gpt_co
     struct ggml_cgraph * gf = gpt2_graph(ctx->model,  n_past, n_tokens);
     size_t mem_size =  ggml_gallocr_get_buffer_size(ctx->allocr, 0);
     ggml_gallocr_reserve(ctx->allocr , gf);
-//    ggml_allocr_free(ctx->allocr);
-    ctx->buf_compute = ggml_backend_alloc_buffer(ctx->model.backend, mem_size);
-//    ctx->allocr = ggml_allocr_new_from_buffer(ctx->buf_compute);
+//    ctx->buf_compute = ggml_backend_alloc_buffer(ctx->model.backend, mem_size);
     fprintf(stderr, "%s: compute buffer size: %.2f MB\n", __func__, mem_size/1024.0/1024.0);
 
     return ctx;
@@ -891,174 +890,3 @@ int gpt2_eval(
     }
     return 0;
 }
-
-//int main(int argc, char ** argv) {
-//    ggml_time_init();
-//
-//    const int64_t t_main_start_us = ggml_time_us();
-//
-//    gpt_params params;
-//    params.model = "models/gpt-2-117M/ggml-model.bin";
-//
-//    if (gpt_params_parse(argc, argv, params) == false) {
-//        return 1;
-//    }
-//
-//    if (params.seed < 0) {
-//        params.seed = time(NULL);
-//    }
-//
-//    printf("%s: seed = %d\n", __func__, params.seed);
-//
-//    std::mt19937 rng(params.seed);
-//    if (params.prompt.empty()) {
-//        params.prompt = gpt_random_prompt(rng);
-//    }
-//
-//    int64_t t_load_us = 0;
-//
-//    gpt_vocab vocab;
-//    gpt2_model model;
-//
-//    // load the model
-//    {
-//        const int64_t t_start_us = ggml_time_us();
-//
-//        if (!gpt2_model_load(params.model, model, vocab, params.n_gpu_layers)) {
-//            fprintf(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
-//            return 1;
-//        }
-//
-//        t_load_us = ggml_time_us() - t_start_us;
-//
-//        test_gpt_tokenizer(vocab, params.token_test);
-//    }
-//
-//    // keep this buffer alive while evaluating the model
-//    ggml_backend_buffer_t buf_compute;
-//
-//    struct ggml_allocr * allocr = NULL;
-//    // allocate the compute buffer
-//    {
-//         // alignment required by the backend
-//        size_t align = ggml_backend_get_alignment(model.backend);
-//        allocr = ggml_allocr_new_measure(align);
-//
-//        // create the worst case graph for memory usage estimation
-//        int n_tokens = std::min(model.hparams.n_ctx, params.n_batch);
-//        int n_past = model.hparams.n_ctx - n_tokens;
-//        struct ggml_cgraph * gf = gpt2_graph(model, allocr, n_past, std::vector<gpt_vocab::id>(n_tokens, 0));
-//
-//        // compute the required memory
-//        size_t mem_size = ggml_allocr_alloc_graph(allocr, gf);
-//
-//        // recreate the allocator with the required memory
-//        ggml_allocr_free(allocr);
-//        buf_compute = ggml_backend_alloc_buffer(model.backend, mem_size);
-//        allocr = ggml_allocr_new_from_buffer(buf_compute);
-//
-//        fprintf(stderr, "%s: compute buffer size: %.2f MB\n", __func__, mem_size/1024.0/1024.0);
-//    }
-//
-//    int n_past = 0;
-//
-//    int64_t t_sample_us  = 0;
-//    int64_t t_predict_us = 0;
-//
-//    std::vector<float> logits;
-//
-//    // tokenize the prompt
-//    std::vector<gpt_vocab::id> embd_inp = ::gpt_tokenize(vocab, params.prompt);
-//
-//    params.n_predict = std::min(params.n_predict, model.hparams.n_ctx - (int) embd_inp.size());
-//
-//    printf("%s: prompt: '%s'\n", __func__, params.prompt.c_str());
-//    printf("%s: number of tokens in prompt = %zu, first 8 tokens: ", __func__, embd_inp.size());
-//    for (int i = 0; i < std::min(8, (int) embd_inp.size()); i++) {
-//        printf("%d ", embd_inp[i]);
-//    }
-//    printf("\n\n");
-//
-//    // submit the input prompt token-by-token
-//    // this reduces the memory usage during inference, at the cost of a bit of speed at the beginning
-//    std::vector<gpt_vocab::id> embd;
-//
-//    for (size_t i = embd.size(); i < embd_inp.size() + params.n_predict; i++) {
-//        // predict
-//        if (embd.size() > 0) {
-//            const int64_t t_start_us = ggml_time_us();
-//
-//            if (!gpt2_eval(model, allocr, params.n_threads, n_past, embd, logits)) {
-//                printf("Failed to predict\n");
-//                return 1;
-//            }
-//
-//            t_predict_us += ggml_time_us() - t_start_us;
-//        }
-//
-//        n_past += embd.size();
-//        embd.clear();
-//
-//        if (i >= embd_inp.size()) {
-//            // sample next token
-//            const int   top_k = params.top_k;
-//            const float top_p = params.top_p;
-//            const float temp  = params.temp;
-//
-//            const int n_vocab = model.hparams.n_vocab;
-//
-//            gpt_vocab::id id = 0;
-//
-//            {
-//                const int64_t t_start_sample_us = ggml_time_us();
-//
-//                id = gpt_sample_top_k_top_p(vocab, logits.data() + (logits.size() - n_vocab), top_k, top_p, temp, rng);
-//
-//                t_sample_us += ggml_time_us() - t_start_sample_us;
-//            }
-//
-//            // add it to the context
-//            embd.push_back(id);
-//        } else {
-//            // if here, it means we are still processing the input prompt
-//            for (size_t k = i; k < embd_inp.size(); k++) {
-//                embd.push_back(embd_inp[k]);
-//                if (int32_t(embd.size()) >= params.n_batch) {
-//                    break;
-//                }
-//            }
-//            i += embd.size() - 1;
-//        }
-//
-//        // display text
-//        for (auto id : embd) {
-//            printf("%s", vocab.id_to_token[id].c_str());
-//        }
-//        fflush(stdout);
-//
-//        // end of text token
-//        if (embd.back() == 50256) {
-//            break;
-//        }
-//    }
-//
-//    // report timing
-//    {
-//        const int64_t t_main_end_us = ggml_time_us();
-//
-//        printf("\n\n");
-//        printf("%s:     load time = %8.2f ms\n", __func__, t_load_us/1000.0f);
-//        printf("%s:   sample time = %8.2f ms\n", __func__, t_sample_us/1000.0f);
-//        printf("%s:  predict time = %8.2f ms / %.2f ms per token\n", __func__, t_predict_us/1000.0f, t_predict_us/1000.0f/n_past);
-//        printf("%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
-//    }
-//
-//    ggml_free(model.ctx);
-//
-//    ggml_backend_buffer_free(model.buffer_w);
-//    ggml_backend_buffer_free(model.buffer_kv);
-//    ggml_backend_buffer_free(buf_compute);
-//    ggml_backend_free(model.backend);
-//
-//    return 0;
-//}
