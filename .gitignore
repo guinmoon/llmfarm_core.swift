@@ -91,3 +91,4 @@ iOSInjectionProject/
 *.DS_Store
 .swiftpm
 Sources/llmfarm_core_cpp/patches/*
+patches/*
