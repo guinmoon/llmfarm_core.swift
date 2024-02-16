@@ -841,7 +841,6 @@ struct gpt2_context * gpt2_init_from_file(const char * path_model, struct gpt_co
     struct ggml_cgraph * gf = gpt2_graph(ctx->model,  n_past, n_tokens);
     size_t mem_size =  ggml_gallocr_get_buffer_size(ctx->allocr, 0);
     ggml_gallocr_reserve(ctx->allocr , gf);
-//    ctx->buf_compute = ggml_backend_alloc_buffer(ctx->model.backend, mem_size);
     fprintf(stderr, "%s: compute buffer size: %.2f MB\n", __func__, mem_size/1024.0/1024.0);
 
     return ctx;

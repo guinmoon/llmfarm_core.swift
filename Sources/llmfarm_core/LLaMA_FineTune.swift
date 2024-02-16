@@ -39,13 +39,13 @@ public class LLaMa_FineTune: FineTune {
                 let result = run_finetune(Int32(args.count), &cargs,
                                             { c_str in
                     let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
+                    LLaMa_FineTune_obj.retain_new_self_ptr()    
                     if c_str != nil{
                         let for_print = String(cString:c_str!)
                         LLaMa_FineTune_obj.tune_log.append(for_print)
                         LLaMa_FineTune_obj.progressCallback!(for_print)
                         print("\nProgress: \(for_print)")
                     }
-                    LLaMa_FineTune_obj.retain_new_self_ptr()
                     return LLaMa_FineTune_obj.cancel
                 })
             }

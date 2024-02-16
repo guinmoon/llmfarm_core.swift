@@ -5,29 +5,41 @@
 import Foundation
 import llmfarm_core_cpp
 
+var LLaMa_obj_ptr:UnsafeMutableRawPointer? = nil
+
 public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
     public var hardware_arch: String=""
     private var temporary_invalid_cchars: [CChar]  = []
+    public var progressCallback: ((Float)  -> (Bool))? = nil
     
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
+                                        model_load_progress_callback:((Float)  -> (Bool))?) throws -> Bool{
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
         context_params.n_ctx = UInt32(contextParams.context)
         context_params.seed = UInt32(contextParams.seed)
-//        context_params.f16_kv = contextParams.f16Kv
         context_params.n_threads = UInt32(contextParams.n_threads)
         context_params.logits_all = contextParams.logitsAll
 //        context_params.n_batch = contextParams.
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap
-        var progress_callback_user_data:Int32 = 0
-//        model_params.progress_callback_user_data = progress_callback_user_data
-//        context_params.rope_freq_base = 10000.0
-//        context_params.rope_freq_scale = 1
-        
+//        A C function pointer can only be formed from a reference to a 'func' or a literal closure
+        self.progressCallback = model_load_progress_callback
+        self.retain_new_self_ptr()
+        model_params.progress_callback = { progress,b in
+                let LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(LLaMa_obj_ptr!).takeRetainedValue()
+                LLaMa_obj.retain_new_self_ptr()
+                if (LLaMa_obj.progressCallback != nil){
+                    let res = LLaMa_obj.progressCallback!(progress)
+                    return res
+                }
+                
+                return true
+        }
+
         if contextParams.use_metal{
             model_params.n_gpu_layers = 100
         }else{
@@ -63,6 +75,10 @@ public class LLaMa: LLMBase {
 //        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
 
         return true
+    }
+    
+    private func retain_new_self_ptr(){
+        LLaMa_obj_ptr = Unmanaged.passRetained(self).toOpaque()
     }
     
     deinit {

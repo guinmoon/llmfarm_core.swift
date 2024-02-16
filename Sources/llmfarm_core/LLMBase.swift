@@ -54,7 +54,8 @@ public class LLMBase {
     
     
     
-    public  init(path: String, contextParams: ModelAndContextParams = .default) throws {                                
+    public  init(path: String, contextParams: ModelAndContextParams = .default, 
+                 model_load_progress_callback:((Float)  -> (Bool))?) throws {
         self.contextParams = contextParams
         //        var params = gptneox_context_default_params()
         var params = gpt_context_default_params()
@@ -76,7 +77,7 @@ public class LLMBase {
         var load_res:Bool? = false
         do{
             try ExceptionCather.catchException {
-                load_res = try? self.llm_load_model(path:path,contextParams:contextParams,params: params)
+                load_res = try? self.llm_load_model(path:path,contextParams:contextParams,params: params,model_load_progress_callback:model_load_progress_callback)
             }
         
             if load_res != true{
@@ -123,7 +124,8 @@ public class LLMBase {
         }
     }
     
-    public  func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params ) throws -> Bool{
+    public  func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
+                                model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool{
         return false
     }
     
