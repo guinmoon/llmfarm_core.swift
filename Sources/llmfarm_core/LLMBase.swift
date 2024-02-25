@@ -104,12 +104,12 @@ public class LLMBase {
         }
     }
     
-    func TestMethod(){
+    public func destroy_objects(){
         
-        }
+    }
     
     deinit {
-        
+        print("deinit LLMBase")
     }
     
     public func load_grammar(_ path:String) throws -> Void{

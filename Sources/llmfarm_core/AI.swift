@@ -38,6 +38,11 @@ public class AI {
         self.chatName = _chatName
     }
     
+    deinit {
+        self.model?.destroy_objects()
+        self.model = nil
+    }
+    
     public func loadModel(_ aiModel: ModelInference, contextParams: ModelAndContextParams = .default,
                 model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool {
         print("AI init")
@@ -109,9 +114,6 @@ public class AI {
                             self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
                         case .RWKV:
                             self.model = try RWKV(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                            DispatchQueue.main.async {
-                                model_load_progress_callback?(1.0)
-                            }
                         }
                     }catch{
                         print(error)
@@ -127,7 +129,10 @@ public class AI {
                     completion("[Error] \(error)")
                 }
             }
-            DispatchQueue.main.async {                
+            DispatchQueue.main.async {    
+                DispatchQueue.main.async {
+                    model_load_progress_callback?(1.0)
+                }
                 completion("[Done]")
             }
             

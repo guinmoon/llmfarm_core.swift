@@ -10,6 +10,7 @@ var LLaMa_obj_ptr:UnsafeMutableRawPointer? = nil
 public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
+    private var batch: llama_batch?
     public var hardware_arch: String=""
     private var temporary_invalid_cchars: [CChar]  = []
     public var progressCallback: ((Float)  -> (Bool))? = nil
@@ -81,11 +82,21 @@ public class LLaMa: LLMBase {
         LLaMa_obj_ptr = Unmanaged.passRetained(self).toOpaque()
     }
     
+    public override func destroy_objects(){
+        print("destroy LLaMa")
+        if batch != nil{
+            llama_batch_free(batch!)
+        }
+        llama_free(context)
+        llama_free_model(model)
+        llama_backend_free()
+    }
+    
     deinit {
 //        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
 //        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)
-        llama_free(context)
-        llama_free_model(model)
+        self.destroy_objects()
+        print("deinit LLaMa")
     }
     
     override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
