@@ -3,6 +3,7 @@
 //#include "./spm-headers/llama_dadbed9.h"
 //#include "./spm-headers/llama.h"
 #include "ggml/common.h"
+#include "ggml/common_old.h"
 #include "ggml/common-ggml.h"
 #include "./spm-headers/rwkv.h"
 #include "grammar-parser.h"

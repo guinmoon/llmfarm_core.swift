@@ -2,69 +2,45 @@
 
 #pragma once
 
+#include "llama.h"
+
+#include "sampling.h"
+
+#define LOG_NO_FILE_LINE_FUNCTION
+#include "log.h"
+
+#include <cmath>
 #include <string>
-#include <map>
 #include <vector>
 #include <random>
 #include <thread>
+#include <unordered_map>
+#include <tuple>
 
-#define COMMON_SAMPLE_RATE 16000
+#ifdef _WIN32
+#define DIRECTORY_SEPARATOR '\\'
+#else
+#define DIRECTORY_SEPARATOR '/'
+#endif // _WIN32
 
 #define die(msg)          do { fputs("error: " msg "\n", stderr);                exit(1); } while (0)
 #define die_fmt(fmt, ...) do { fprintf(stderr, "error: " fmt "\n", __VA_ARGS__); exit(1); } while (0)
 
-#define print_build_info() do {                                                             \
-    fprintf(stderr, "%s: build = %d (%s)\n", __func__, BUILD_NUMBER, BUILD_COMMIT);         \
-    fprintf(stderr, "%s: built with %s for %s\n", __func__, BUILD_COMPILER, BUILD_TARGET);  \
+#define print_build_info() do {                                                                     \
+    fprintf(stderr, "%s: build = %d (%s)\n", __func__, LLAMA_BUILD_NUMBER, LLAMA_COMMIT);           \
+    fprintf(stderr, "%s: built with %s for %s\n", __func__, LLAMA_COMPILER, LLAMA_BUILD_TARGET);    \
 } while(0)
 
-//
-// GPT CLI argument parsing
-//
-
-struct gpt_params {
-    int32_t seed       = -1;  // RNG seed
-    int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
-    int32_t n_predict  = 200; // new tokens to predict
-    int32_t n_parallel = 1;   // number of parallel streams
-    int32_t n_batch    = 8;   // batch size for prompt processing
-
-    // sampling parameters
-    int32_t top_k          = 40;
-    float   top_p          = 0.9f;
-    float   temp           = 0.9f;
-    int32_t repeat_last_n  = 64;
-    float   repeat_penalty = 1.00f;
-
-    std::string model      = "models/gpt-2-117M/ggml-model.bin"; // model path
-    std::string prompt     = "";
-    std::string token_test = "";
-
-    bool    interactive      = false;
-    int32_t interactive_port = -1;
-
-    int32_t n_gpu_layers     = 0;
-};
-
-
-
-
-bool gpt_params_parse(int argc, char ** argv, gpt_params & params);
-
-void gpt_print_usage(int argc, char ** argv, const gpt_params & params);
-
-std::string gpt_random_prompt(std::mt19937 & rng);
+// build info
+extern int LLAMA_BUILD_NUMBER;
+extern char const *LLAMA_COMMIT;
+extern char const *LLAMA_COMPILER;
+extern char const *LLAMA_BUILD_TARGET;
 
 //
-// Vocab utils
+// CLI argument parsing
 //
-
-std::string trim(const std::string & s);
-
-std::string replace(
-        const std::string & s,
-        const std::string & from,
-        const std::string & to);
+int32_t get_num_physical_cores();
 
 struct gpt_vocab {
     using id    = int32_t;
@@ -77,114 +53,219 @@ struct gpt_vocab {
     void add_special_token(const std::string & token);
 };
 
-// poor-man's JSON parsing
-std::map<std::string, int32_t> json_parse(const std::string & fname);
+struct gpt_params {
+    uint32_t seed                 = -1;    // RNG seed
 
-std::string convert_to_utf8(const std::wstring & input);
+    int32_t n_threads             = get_num_physical_cores();
+    int32_t n_threads_draft       = -1;
+    int32_t n_threads_batch       = -1;    // number of threads to use for batch processing (-1 = use n_threads)
+    int32_t n_threads_batch_draft = -1;
+    int32_t n_predict             = -1;    // new tokens to predict
+    int32_t n_ctx                 = 512;   // context size
+    int32_t n_batch               = 512;   // batch size for prompt processing (must be >=32 to use BLAS)
+    int32_t n_keep                = 0;     // number of tokens to keep from initial prompt
+    int32_t n_draft               = 8;     // number of tokens to draft during speculative decoding
+    int32_t n_chunks              = -1;    // max number of chunks to process (-1 = unlimited)
+    int32_t n_parallel            = 1;     // number of parallel sequences to decode
+    int32_t n_sequences           = 1;     // number of sequences to decode
+    float   p_accept              = 0.5f;  // speculative decoding accept probability
+    float   p_split               = 0.1f;  // speculative decoding split probability
+    int32_t n_gpu_layers          = -1;    // number of layers to store in VRAM (-1 - use default)
+    int32_t n_gpu_layers_draft    = -1;    // number of layers to store in VRAM for the draft model (-1 - use default)
+    llama_split_mode split_mode   = LLAMA_SPLIT_LAYER; // how to split the model across GPUs
+    int32_t main_gpu              = 0;     // the GPU that is used for scratch and small tensors
+    float   tensor_split[128]     = {0};   // how split tensors should be distributed across GPUs
+    int32_t n_beams               = 0;     // if non-zero then use beam search of given width.
+    int32_t grp_attn_n            = 1;     // group-attention factor
+    int32_t grp_attn_w            = 512;   // group-attention width
+    int32_t n_print               = -1;    // print token count every n tokens (-1 = disabled)
+    float   rope_freq_base        = 0.0f;  // RoPE base frequency
+    float   rope_freq_scale       = 0.0f;  // RoPE frequency scaling factor
+    float   yarn_ext_factor       = -1.0f; // YaRN extrapolation mix factor
+    float   yarn_attn_factor      = 1.0f;  // YaRN magnitude scaling factor
+    float   yarn_beta_fast        = 32.0f; // YaRN low correction dim
+    float   yarn_beta_slow        = 1.0f;  // YaRN high correction dim
+    int32_t yarn_orig_ctx         = 0;     // YaRN original context length
+    int32_t rope_scaling_type     = LLAMA_ROPE_SCALING_UNSPECIFIED;
 
-std::wstring convert_to_wstring(const std::string & input);
+    // // sampling parameters
+    struct llama_sampling_params sparams;
 
-void gpt_split_words(std::string str, std::vector<std::string>& words);
+    std::string model             = "models/7B/ggml-model-f16.gguf"; // model path
+    std::string model_draft       = "";                              // draft model for speculative decoding
+    std::string model_alias       = "unknown"; // model alias
+    std::string prompt            = "";
+    std::string prompt_file       = "";  // store the external prompt file name
+    std::string path_prompt_cache = "";  // path to file for saving/loading prompt eval state
+    std::string input_prefix      = "";  // string to prefix user inputs with
+    std::string input_suffix      = "";  // string to suffix user inputs with
+    std::vector<std::string> antiprompt; // string upon seeing which more user input is prompted
+    std::string logdir            = "";  // directory in which to save YAML log files
+    std::string logits_file       = "";  // file for saving *all* logits
 
-// split text into tokens
-//
-// ref: https://github.com/openai/gpt-2/blob/a74da5d99abaaba920de8131d64da2862a8f213b/src/encoder.py#L53
-//
-// Regex (Python):
-// r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-//
-// Regex (C++):
-// R"('s|'t|'re|'ve|'m|'ll|'d| ?[[:alpha:]]+| ?[[:digit:]]+| ?[^\s[:alpha:][:digit:]]+|\s+(?!\S)|\s+)"
-//
-std::vector<gpt_vocab::id> gpt_tokenize(const gpt_vocab & vocab, const std::string & text);
+    std::vector<llama_model_kv_override> kv_overrides;
 
-// test outputs of gpt_tokenize
-//
-//   - compare with tokens generated by the huggingface tokenizer
-//   - test cases are chosen based on the model's main language (under 'prompt' directory)
-//   - if all sentences are tokenized identically, print 'All tests passed.'
-//   - otherwise, print sentence, huggingface tokens, ggml tokens
-//
-void test_gpt_tokenizer(gpt_vocab & vocab, const std::string & fpath_test);
+    // TODO: avoid tuple, use struct
+    std::vector<std::tuple<std::string, float>> lora_adapter; // lora adapter path with user defined scale
+    std::string lora_base  = "";                              // base model path for the lora adapter
 
-// load the tokens from encoder.json
-bool gpt_vocab_init(const std::string & fname, gpt_vocab & vocab);
+    int  ppl_stride        = 0;     // stride for perplexity calculations. If left at 0, the pre-existing approach will be used.
+    int  ppl_output_type   = 0;     // = 0 -> ppl output is as usual, = 1 -> ppl output is num_tokens, ppl, one per line
+                                    //                                       (which is more convenient to use for plotting)
+                                    //
+    bool   hellaswag       = false; // compute HellaSwag score over random tasks from datafile supplied in prompt
+    size_t hellaswag_tasks = 400;   // number of tasks to use when computing the HellaSwag score
 
-// sample next token given probabilities for each embedding
-//
-//   - consider only the top K tokens
-//   - from them, consider only the top tokens with cumulative probability > P
-//
-// TODO: not sure if this implementation is correct
-// TODO: temperature is not implemented
-//
-gpt_vocab::id gpt_sample_top_k_top_p(
-        const gpt_vocab & vocab,
-        const float * logits,
-        int    top_k,
-        double top_p,
-        double temp,
-        std::mt19937 & rng);
+    bool   winogrande      = false; // compute Winogrande score over random tasks from datafile supplied in prompt
+    size_t winogrande_tasks= 0;     // number of tasks to use when computing the Winogrande score. If 0, all tasks will be computed
 
-gpt_vocab::id gpt_sample_top_k_top_p_repeat(
-        const gpt_vocab & vocab,
-        const float * logits,
-        const int32_t * last_n_tokens_data,
-        size_t last_n_tokens_data_size,
-        int    top_k,
-        double top_p,
-        double temp,
-        int repeat_last_n,
-        float repeat_penalty,
-        std::mt19937 & rng);
+    bool   multiple_choice = false; // compute TruthfulQA score over random tasks from datafile supplied in prompt
+    size_t multiple_choice_tasks = 0;     // number of tasks to use when computing the TruthfulQA score. If 0, all tasks will be computed
 
-//
-// Audio utils
-//
+    bool   kl_divergence   = false; // compute KL-divergence
 
-// Read WAV audio file and store the PCM data into pcmf32
-// The sample rate of the audio must be equal to COMMON_SAMPLE_RATE
-// If stereo flag is set and the audio has 2 channels, the pcmf32s will contain 2 channel PCM
-bool read_wav(
-        const std::string & fname,
-        std::vector<float> & pcmf32,
-        std::vector<std::vector<float>> & pcmf32s,
-        bool stereo);
+    bool mul_mat_q         = true;  // if true, use mul_mat_q kernels instead of cuBLAS
+    bool random_prompt     = false; // do not randomize prompt if none provided
+    bool use_color         = false; // use color to distinguish generations and inputs
+    bool interactive       = false; // interactive mode
+    bool chatml            = false; // chatml mode (used for models trained on chatml syntax)
+    bool prompt_cache_all  = false; // save user input and generations to prompt cache
+    bool prompt_cache_ro   = false; // open the prompt cache read-only and do not update it
 
-// Apply a high-pass frequency filter to PCM audio
-// Suppresses frequencies below cutoff Hz
-void high_pass_filter(
-        std::vector<float> & data,
-        float cutoff,
-        float sample_rate);
+    bool embedding         = false; // get only sentence embedding
+    bool escape            = false; // escape "\n", "\r", "\t", "\'", "\"", and "\\"
+    bool interactive_first = false; // wait for user input immediately
+    bool multiline_input   = false; // reverse the usage of `\`
+    bool simple_io         = false; // improves compatibility with subprocesses and limited consoles
+    bool cont_batching     = false; // insert new sequences for decoding on-the-fly
 
-// Basic voice activity detection (VAD) using audio energy adaptive threshold
-bool vad_simple(
-        std::vector<float> & pcmf32,
-        int   sample_rate,
-        int   last_ms,
-        float vad_thold,
-        float freq_thold,
-        bool  verbose);
+    bool input_prefix_bos  = false; // prefix BOS to user inputs, preceding input_prefix
+    bool ignore_eos        = false; // ignore generated EOS tokens
+    bool instruct          = false; // instruction mode (used for Alpaca models)
+    bool logits_all        = false; // return logits for all tokens in the batch
+    bool use_mmap          = true;  // use mmap for faster loads
+    bool use_mlock         = false; // use mlock to keep model in memory
+    bool numa              = false; // attempt optimizations that help on some NUMA systems
+    bool verbose_prompt    = false; // print prompt tokens before generation
+    bool display_prompt    = true;  // print prompt before generation
+    bool infill            = false; // use infill mode
+    bool dump_kv_cache     = false; // dump the KV cache contents for debugging purposes
+    bool no_kv_offload     = false; // disable KV offloading
 
-// compute similarity between two strings using Levenshtein distance
-float similarity(const std::string & s0, const std::string & s1);
+    std::string cache_type_k = "f16"; // KV cache data type for the K
+    std::string cache_type_v = "f16"; // KV cache data type for the V
 
-//
-// SAM argument parsing
-//
-
-struct sam_params {
-    int32_t seed      = -1; // RNG seed
-    int32_t n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
-
-    std::string model     = "models/sam-vit-b/ggml-model-f16.bin"; // model path
-    std::string fname_inp = "img.jpg";
-    std::string fname_out = "img.out";
+    // multimodal models (see examples/llava)
+    std::string mmproj = ""; // path to multimodal projector
+    std::string image  = ""; // path to an image file
 };
 
-bool sam_params_parse(int argc, char ** argv, sam_params & params);
+bool gpt_params_parse_ex(int argc, char ** argv, gpt_params & params);
 
-void sam_print_usage(int argc, char ** argv, const sam_params & params);
+bool gpt_params_parse(int argc, char ** argv, gpt_params & params);
+
+void gpt_print_usage(int argc, char ** argv, const gpt_params & params);
+
+std::string get_system_info(const gpt_params & params);
+
+std::string gpt_random_prompt(std::mt19937 & rng);
 
 void process_escapes(std::string& input);
+
+//
+// String utils
+//
+
+std::vector<llama_sampler_type> sampler_types_from_names(const std::vector<std::string> & names);
+std::vector<llama_sampler_type> sampler_types_from_chars(const std::string & names_string);
+std::vector<std::string> string_split(std::string input, char separator);
+std::string sampler_type_to_name_string(llama_sampler_type sampler_type);
+
+//
+// Model utils
+//
+
+// TODO: avoid tuplue, use struct
+std::tuple<struct llama_model *, struct llama_context *> llama_init_from_gpt_params(gpt_params & params);
+
+struct llama_model_params   llama_model_params_from_gpt_params  (const gpt_params & params);
+struct llama_context_params llama_context_params_from_gpt_params(const gpt_params & params);
+
+// Batch utils
+
+void llama_batch_clear(struct llama_batch & batch);
+
+void llama_batch_add(
+                 struct llama_batch & batch,
+                        llama_token   id,
+                          llama_pos   pos,
+    const std::vector<llama_seq_id> & seq_ids,
+                               bool   logits);
+
+//
+// Vocab utils
+//
+
+// tokenizes a string into a vector of tokens
+// should work similar to Python's `tokenizer.encode`
+std::vector<llama_token> llama_tokenize(
+  const struct llama_context * ctx,
+           const std::string & text,
+                        bool   add_bos,
+                        bool   special = false);
+
+std::vector<llama_token> llama_tokenize(
+    const struct llama_model * model,
+           const std::string & text,
+                        bool   add_bos,
+                        bool   special = false);
+
+// tokenizes a token into a piece
+// should work similar to Python's `tokenizer.id_to_piece`
+std::string llama_token_to_piece(
+        const struct llama_context * ctx,
+                       llama_token   token);
+
+// TODO: these should be moved in llama.h C-style API under single `llama_detokenize` function
+//       that takes into account the tokenizer type and decides how to handle the leading space
+//
+// detokenizes a vector of tokens into a string
+// should work similar to Python's `tokenizer.decode`
+// removes the leading space from the first non-BOS token
+std::string llama_detokenize_spm(
+                         llama_context * ctx,
+        const std::vector<llama_token> & tokens);
+
+// detokenizes a vector of tokens into a string
+// should work similar to Python's `tokenizer.decode`
+std::string llama_detokenize_bpe(
+                         llama_context * ctx,
+        const std::vector<llama_token> & tokens);
+
+// Uses the value from the model metadata if possible, otherwise
+// defaults to true when model type is SPM, otherwise false.
+bool llama_should_add_bos_token(const llama_model * model);
+
+//
+// YAML utils
+//
+
+bool create_directory_with_parents(const std::string & path);
+void dump_vector_float_yaml(FILE * stream, const char * prop_name, const std::vector<float> & data);
+void dump_vector_int_yaml(FILE * stream, const char * prop_name, const std::vector<int> & data);
+void dump_string_yaml_multiline(FILE * stream, const char * prop_name, const char * data);
+std::string get_sortable_timestamp();
+
+void dump_non_result_info_yaml(
+    FILE * stream, const gpt_params & params, const llama_context * lctx,
+    const std::string & timestamp, const std::vector<int> & prompt_tokens, const char * model_desc);
+
+//
+// KV cache utils
+//
+
+// Dump the KV cache view with the number of sequences per cell.
+void dump_kv_cache_view(const llama_kv_cache_view & view, int row_size = 80);
+
+// Dump the KV cache view showing individual sequences in each cell (long output).
+void dump_kv_cache_view_seqs(const llama_kv_cache_view & view, int row_size = 40);

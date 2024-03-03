@@ -1,10 +1,10 @@
-#include "ggml.h"
-#include "common.h"
+#include "../ggml/ggml.h"
+#include "../ggml/common.h"
 #include "clip.h"
 #include "llava.h"
 #include "llama.h"
 
-#include "base64.hpp"
+#include "../ggml/base64.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -235,7 +235,7 @@ static void llava_free(struct llava_context * ctx_llava) {
     llama_backend_free();
 }
 
-int main(int argc, char ** argv) {
+int run_llava(int argc, char ** argv, bool(*swift_callback)(const char*)) {
     ggml_time_init();
 
     gpt_params params;

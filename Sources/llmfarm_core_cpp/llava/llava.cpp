@@ -1,5 +1,5 @@
 #include "clip.h"
-#include "common.h"
+#include "../ggml/common.h"
 #include "llama.h"
 #include "llava.h"
 
@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include "base64.hpp"
+#include "../ggml/base64.hpp"
 
 static bool encode_image_with_clip(clip_ctx * ctx_clip, int n_threads, const clip_image_u8 * img, float * image_embd, int * n_img_pos) {
     clip_image_f32 * img_res = clip_image_f32_init();
