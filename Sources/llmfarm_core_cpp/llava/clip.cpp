@@ -3,20 +3,20 @@
 // I'll gradually clean and extend it
 
 #include "clip.h"
-#include "ggml.h"
-#include "ggml-alloc.h"
-#include "ggml-backend.h"
+#include "../ggml/ggml.h"
+#include "../ggml/ggml-alloc.h"
+#include "../ggml/ggml-backend.h"
 
 #ifdef GGML_USE_CUBLAS
 #include "ggml-cuda.h"
 #endif
 
 #ifdef GGML_USE_METAL
-#include "ggml-metal.h"
+#include "../ggml/ggml-metal.h"
 #endif
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "../ggml/stb_image.h"
 
 #include <cassert>
 #include <cmath>

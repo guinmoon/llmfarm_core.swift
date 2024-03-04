@@ -1,8 +1,10 @@
+#include "llava-cli.h"
 #include "../ggml/ggml.h"
 #include "../ggml/common.h"
 #include "clip.h"
 #include "llava.h"
 #include "llama.h"
+//#include "../ggml/sampling.h"
 
 #include "../ggml/base64.hpp"
 
@@ -31,6 +33,7 @@ static bool eval_id(struct llama_context * ctx_llama, int id, int * n_past) {
     tokens.push_back(id);
     return eval_tokens(ctx_llama, tokens, 1, n_past);
 }
+
 
 static bool eval_string(struct llama_context * ctx_llama, const char* str, int n_batch, int * n_past, bool add_bos){
     std::string              str2     = str;
