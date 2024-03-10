@@ -197,7 +197,7 @@ static struct llava_context * llava_init(gpt_params * params) {
         prompt = "describe the image in detail.";
     }
 
-    auto ctx_clip = clip_model_load(clip_path, /*verbosity=*/ 1);
+    auto ctx_clip = clip_model_load(clip_path, /*verbosity=*/ 1,params->n_gpu_layers);
 
     llama_backend_init(params->numa);
 
@@ -253,6 +253,8 @@ int run_llava(int argc, char ** argv, bool(*swift_callback)(const char*)) {
         return 1;
     }
 
+
+    
     auto ctx_llava = llava_init(&params);
     if (ctx_llava == NULL) {
         fprintf(stderr, "%s: error: failed to init llava\n", __func__);

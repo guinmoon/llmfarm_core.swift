@@ -36,7 +36,7 @@ struct clip_vision_hparams {
     float eps;
 };
 
-CLIP_API struct clip_ctx * clip_model_load(const char * fname, int verbosity);
+CLIP_API struct clip_ctx * clip_model_load(const char * fname, int verbosity, int ngl);
 
 CLIP_API void clip_free(struct clip_ctx * ctx);
 

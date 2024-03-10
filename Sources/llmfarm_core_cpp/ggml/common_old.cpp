@@ -118,24 +118,24 @@
 //    fprintf(stderr, "\n");
 //}
 
-std::string gpt_random_prompt(std::mt19937 & rng) {
-    const int r = rng() % 10;
-    switch (r) {
-        case 0: return "So";
-        case 1: return "Once upon a time";
-        case 2: return "When";
-        case 3: return "The";
-        case 4: return "After";
-        case 5: return "If";
-        case 6: return "import";
-        case 7: return "He";
-        case 8: return "She";
-        case 9: return "They";
-        default: return "To";
-    }
-
-    return "The";
-}
+//std::string gpt_random_prompt(std::mt19937 & rng) {
+//    const int r = rng() % 10;
+//    switch (r) {
+//        case 0: return "So";
+//        case 1: return "Once upon a time";
+//        case 2: return "When";
+//        case 3: return "The";
+//        case 4: return "After";
+//        case 5: return "If";
+//        case 6: return "import";
+//        case 7: return "He";
+//        case 8: return "She";
+//        case 9: return "They";
+//        default: return "To";
+//    }
+//
+//    return "The";
+//}
 
 std::string trim(const std::string & s) {
     std::regex e("^\\s+|\\s+$");
@@ -691,81 +691,81 @@ gpt_vocab::id gpt_sample_top_k_top_p_repeat(
 //
 //    return true;
 //}
-
-void high_pass_filter(std::vector<float> & data, float cutoff, float sample_rate) {
-    const float rc = 1.0f / (2.0f * M_PI * cutoff);
-    const float dt = 1.0f / sample_rate;
-    const float alpha = dt / (rc + dt);
-
-    float y = data[0];
-
-    for (size_t i = 1; i < data.size(); i++) {
-        y = alpha * (y + data[i] - data[i - 1]);
-        data[i] = y;
-    }
-}
-
-bool vad_simple(std::vector<float> & pcmf32, int sample_rate, int last_ms, float vad_thold, float freq_thold, bool verbose) {
-    const int n_samples      = pcmf32.size();
-    const int n_samples_last = (sample_rate * last_ms) / 1000;
-
-    if (n_samples_last >= n_samples) {
-        // not enough samples - assume no speech
-        return false;
-    }
-
-    if (freq_thold > 0.0f) {
-        high_pass_filter(pcmf32, freq_thold, sample_rate);
-    }
-
-    float energy_all  = 0.0f;
-    float energy_last = 0.0f;
-
-    for (int i = 0; i < n_samples; i++) {
-        energy_all += fabsf(pcmf32[i]);
-
-        if (i >= n_samples - n_samples_last) {
-            energy_last += fabsf(pcmf32[i]);
-        }
-    }
-
-    energy_all  /= n_samples;
-    energy_last /= n_samples_last;
-
-    if (verbose) {
-        fprintf(stderr, "%s: energy_all: %f, energy_last: %f, vad_thold: %f, freq_thold: %f\n", __func__, energy_all, energy_last, vad_thold, freq_thold);
-    }
-
-    if (energy_last > vad_thold*energy_all) {
-        return false;
-    }
-
-    return true;
-}
-
-float similarity(const std::string & s0, const std::string & s1) {
-    const size_t len0 = s0.size() + 1;
-    const size_t len1 = s1.size() + 1;
-
-    std::vector<int> col(len1, 0);
-    std::vector<int> prevCol(len1, 0);
-
-    for (size_t i = 0; i < len1; i++) {
-        prevCol[i] = i;
-    }
-
-    for (size_t i = 0; i < len0; i++) {
-        col[0] = i;
-        for (size_t j = 1; j < len1; j++) {
-            col[j] = std::min(std::min(1 + col[j - 1], 1 + prevCol[j]), prevCol[j - 1] + (i > 0 && s0[i - 1] == s1[j - 1] ? 0 : 1));
-        }
-        col.swap(prevCol);
-    }
-
-    const float dist = prevCol[len1 - 1];
-
-    return 1.0f - (dist / std::max(s0.size(), s1.size()));
-}
+//
+//void high_pass_filter(std::vector<float> & data, float cutoff, float sample_rate) {
+//    const float rc = 1.0f / (2.0f * M_PI * cutoff);
+//    const float dt = 1.0f / sample_rate;
+//    const float alpha = dt / (rc + dt);
+//
+//    float y = data[0];
+//
+//    for (size_t i = 1; i < data.size(); i++) {
+//        y = alpha * (y + data[i] - data[i - 1]);
+//        data[i] = y;
+//    }
+//}
+//
+//bool vad_simple(std::vector<float> & pcmf32, int sample_rate, int last_ms, float vad_thold, float freq_thold, bool verbose) {
+//    const int n_samples      = pcmf32.size();
+//    const int n_samples_last = (sample_rate * last_ms) / 1000;
+//
+//    if (n_samples_last >= n_samples) {
+//        // not enough samples - assume no speech
+//        return false;
+//    }
+//
+//    if (freq_thold > 0.0f) {
+//        high_pass_filter(pcmf32, freq_thold, sample_rate);
+//    }
+//
+//    float energy_all  = 0.0f;
+//    float energy_last = 0.0f;
+//
+//    for (int i = 0; i < n_samples; i++) {
+//        energy_all += fabsf(pcmf32[i]);
+//
+//        if (i >= n_samples - n_samples_last) {
+//            energy_last += fabsf(pcmf32[i]);
+//        }
+//    }
+//
+//    energy_all  /= n_samples;
+//    energy_last /= n_samples_last;
+//
+//    if (verbose) {
+//        fprintf(stderr, "%s: energy_all: %f, energy_last: %f, vad_thold: %f, freq_thold: %f\n", __func__, energy_all, energy_last, vad_thold, freq_thold);
+//    }
+//
+//    if (energy_last > vad_thold*energy_all) {
+//        return false;
+//    }
+//
+//    return true;
+//}
+//
+//float similarity(const std::string & s0, const std::string & s1) {
+//    const size_t len0 = s0.size() + 1;
+//    const size_t len1 = s1.size() + 1;
+//
+//    std::vector<int> col(len1, 0);
+//    std::vector<int> prevCol(len1, 0);
+//
+//    for (size_t i = 0; i < len1; i++) {
+//        prevCol[i] = i;
+//    }
+//
+//    for (size_t i = 0; i < len0; i++) {
+//        col[0] = i;
+//        for (size_t j = 1; j < len1; j++) {
+//            col[j] = std::min(std::min(1 + col[j - 1], 1 + prevCol[j]), prevCol[j - 1] + (i > 0 && s0[i - 1] == s1[j - 1] ? 0 : 1));
+//        }
+//        col.swap(prevCol);
+//    }
+//
+//    const float dist = prevCol[len1 - 1];
+//
+//    return 1.0f - (dist / std::max(s0.size(), s1.size()));
+//}
 
 //bool sam_params_parse(int argc, char ** argv, sam_params & params) {
 //    for (int i = 1; i < argc; i++) {
@@ -811,26 +811,26 @@ float similarity(const std::string & s0, const std::string & s1) {
 //}
 
 
-void process_escapes(std::string& input) {
-    std::size_t input_len = input.length();
-    std::size_t output_idx = 0;
-
-    for (std::size_t input_idx = 0; input_idx < input_len; ++input_idx) {
-        if (input[input_idx] == '\\' && input_idx + 1 < input_len) {
-            switch (input[++input_idx]) {
-                case 'n':  input[output_idx++] = '\n'; break;
-                case 'r':  input[output_idx++] = '\r'; break;
-                case 't':  input[output_idx++] = '\t'; break;
-                case '\'': input[output_idx++] = '\''; break;
-                case '\"': input[output_idx++] = '\"'; break;
-                case '\\': input[output_idx++] = '\\'; break;
-                default:   input[output_idx++] = '\\';
-                           input[output_idx++] = input[input_idx]; break;
-            }
-        } else {
-            input[output_idx++] = input[input_idx];
-        }
-    }
-
-    input.resize(output_idx);
-}
+//void process_escapes(std::string& input) {
+//    std::size_t input_len = input.length();
+//    std::size_t output_idx = 0;
+//
+//    for (std::size_t input_idx = 0; input_idx < input_len; ++input_idx) {
+//        if (input[input_idx] == '\\' && input_idx + 1 < input_len) {
+//            switch (input[++input_idx]) {
+//                case 'n':  input[output_idx++] = '\n'; break;
+//                case 'r':  input[output_idx++] = '\r'; break;
+//                case 't':  input[output_idx++] = '\t'; break;
+//                case '\'': input[output_idx++] = '\''; break;
+//                case '\"': input[output_idx++] = '\"'; break;
+//                case '\\': input[output_idx++] = '\\'; break;
+//                default:   input[output_idx++] = '\\';
+//                           input[output_idx++] = input[input_idx]; break;
+//            }
+//        } else {
+//            input[output_idx++] = input[input_idx];
+//        }
+//    }
+//
+//    input.resize(output_idx);
+//}
