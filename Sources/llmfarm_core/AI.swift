@@ -8,6 +8,7 @@ import llmfarm_core_cpp
 public enum ModelInference {
     case LLama_bin
     case LLama_gguf
+    case LLama_mm
     case GPTNeox
     case GPTNeox_gguf
     case GPT2
@@ -55,6 +56,11 @@ public class AI {
                     let res = model_load_progress_callback!(progress)
                     return res
                 })
+            case .LLama_mm:
+                self.model = try LLaMaMModal(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
+                    let res = model_load_progress_callback!(progress)
+                    return res
+                })
             case .GPTNeox:
                 self.model = try GPTNeoX(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
             case .GPTNeox_gguf:
@@ -96,6 +102,11 @@ public class AI {
                         case .LLama_bin:
                             self.model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
                         case .LLama_gguf:
+                            self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
+                                let res = model_load_progress_callback!(progress)
+                                return res
+                            })
+                        case .LLama_mm:
                             self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
                                 let res = model_load_progress_callback!(progress)
                                 return res

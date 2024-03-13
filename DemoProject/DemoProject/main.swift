@@ -29,7 +29,7 @@ var params:ModelAndContextParams = .default
 params.promptFormat = .Custom
 params.custom_prompt_format = """
 SYSTEM: You are a helpful, respectful and honest assistant.
-USER: State the meaning of life
+USER: {prompt}
 ASSISTANT:
 """
 var input_text = "State the meaning of life"

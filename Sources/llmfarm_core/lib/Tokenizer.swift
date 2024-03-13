@@ -7,6 +7,12 @@
 
 import Foundation
 
+struct TokenizerConfig {
+    let vocab: URL
+    let merges: URL
+}
+
+
 struct BytePair: Hashable {
     let a: String
     let b: String

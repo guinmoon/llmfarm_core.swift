@@ -221,7 +221,7 @@ public class LLMBase {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 let mirostat_m = 100
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa"{
+                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMaMModal"{
                     res_token =  llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
                 }else{
                     res_token =  llama_sample_token_mirostat_for_dadbed9(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
@@ -229,7 +229,7 @@ public class LLMBase {
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa"{
+                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMaMModal"{
                     res_token =  llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
                 }
                 else{
@@ -242,7 +242,7 @@ public class LLMBase {
                 llama_dadbed9_sample_typical(ctx, &candidates_p, typical_p, 1)
                 llama_dadbed9_sample_top_p(ctx, &candidates_p, top_p, 1)
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa"{
+                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMaMModal"{
                     res_token = llama_dadbed9_sample_token(ctx, &candidates_p)
                 }else{
                     res_token = llama_sample_token_for_dadbed9(ctx, &candidates_p)
@@ -260,6 +260,10 @@ public class LLMBase {
     
     public func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         return false
+    }
+
+    public func llm_eval_clip() throws -> Bool{
+        return true
     }
     
     func llm_init_logits() throws -> Bool {
@@ -304,6 +308,7 @@ public class LLMBase {
     
     public func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
         let params = sampleParams
+        try? llm_eval_clip()
         let contextLength = Int32(contextParams.context)
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
@@ -494,28 +499,6 @@ public class LLMBase {
             formated_input = formated_input.replacingOccurrences(of: "{prompt}", with: input)
             formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
             return llm_tokenize(formated_input)
-        // case .ChatBase:
-        //     return llm_tokenize("<human>: " + input + "\n<bot>:")
-        // case .OpenAssistant:
-        //     let inputTokens = llm_tokenize("<|prompter|>" + input + "<|endoftext|>" + "<|assistant|>")
-        //     return inputTokens
-        // case .RedPajama_chat:
-        //     return llm_tokenize("<human>:\n" + input + "\n<bot>:")
-        // case .Dolly_b3:
-        //     let  INSTRUCTION_KEY = "### Instruction:";
-        //     let  RESPONSE_KEY    = "### Response:";
-        //     let  INTRO_BLURB     = "Below is an instruction that describes a task. Write a response that appropriately completes the request.";
-        //     let inputTokens = llm_tokenize(INTRO_BLURB + INSTRUCTION_KEY + input + RESPONSE_KEY)
-        //     return inputTokens
-        // case .StableLM_Tuned:
-        //     let inputTokens = llm_tokenize("<|USER|>" + input + "<|ASSISTANT|>")
-        //     return inputTokens
-        // case .LLaMa:
-        //     let input = " " + input
-        //     return llm_tokenize(input, bos: true)
-        // case .LLaMa_QA:
-        //     let input = "Question: " + input + "\n\nAnswer: "
-        //     return llm_tokenize(input, bos: true)
          }
     }
 }

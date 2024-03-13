@@ -10,9 +10,9 @@ var LLaMa_obj_ptr:UnsafeMutableRawPointer? = nil
 public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
-    private var batch: llama_batch?
+    public var batch: llama_batch?
     public var hardware_arch: String=""
-    private var temporary_invalid_cchars: [CChar]  = []
+    public var temporary_invalid_cchars: [CChar]  = []
     public var progressCallback: ((Float)  -> (Bool))? = nil
     
     public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
@@ -55,6 +55,8 @@ public class LLaMa: LLMBase {
             model_params.use_mmap = false
         }
                         
+        llama_backend_init(false)
+        
         self.model = llama_load_model_from_file(path, model_params)
         if self.model == nil{
             return false
