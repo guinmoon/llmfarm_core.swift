@@ -154,6 +154,9 @@ public class LLMBase {
         return gpt_base_n_ctx(ctx)
     }
     
+    public func make_image_embed(_ image_path:String) -> Bool{
+        return true
+    }
     
     // Simple topK, topP, temp sampling, with repeat penalty
     func llm_sample(ctx: OpaquePointer!,
@@ -221,7 +224,7 @@ public class LLMBase {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 let mirostat_m = 100
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMaMModal"{
+                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMa_MModal"{
                     res_token =  llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
                 }else{
                     res_token =  llama_sample_token_mirostat_for_dadbed9(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
@@ -229,7 +232,7 @@ public class LLMBase {
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMaMModal"{
+                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMa_MModal"{
                     res_token =  llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
                 }
                 else{
@@ -242,7 +245,7 @@ public class LLMBase {
                 llama_dadbed9_sample_typical(ctx, &candidates_p, typical_p, 1)
                 llama_dadbed9_sample_top_p(ctx, &candidates_p, top_p, 1)
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMaMModal"{
+                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMa_MModal"{
                     res_token = llama_dadbed9_sample_token(ctx, &candidates_p)
                 }else{
                     res_token = llama_sample_token_for_dadbed9(ctx, &candidates_p)

@@ -5,7 +5,9 @@
 import Foundation
 import llmfarm_core_cpp
 
-var LLaMa_obj_ptr:UnsafeMutableRawPointer? = nil
+// var LLaMa_obj_ptr:UnsafeMutableRawPointer? = nil
+var LLaMa_obj:LLaMa? = nil
+//var LLaMa_ptr:UnsafeMutablePointer? = nil
 
 public class LLaMa: LLMBase {
     
@@ -23,24 +25,25 @@ public class LLaMa: LLMBase {
         context_params.seed = UInt32(contextParams.seed)
         context_params.n_threads = UInt32(contextParams.n_threads)
         context_params.logits_all = contextParams.logitsAll
-//        context_params.n_batch = contextParams.
+        //        context_params.n_batch = contextParams.
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap
-//        A C function pointer can only be formed from a reference to a 'func' or a literal closure
+        //        A C function pointer can only be formed from a reference to a 'func' or a literal closure
         self.progressCallback = model_load_progress_callback
         self.retain_new_self_ptr()
         model_params.progress_callback = { progress,b in
-                let LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(LLaMa_obj_ptr!).takeRetainedValue()
-                LLaMa_obj.retain_new_self_ptr()
-                if (LLaMa_obj.progressCallback != nil){
-                    let res = LLaMa_obj.progressCallback!(progress)
-                    return res
-                }
-                
-                return true
+            //                let LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(LLaMa_obj_ptr!).takeRetainedValue()
+            //                let LLaMa_ptr = Unmanaged<LLaMa>.fromOpaque(LLaMa_obj!).takeRetainedValue()
+//            LLaMa_obj?.retain_new_self_ptr()
+            if (LLaMa_obj?.progressCallback != nil){
+                let res = LLaMa_obj?.progressCallback!(progress)
+                return res ?? false
+            }
+            
+            return true
         }
-
+        
         if contextParams.use_metal{
             model_params.n_gpu_layers = 100
         }else{
@@ -54,7 +57,7 @@ public class LLaMa: LLMBase {
         if contextParams.lora_adapters.count>0{
             model_params.use_mmap = false
         }
-                        
+        
         llama_backend_init(false)
         
         self.model = llama_load_model_from_file(path, model_params)
@@ -62,7 +65,7 @@ public class LLaMa: LLMBase {
             return false
         }
         
-        for lora in contextParams.lora_adapters{            
+        for lora in contextParams.lora_adapters{
             llama_model_apply_lora_from_file(model,lora.0,lora.1,nil,6);
         }
         
@@ -70,18 +73,21 @@ public class LLaMa: LLMBase {
         if self.context == nil {
             return false
         }
-//        var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 100000)
-//        var tokens_count:Int = 0
-//        llama_load_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",tokens_tmp.mutPtr, 100000,&tokens_count)
-//        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
-//        try? llm_eval(inputBatch:self.session_tokens)
-//        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-
+        //        var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 100000)
+        //        var tokens_count:Int = 0
+        //        llama_load_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",tokens_tmp.mutPtr, 100000,&tokens_count)
+        //        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
+        //        try? llm_eval(inputBatch:self.session_tokens)
+        //        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
+        
         return true
     }
     
     private func retain_new_self_ptr(){
-        LLaMa_obj_ptr = Unmanaged.passRetained(self).toOpaque()
+        LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(Unmanaged.passRetained(self).toOpaque()).takeRetainedValue()
+        //        LLaMa_obj_ptr = Unmanaged.passRetained(self).toOpaque()
+        //        LLaMa_obj_ptr = UnsafeMutablePointer(OpaquePointer(bitPattern: Unmanaged.passUnretained(self)))
+        // LLaMa_ptr = Unmanaged<LLaMa_MModal>.fromOpaque(LLaMaMM_obj_ptr!).takeRetainedValue()
     }
     
     public override func destroy_objects(){
@@ -89,15 +95,19 @@ public class LLaMa: LLMBase {
         if batch != nil{
             llama_batch_free(batch!)
         }
-        llama_free(context)
-        llama_free_model(model)
-        llama_backend_free()
+        if context != nil{
+            llama_free(context)
+        }
+        if model != nil{
+            llama_free_model(model)
+        }
+//        llama_backend_free()
     }
     
     deinit {
-//        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-//        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)
-        self.destroy_objects()
+        //        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
+        //        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)
+//        self.destroy_objects()
         print("deinit LLaMa")
     }
     
@@ -112,7 +122,7 @@ public class LLaMa: LLMBase {
     override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
         return llama_get_logits(self.context);
     }
-
+    
     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         var mutable_inputBatch = inputBatch
         if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
@@ -146,9 +156,9 @@ public class LLaMa: LLMBase {
     }
     
     public override func llm_token_to_str(outputToken:Int32) -> String? {
-//        if let cStr = llama_token_to_str(context, outputToken){
-//            return String(cString: cStr)
-//        }
+        //        if let cStr = llama_token_to_str(context, outputToken){
+        //            return String(cString: cStr)
+        //        }
         //        return nil
         let new_token_cchars = token_to_piece(token: outputToken)
         temporary_invalid_cchars.append(contentsOf: new_token_cchars)
@@ -170,7 +180,7 @@ public class LLaMa: LLMBase {
     public override func llm_token_nl() -> ModelToken{
         return llama_token_nl(self.model)
     }
-
+    
     public override func llm_token_bos() -> ModelToken{
         return llama_token_bos(self.model)
     }
@@ -179,21 +189,21 @@ public class LLaMa: LLMBase {
         return llama_token_eos(self.model)
     }
     
-
+    
     
     
     public override func llm_tokenize(_ input: String) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
-
-//        llama_tokenize(
-//                struct llama_context * ctx,
-//                          const char * text,
-//                                 int   text_len,
-//                         llama_token * tokens,
-//                                 int   n_max_tokens,
-//                                bool   add_bos)
+        
+        //        llama_tokenize(
+        //                struct llama_context * ctx,
+        //                          const char * text,
+        //                                 int   text_len,
+        //                         llama_token * tokens,
+        //                                 int   n_max_tokens,
+        //                                bool   add_bos)
         let n_tokens = Int32(input.utf8.count) + (self.contextParams.add_bos_token == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
         let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, self.contextParams.add_bos_token, self.contextParams.parse_special_tokens)

@@ -44,49 +44,49 @@ public class AI {
         self.model = nil
     }
     
-    public func loadModel(_ aiModel: ModelInference, contextParams: ModelAndContextParams = .default,
-                model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool {
-        print("AI init")
-        do{
-            switch aiModel {
-            case .LLama_bin:
-                self.model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .LLama_gguf:
-                self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
-                    let res = model_load_progress_callback!(progress)
-                    return res
-                })
-            case .LLama_mm:
-                self.model = try LLaMaMModal(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
-                    let res = model_load_progress_callback!(progress)
-                    return res
-                })
-            case .GPTNeox:
-                self.model = try GPTNeoX(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .GPTNeox_gguf:
-                self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .GPT2:
-                self.model = try GPT2(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .Replit:
-                self.model = try Replit(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .Starcoder:
-                self.model = try Starcoder(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .Starcoder_gguf:
-                self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            case .RWKV:
-                self.model = try RWKV(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-            }
-            return true
-        }
-        catch {
-            throw error
-        }
-    }
+     public func loadModel_sync(_ aiModel: ModelInference, contextParams: ModelAndContextParams = .default,
+                 model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool {
+         print("AI init")
+         do{
+             switch aiModel {
+             case .LLama_bin:
+                 self.model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .LLama_gguf:
+                 self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
+                     let res = model_load_progress_callback!(progress)
+                     return res
+                 })
+             case .LLama_mm:
+                 self.model = try LLaMa_MModal(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
+                     let res = model_load_progress_callback!(progress)
+                     return res
+                 })
+             case .GPTNeox:
+                 self.model = try GPTNeoX(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .GPTNeox_gguf:
+                 self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .GPT2:
+                 self.model = try GPT2(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .Replit:
+                 self.model = try Replit(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .Starcoder:
+                 self.model = try Starcoder(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .Starcoder_gguf:
+                 self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             case .RWKV:
+                 self.model = try RWKV(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
+             }
+             return true
+         }
+         catch {
+             throw error
+         }
+     }
     
-    public func loadModel_new(  _ aiModel: ModelInference, 
-                                _ model_load_progress_callback: ((Float)  -> (Bool))?,
-                                _ completion: ((String) -> ())?,
-                                contextParams: ModelAndContextParams = .default) {        
+    public func loadModel(  _ aiModel: ModelInference,
+                            _ model_load_progress_callback: ((Float)  -> (Bool))? = {f in return true},
+                            _ completion: ((String) -> ())? = {s in },
+                            contextParams: ModelAndContextParams = .default) {
         aiQueue.async {
             guard let completion = completion else { return }
             
@@ -107,7 +107,7 @@ public class AI {
                                 return res
                             })
                         case .LLama_mm:
-                            self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
+                            self.model = try LLaMa_MModal(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
                                 let res = model_load_progress_callback!(progress)
                                 return res
                             })
@@ -203,14 +203,17 @@ private typealias _ModelProgressCallback = (_ progress: Float, _ userData: Unsaf
 
 public typealias ModelProgressCallback = (_ progress: Float, _ model: LLMBase) -> Void
 
-func get_path_by_lora_name(_ model_name:String, dest:String = "lora_adapters") -> String? {
+func get_path_by_short_name(_ model_name:String?, dest:String = "lora_adapters") -> String? {
     //#if os(iOS) || os(watchOS) || os(tvOS)
+    if model_name == nil{
+        return nil
+    }
     do {
         let fileManager = FileManager.default
         let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
         let destinationURL = documentsPath!.appendingPathComponent(dest)
         try fileManager.createDirectory (at: destinationURL, withIntermediateDirectories: true, attributes: nil)
-        let path = destinationURL.appendingPathComponent(model_name).path
+        let path = destinationURL.appendingPathComponent(model_name!).path
         if fileManager.fileExists(atPath: path){
             return path
         }else{
@@ -318,7 +321,7 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
                     scale = adapter["scale"]! as? Float
                 }
                 if adapter_file != nil && scale != nil{
-                    let adapter_path = get_path_by_lora_name(adapter_file!)
+                    let adapter_path = get_path_by_short_name(adapter_file!)
                     if adapter_path != nil{
                         tmp_param.lora_adapters.append((adapter_path!,scale!))
                     }
@@ -326,7 +329,9 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
             }
         }            
     }
-    
+    if model_config["clip_model"] != nil {
+        tmp_param.clip_model = get_path_by_short_name(model_config["clip_model"]! as? String,dest:"models")
+    }
     if (model_config["reverse_prompt"] != nil){
         let splited_revrse_prompt = String(model_config["reverse_prompt"]! as! String).components(separatedBy: [";"])
         for word in splited_revrse_prompt{
@@ -395,7 +400,9 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
             tmp_param.model_inference = ModelInference.Starcoder
         }
     }
-
+    
+    
+    
     return tmp_param
 }
 
@@ -430,6 +437,8 @@ public struct ModelAndContextParams {
 
     public var reverse_prompt: [String] = []
     
+    public var clip_model:String? = nil
+
     public static let `default` = ModelAndContextParams()
     
     public init(    context: Int32 = 2048 /*512*/,

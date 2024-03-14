@@ -101,13 +101,13 @@ var params:ModelAndContextParams = .default
 params.promptFormat = .Custom
 params.custom_prompt_format = """
 SYSTEM: You are a helpful, respectful and honest assistant.
-USER: State the meaning of life
+USER: {prompt}
 ASSISTANT:
 """
 var input_text = "State the meaning of life"
 params.use_metal = true
 
-_ = try? ai.loadModel(ModelInference.LLama_gguf,contextParams: params)
+_ = try? ai.loadModel_sync(ModelInference.LLama_gguf,contextParams: params)
 
 let output = try? ai.model.predict(input_text, mainCallback)
 
