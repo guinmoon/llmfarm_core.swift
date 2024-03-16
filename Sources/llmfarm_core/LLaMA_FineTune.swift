@@ -8,7 +8,8 @@ import Foundation
 import llmfarm_core_cpp
 
 var aaa = 1
-var LLaMa_FineTune_obj_ptr:UnsafeMutableRawPointer? = nil
+// var LLaMa_FineTune_obj_ptr:UnsafeMutableRawPointer? = nil
+var LLaMa_FineTune_obj:LLaMa_FineTune? = nil
 
 public class LLaMa_FineTune: FineTune {
     
@@ -38,15 +39,15 @@ public class LLaMa_FineTune: FineTune {
             try ExceptionCather.catchException {
                 let result = run_finetune(Int32(args.count), &cargs,
                                             { c_str in
-                    let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
-                    LLaMa_FineTune_obj.retain_new_self_ptr()    
+                    // let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
+                    // LLaMa_FineTune_obj.retain_new_self_ptr()    
                     if c_str != nil{
                         let for_print = String(cString:c_str!)
-                        LLaMa_FineTune_obj.tune_log.append(for_print)
-                        LLaMa_FineTune_obj.progressCallback!(for_print)
+                        LLaMa_FineTune_obj?.tune_log.append(for_print)
+                        LLaMa_FineTune_obj?.progressCallback!(for_print)
                         print("\nProgress: \(for_print)")
                     }
-                    return LLaMa_FineTune_obj.cancel
+                    return LLaMa_FineTune_obj?.cancel ?? false
                 })
             }
             for ptr in cargs { free(ptr) }
@@ -70,13 +71,13 @@ public class LLaMa_FineTune: FineTune {
             try ExceptionCather.catchException {
                 let result = export_lora_main(Int32(args.count), &cargs,
                                             { progress in
-                    let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
+                    // let LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(LLaMa_FineTune_obj_ptr!).takeRetainedValue()
                     let for_print = String(progress)
-                    LLaMa_FineTune_obj.tune_log.append(for_print)
-                    LLaMa_FineTune_obj.progressCallbackExport!(progress)
+                    LLaMa_FineTune_obj?.tune_log.append(for_print)
+                    LLaMa_FineTune_obj?.progressCallbackExport!(progress)
                     print("\nProgress: \(progress)")
-                    LLaMa_FineTune_obj.retain_new_self_ptr()
-                    return LLaMa_FineTune_obj.cancel
+                    // LLaMa_FineTune_obj.retain_new_self_ptr()
+                    return LLaMa_FineTune_obj?.cancel ?? false
                 })
             }
             for ptr in cargs { free(ptr) }
@@ -89,7 +90,8 @@ public class LLaMa_FineTune: FineTune {
     }
     
     private func retain_new_self_ptr(){
-        LLaMa_FineTune_obj_ptr = Unmanaged.passRetained(self).toOpaque()
+        // LLaMa_FineTune_obj_ptr = Unmanaged.passRetained(self).toOpaque()
+        LLaMa_FineTune_obj = Unmanaged<LLaMa_FineTune>.fromOpaque(Unmanaged.passRetained(self).toOpaque()).takeRetainedValue()
     }
     
 }

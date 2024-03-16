@@ -309,9 +309,19 @@ public class LLMBase {
     
     
     
-    public func predict(_ input: String, _ callback: ((String, Double) -> Bool) ) throws -> String {
+    public func predict(_ input: String, _ callback: ((String, Double) -> Bool),img_path: String? = nil ) throws -> String {
         let params = sampleParams
-        try? llm_eval_clip()
+        if img_path != nil{
+            do {
+                try ExceptionCather.catchException {
+                    _ = self.make_image_embed(img_path!)
+                    _ = try? self.llm_eval_clip()
+                }
+             }catch{
+                print(error)
+                throw error
+             }     
+        }
         let contextLength = Int32(contextParams.context)
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format

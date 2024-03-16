@@ -40,7 +40,7 @@ public class AI {
     }
     
     deinit {
-        self.model?.destroy_objects()
+        // self.model?.destroy_objects()
         self.model = nil
     }
     
@@ -140,10 +140,8 @@ public class AI {
                     completion("[Error] \(error)")
                 }
             }
-            DispatchQueue.main.async {    
-                DispatchQueue.main.async {
-                    model_load_progress_callback?(1.0)
-                }
+            DispatchQueue.main.async {
+                _ = model_load_progress_callback?(1.0)
                 completion("[Done]")
             }
             
@@ -151,7 +149,7 @@ public class AI {
 
     }
 
-    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?) {
+    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?, img_path: String? = nil) {
         flagResponding = true
         aiQueue.async {
             guard let completion = completion else { return }
@@ -180,7 +178,7 @@ public class AI {
                             tokenCallback?(str, time)
                         }
                         return false
-                    })
+                    },img_path:img_path)
                 }
             }catch{
                 print(error)
@@ -401,7 +399,9 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
         }
     }
     
-    
+    if tmp_param.clip_model != nil{
+        tmp_param.model_inference = ModelInference.LLama_mm
+    }
     
     return tmp_param
 }

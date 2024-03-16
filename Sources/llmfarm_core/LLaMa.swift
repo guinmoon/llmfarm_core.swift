@@ -79,7 +79,13 @@ public class LLaMa: LLMBase {
         //        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
         //        try? llm_eval(inputBatch:self.session_tokens)
         //        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-        
+        if !load_clip_model(){
+            return false
+        }
+        return true
+    }
+    
+    public func load_clip_model() -> Bool{
         return true
     }
     
@@ -101,14 +107,20 @@ public class LLaMa: LLMBase {
         if model != nil{
             llama_free_model(model)
         }
+        self.destroy_clip()
 //        llama_backend_free()
+    }
+    
+    public func destroy_clip(){
+        
     }
     
     deinit {
         //        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-        //        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)
-//        self.destroy_objects()
+        //        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)       
         print("deinit LLaMa")
+        self.destroy_objects()
+        print("LLaMa deinited")
     }
     
     override func llm_get_n_ctx(ctx: OpaquePointer!) -> Int32{
