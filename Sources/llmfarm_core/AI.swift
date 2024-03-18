@@ -149,7 +149,7 @@ public class AI {
 
     }
 
-    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?, img_path: String? = nil) {
+    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?,system_prompt:String?, img_path: String? = nil) {
         flagResponding = true
         aiQueue.async {
             guard let completion = completion else { return }
@@ -178,7 +178,7 @@ public class AI {
                             tokenCallback?(str, time)
                         }
                         return false
-                    },img_path:img_path)
+                    },system_prompt:system_prompt,img_path:img_path)
                 }
             }catch{
                 print(error)

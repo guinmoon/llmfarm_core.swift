@@ -309,8 +309,19 @@ public class LLMBase {
     
     
     
-    public func predict(_ input: String, _ callback: ((String, Double) -> Bool),img_path: String? = nil ) throws -> String {
+    public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
         let params = sampleParams
+        if system_prompt != nil{
+            var system_pormpt_Tokens = tokenizePrompt(system_prompt ?? "", .None)            
+            var eval_res:Bool? = nil
+            try ExceptionCather.catchException {
+                eval_res = try? self.llm_eval(inputBatch: system_pormpt_Tokens)
+            }
+            if eval_res == false{
+                throw ModelError.failedToEval
+            }
+            self.nPast += Int32(system_pormpt_Tokens.count)
+        }
         if img_path != nil{
             do {
                 try ExceptionCather.catchException {
