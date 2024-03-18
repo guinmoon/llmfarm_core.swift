@@ -20,6 +20,10 @@ public class GPT2: LLMBase {
         if contextParams.use_metal{
             n_gpu_layers = 1
         }
+#if targetEnvironment(simulator)
+        n_gpu_layers = 0
+        print("Running on simulator, force use n_gpu_layers = 0")
+#endif
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{
             n_gpu_layers = 0

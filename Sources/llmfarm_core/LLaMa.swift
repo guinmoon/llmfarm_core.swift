@@ -54,6 +54,11 @@ public class LLaMa: LLMBase {
             model_params.n_gpu_layers = 0
         }
         
+#if targetEnvironment(simulator)
+        model_params.n_gpu_layers = 0
+        print("Running on simulator, force use n_gpu_layers = 0")
+#endif
+        
         if contextParams.lora_adapters.count>0{
             model_params.use_mmap = false
         }
@@ -82,6 +87,7 @@ public class LLaMa: LLMBase {
         if !load_clip_model(){
             return false
         }
+        self.batch = llama_batch_init(sampleParams.n_batch, 0, 1)
         return true
     }
     
@@ -135,15 +141,113 @@ public class LLaMa: LLMBase {
         return llama_get_logits(self.context);
     }
     
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-        var mutable_inputBatch = inputBatch
-        if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
-            return false
-        }
+//    public func llm_eval_old(inputBatch:[ModelToken]) throws -> Bool{
+//        var mutable_inputBatch = inputBatch
+//        if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
+//            return false
+//        }
+//        return true
+//    }
+    
+     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+         var mutable_inputBatch = inputBatch
+         if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
+             return false
+         }
+//        if self.nPast==0{
+//            completion_init(tokens_list:inputBatch)
+//        }else{
+//            llama_batch_clear(&batch!)
+//            for i1:Int32 in 0..<Int32(inputBatch.count) {
+//                llama_batch_add(&batch!, inputBatch[Int(i1)], self.nPast+i1, [0], false)
+//            }
+//            batch!.logits[Int(batch!.n_tokens) - 1] = 1
+////            llama_batch_add(&batch!, inputBatch[0], self.nPast, [0], true)
+//
+////            n_decode += 1
+////            n_cur    += 1
+//
+//            if llama_decode(context, batch!) != 0 {
+//                print("failed to evaluate llama!")
+//            }
+//        }
+        return true
+    }
+        
+
+    override func llm_init_logits() throws -> Bool {
         return true
     }
     
+    func llama_batch_clear(_ batch: inout llama_batch) {
+     batch.n_tokens = 0
+    }
+
+    func llama_batch_add(_ batch: inout llama_batch, _ id: llama_token, _ pos: llama_pos, _ seq_ids: [llama_seq_id], _ logits: Bool) {
+        batch.token   [Int(batch.n_tokens)] = id
+        batch.pos     [Int(batch.n_tokens)] = pos
+        batch.n_seq_id[Int(batch.n_tokens)] = Int32(seq_ids.count)
+        for i in 0..<seq_ids.count {
+            batch.seq_id[Int(batch.n_tokens)]![Int(i)] = seq_ids[i]
+        }
+        batch.logits  [Int(batch.n_tokens)] = logits ? 1 : 0
+
+        batch.n_tokens += 1
+    }
     
+    func model_info() -> String {
+        let result = UnsafeMutablePointer<Int8>.allocate(capacity: 256)
+        result.initialize(repeating: Int8(0), count: 256)
+        defer {
+            result.deallocate()
+        }
+
+        // TODO: this is probably very stupid way to get the string from C
+
+        let nChars = llama_model_desc(model, result, 256)
+        let bufferPointer = UnsafeBufferPointer(start: result, count: Int(nChars))
+
+        var SwiftString = ""
+        for char in bufferPointer {
+            SwiftString.append(Character(UnicodeScalar(UInt8(char))))
+        }
+
+        return SwiftString
+    }
+
+    func completion_init(tokens_list: [ModelToken]) {
+//        print("attempting to complete \"\(text)\"")
+
+        // tokens_list = tokenize(text: text, add_bos: true)
+        temporary_invalid_cchars = []
+
+//        let n_ctx = llama_n_ctx(context)
+//        let n_kv_req = tokens_list.count + (Int(n_len) - tokens_list.count)
+//
+//        print("\n n_len = \(n_len), n_ctx = \(n_ctx), n_kv_req = \(n_kv_req)")
+//
+//        if n_kv_req > n_ctx {
+//            print("error: n_kv_req > n_ctx, the required KV cache size is not big enough")
+//        }
+
+//        for id in tokens_list {
+//            print(String(cString: token_to_piece(token: id) + [0]))
+//        }
+
+        llama_batch_clear(&batch!)
+
+        for i1:Int32 in 0..<Int32(tokens_list.count) {
+            llama_batch_add(&batch!, tokens_list[Int(i1)], i1, [0], false)
+        }
+        batch!.logits[Int(batch!.n_tokens) - 1] = 1 // true
+
+        if llama_decode(context, batch!) != 0 {
+            print("llama_decode() failed")
+        }
+
+//        n_cur = batch.n_tokens
+    }
+
     private func token_to_piece(token: Int32) -> [CChar] {
         let result = UnsafeMutablePointer<Int8>.allocate(capacity: 8)
         result.initialize(repeating: Int8(0), count: 8)
