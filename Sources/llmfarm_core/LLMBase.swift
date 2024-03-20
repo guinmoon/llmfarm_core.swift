@@ -340,7 +340,7 @@ public class LLMBase {
         if inputTokens.count == 0{
             return "Empty input."
         }
-        self.session_tokens.append(contentsOf: inputTokens)
+        // self.session_tokens.append(contentsOf: inputTokens)
         let inputTokensCount = inputTokens.count
         print("Input tokens: \(inputTokens)")
         // Add new input tokens to past array
@@ -382,8 +382,8 @@ public class LLMBase {
             var outputTokens: [ModelToken] = []
             var output = [String]()
             // Loop until target count is reached
-            var outputEnabled = true
-            while outputEnabled {
+            var completion_loop = true
+            while completion_loop {
                 // Pull a generation from context
                 var outputToken:Int32 = -1
                 try ExceptionCather.catchException {
@@ -407,6 +407,7 @@ public class LLMBase {
                 }
                 // Add output token to array
                 outputTokens.append(outputToken)
+                past.append([outputToken])
                 // Repeat tokens update
                 outputRepeatTokens.append(outputToken)
                 if outputRepeatTokens.count > params.repeat_last_n {
@@ -414,7 +415,7 @@ public class LLMBase {
                 }
                 // Check for eos - end early - check eos before bos in case they are the same
                 if outputToken == llm_token_eos() {
-                    outputEnabled = false
+                    completion_loop = false
                     print("[EOS]")
                     break
                 }
@@ -425,23 +426,24 @@ public class LLMBase {
                     skipCallback = true
                 }
                 // Convert token to string and callback
-                self.session_tokens.append(outputToken)
+                // self.session_tokens.append(outputToken)                
                 if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
                     output.append(str)
                     // Per token callback
-                    let (output, time) = Utils.time {
-                        return str
-                    }
-                    if callback(output, time) {
+                     let (output, time) = Utils.time {
+                         return str
+                     }
+                     if callback(output, time) {
+//                    if callback(output, 0) {
                         // Early exit if requested by callback
                         print(" * exit requested by callback *")
                         //generating = false
-                        outputEnabled = false //outputRemaining = 0
+                        completion_loop = false //outputRemaining = 0
                         break
                     }
                 }
                 // Check if we need to run another response eval
-                if outputEnabled {
+                if completion_loop {
                     // Send generated token back into model for next generation
                     var eval_res:Bool? = nil
                     if self.nPast >= self.contextParams.context - 4{

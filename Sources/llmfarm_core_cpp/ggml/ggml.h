@@ -258,7 +258,7 @@
     do { \
         if (!(x)) { \
             fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-            char descr[500]; \
+            char descr[700]; \
             sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
             throw_exception(descr); \
         } \

@@ -351,7 +351,7 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     }
 
     if (model_config["prompt_format"] != nil && model_config["prompt_format"]! as! String != "auto"
-            && model_config["prompt_format"]! as! String != "{{prompt}}"){
+            && model_config["prompt_format"]! as! String != "{prompt}"){
             tmp_param.custom_prompt_format = model_config["prompt_format"]! as! String
             (tmp_param.custom_prompt_format,tmp_param.system_prompt) = get_system_prompt(tmp_param.custom_prompt_format)
             tmp_param.promptFormat = .Custom
