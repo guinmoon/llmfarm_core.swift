@@ -471,6 +471,7 @@ public struct ModelSampleParams {
     public var temp: Float
     public var top_k: Int32
     public var top_p: Float
+    public var min_p: Float
     public var tfs_z: Float
     public var typical_p: Float
     public var repeat_penalty: Float
@@ -487,6 +488,7 @@ public struct ModelSampleParams {
         temp: 0.9,
         top_k: 40,
         top_p: 0.95,
+        min_p: 0,
         tfs_z: 1.0,
         typical_p: 1.0,
         repeat_penalty: 1.1,
@@ -503,6 +505,7 @@ public struct ModelSampleParams {
                 temp: Float = 0.8,
                 top_k: Int32 = 40,
                 top_p: Float = 0.95,
+                min_p: Float = 0.0,
                 tfs_z: Float = 1.0,
                 typical_p: Float = 1.0,
                 repeat_penalty: Float = 1.1,
@@ -528,6 +531,7 @@ public struct ModelSampleParams {
         self.mirostat_tau = mirostat_tau
         self.mirostat_eta = mirostat_eta
         self.penalize_nl = penalize_nl
+        self.min_p = 0
     }
 }
 

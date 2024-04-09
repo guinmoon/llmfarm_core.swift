@@ -16,8 +16,8 @@ public class LLaMa: LLMBase {
     public var batch: llama_batch?
     public var hardware_arch: String=""
     public var temporary_invalid_cchars: [CChar]  = []
-    public var progressCallback: ((Float)  -> (Bool))? = nil
-//    public var sparams: llama_sampling_params?
+    public var progressCallback: ((Float)  -> (Bool))? = nil    
+//    public var sparams: llama_sampling_params
     
     //  int32_t     n_prev                = 64;       // number of previous tokens to remember
     // int32_t     n_probs               = 0;        // if greater than 0, output the probabilities of top n_probs tokens.
@@ -38,10 +38,32 @@ public class LLaMa: LLMBase {
     // float       mirostat_eta          = 0.10f;    // learning rate
     // bool        penalize_nl           = true;  
 
+//    public func init_sampling_param(){
+//        sparams.n_prev = sampleParams.repeat_last_n
+//        sparams.n_probs = 0;
+//        sparams.top_k = sampleParams.top_k;
+//        sparams.top_p = sampleParams.top_p;
+//        sparams.min_p = sampleParams.min_p;
+//        sparams.tfs_z = sampleParams.tfs_z;
+//        sparams.typical_p = sampleParams.typical_p;
+//        sparams.temp = sampleParams.temp;
+//        sparams.dynatemp_range = 0;
+//        sparams.dynatemp_exponent = 1;
+//        sparams.penalty_last_n = sampleParams.repeat_last_n;
+//        sparams.penalty_repeat = sampleParams.repeat_penalty;
+//        sparams.penalty_freq = sampleParams.penalty_freq;
+//        sparams.penalty_present = sampleParams.penalty_present;
+//        sparams.mirostat = sampleParams.mirostat;
+//        sparams.mirostat_tau = sampleParams.mirostat_tau;
+//        sparams.mirostat_eta = sampleParams.mirostat_eta;
+//        sparams.penalize_nl = sampleParams.penalize_nl;
+//    }
+
     public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
                                         model_load_progress_callback:((Float)  -> (Bool))?) throws -> Bool{
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
+//        init_sampling_param()
 //        self.ctx_sampling = llama_sampling_init(sparams);
         context_params.n_ctx = UInt32(contextParams.context)
         context_params.seed = UInt32(contextParams.seed)
