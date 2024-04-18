@@ -107,7 +107,7 @@ public class LLaMa: LLMBase {
             model_params.use_mmap = false
         }
         
-        llama_backend_init(false)
+        llama_backend_init()
         
         self.model = llama_load_model_from_file(path, model_params)
         if self.model == nil{

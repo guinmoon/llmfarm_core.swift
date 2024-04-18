@@ -190,7 +190,7 @@ namespace grammar_parser {
                 pos = parse_space(pos + 1, is_nested);
             } else if (*pos == '*' || *pos == '+' || *pos == '?') { // repetition operator
                 if (last_sym_start == out_elements.size()) {
-                    throw std::runtime_error(std::string("expecting preceeding item to */+/? at ") + pos);
+                    throw std::runtime_error(std::string("expecting preceding item to */+/? at ") + pos);
                 }
 
                 // apply transformation to previous symbol (last_sym_start to end) according to
@@ -277,6 +277,22 @@ namespace grammar_parser {
             const char * pos = parse_space(src, true);
             while (*pos) {
                 pos = parse_rule(state, pos);
+            }
+            // Validate the state to ensure that all rules are defined
+            for (const auto & rule : state.rules) {
+                for (const auto & elem : rule) {
+                    if (elem.type == LLAMA_GRETYPE_RULE_REF) {
+                        // Ensure that the rule at that location exists
+                        if (elem.value >= state.rules.size() || state.rules[elem.value].empty()) {
+                            // Get the name of the rule that is missing
+                            for (const auto & kv : state.symbol_ids) {
+                                if (kv.second == elem.value) {
+                                    throw std::runtime_error("Undefined rule identifier '" + kv.first + "'");
+                                }
+                            }
+                        }
+                    }
+                }
             }
             return state;
         } catch (const std::exception & err) {
@@ -399,7 +415,7 @@ namespace grammar_parser {
     void print_grammar(FILE * file, const parse_state & state) {
         try {
             std::map<uint32_t, std::string> symbol_id_names;
-            for (auto kv : state.symbol_ids) {
+            for (const auto & kv : state.symbol_ids) {
                 symbol_id_names[kv.second] = kv.first;
             }
             for (size_t i = 0, end = state.rules.size(); i < end; i++) {

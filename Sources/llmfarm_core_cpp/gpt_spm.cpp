@@ -6,7 +6,7 @@
 #include "ggml/common_old.h"
 #include "ggml/common-ggml.h"
 #include "./spm-headers/rwkv.h"
-#include "grammar-parser.h"
+#include "ggml/grammar-parser.h"
 #include "ggml/ggml_dadbed9.h"
 #include <cassert>
 #include <cmath>

@@ -8,8 +8,6 @@
 #include <string>
 #include <thread>
 
-static const size_t tensor_alignment = 32;
-
 struct lora_info {
     std::string filename;
     float scale;

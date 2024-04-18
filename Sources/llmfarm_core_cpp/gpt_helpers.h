@@ -147,6 +147,7 @@ struct gpt_base_model {
 };
 
 
+
 struct gpt_base_context {
     std::mt19937 rng;
 

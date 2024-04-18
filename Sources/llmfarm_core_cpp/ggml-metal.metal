@@ -1,3 +1,7 @@
+#define GGML_COMMON_DECL_METAL
+#define GGML_COMMON_IMPL_METAL
+#include "ggml/ggml-common.h"
+
 #include <metal_stdlib>
 
 using namespace metal;
@@ -6,46 +10,11 @@ using namespace metal;
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define SWAP(x, y) { auto tmp = (x); (x) = (y); (y) = tmp; }
 
-#define QK4_0 32
-#define QR4_0 2
-typedef struct {
-    half    d;             // delta
-    uint8_t qs[QK4_0 / 2]; // nibbles / quants
-} block_q4_0;
-
-#define QK4_1 32
-typedef struct {
-    half d;                 // delta
-    half m;                 // min
-    uint8_t qs[QK4_1 / 2];  // nibbles / quants
-} block_q4_1;
-
-#define QK5_0 32
-typedef struct {
-    half d;                // delta
-    uint8_t qh[4];         // 5-th bit of quants
-    uint8_t qs[QK5_0 / 2]; // nibbles / quants
-} block_q5_0;
-
-#define QK5_1 32
-typedef struct {
-    half d;                 // delta
-    half m;                 // min
-    uint8_t qh[4];          // 5-th bit of quants
-    uint8_t qs[QK5_1 / 2];  // nibbles / quants
-} block_q5_1;
-
-#define QK8_0 32
-typedef struct {
-    half    d;         // delta
-    int8_t  qs[QK8_0]; // quants
-} block_q8_0;
-
 #define N_SIMDWIDTH 32 // assuming SIMD group size is 32
 
 enum ggml_sort_order {
-    GGML_SORT_ASC,
-    GGML_SORT_DESC,
+    GGML_SORT_ORDER_ASC,
+    GGML_SORT_ORDER_DESC,
 };
 
 // general-purpose kernel for addition, multiplication and division of two tensors
@@ -244,6 +213,15 @@ kernel void kernel_scale_4(
     dst[tpig] = src0[tpig] * scale;
 }
 
+kernel void kernel_clamp(
+        device const float * src0,
+        device       float * dst,
+        constant     float & min,
+        constant     float & max,
+        uint tpig[[thread_position_in_grid]]) {
+    dst[tpig] = src0[tpig] < min ? min : (src0[tpig] > max ? max : src0[tpig]);
+}
+
 kernel void kernel_relu(
         device const float * src0,
         device       float * dst,
@@ -264,6 +242,15 @@ constant float GELU_QUICK_COEF = -1.702f;
 constant float SQRT_2_OVER_PI  = 0.79788456080286535587989211986876f;
 
 kernel void kernel_gelu(
+    device const float * src0,
+    device       float * dst,
+    uint tpig[[thread_position_in_grid]]) {
+    device const float & x = src0[tpig];
+
+    dst[tpig] = 0.5f*x*(1.0f + precise::tanh(SQRT_2_OVER_PI*x*(1.0f + GELU_COEF_A*x*x)));
+}
+
+kernel void kernel_gelu_4(
     device const float4 * src0,
     device       float4 * dst,
     uint tpig[[thread_position_in_grid]]) {
@@ -277,6 +264,15 @@ kernel void kernel_gelu(
 }
 
 kernel void kernel_gelu_quick(
+    device const float * src0,
+    device       float * dst,
+    uint tpig[[thread_position_in_grid]]) {
+    device const float & x = src0[tpig];
+
+    dst[tpig] = x*(1.0f/(1.0f+exp(GELU_QUICK_COEF*x)));
+}
+
+kernel void kernel_gelu_quick_4(
     device const float4 * src0,
     device       float4 * dst,
     uint tpig[[thread_position_in_grid]]) {
@@ -286,6 +282,14 @@ kernel void kernel_gelu_quick(
 }
 
 kernel void kernel_silu(
+        device const float * src0,
+        device       float * dst,
+        uint tpig[[thread_position_in_grid]]) {
+    device const float & x = src0[tpig];
+    dst[tpig] = x / (1.0f + exp(-x));
+}
+
+kernel void kernel_silu_4(
         device const float4 * src0,
         device       float4 * dst,
         uint tpig[[thread_position_in_grid]]) {
@@ -351,12 +355,17 @@ kernel void kernel_sum_rows(
 kernel void kernel_soft_max(
         device const float * src0,
         device const float * src1,
+        device const float * src2,
         device       float * dst,
         constant   int64_t & ne00,
         constant   int64_t & ne01,
         constant   int64_t & ne02,
         constant     float & scale,
-        threadgroup float  * buf [[threadgroup(0)]],
+        constant     float & max_bias,
+        constant     float & m0,
+        constant     float & m1,
+        constant  uint32_t & n_head_log2,
+        threadgroup  float * buf [[threadgroup(0)]],
         uint  tgpig[[threadgroup_position_in_grid]],
         uint  tpitg[[thread_position_in_threadgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]],
@@ -368,13 +377,26 @@ kernel void kernel_soft_max(
 
     device const float * psrc0 =         src0 + i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00;
     device const float * pmask = src1 != src0 ? src1                               + i01*ne00 : nullptr;
+    device const float * ppos  = src2 != src0 ? src2                                          : nullptr;
     device       float * pdst  =         dst  + i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00;
+
+    float slope = 0.0f;
+
+    // ALiBi
+    if (max_bias > 0.0f) {
+        const int64_t h = i02;
+
+        const float base = h < n_head_log2 ? m0 : m1;
+        const int   exp  = h < n_head_log2 ? h + 1 : 2*(h - n_head_log2) + 1;
+
+        slope = pow(base, exp);
+    }
 
     // parallel max
     float lmax = -INFINITY;
 
     for (int i00 = tpitg; i00 < ne00; i00 += ntg) {
-        lmax = MAX(lmax, psrc0[i00]*scale + (pmask ? pmask[i00] : 0.0f));
+        lmax = MAX(lmax, psrc0[i00]*scale + (pmask ? pmask[i00] : 0.0f) + (ppos ? slope*ppos[i00] : 0.0f));
     }
 
     // find the max value in the block
@@ -399,7 +421,7 @@ kernel void kernel_soft_max(
     // parallel sum
     float lsum = 0.0f;
     for (int i00 = tpitg; i00 < ne00; i00 += ntg) {
-        const float exp_psrc0 = exp((psrc0[i00]*scale + (pmask ? pmask[i00] : 0.0f)) - max_val);
+        const float exp_psrc0 = exp((psrc0[i00]*scale + (pmask ? pmask[i00] : 0.0f) + (ppos ? slope*ppos[i00] : 0.0f)) - max_val);
         lsum += exp_psrc0;
         pdst[i00] = exp_psrc0;
     }
@@ -437,12 +459,17 @@ kernel void kernel_soft_max(
 kernel void kernel_soft_max_4(
         device const float * src0,
         device const float * src1,
+        device const float * src2,
         device       float * dst,
         constant   int64_t & ne00,
         constant   int64_t & ne01,
         constant   int64_t & ne02,
         constant     float & scale,
-        threadgroup float  * buf [[threadgroup(0)]],
+        constant     float & max_bias,
+        constant     float & m0,
+        constant     float & m1,
+        constant  uint32_t & n_head_log2,
+        threadgroup  float * buf [[threadgroup(0)]],
         uint  tgpig[[threadgroup_position_in_grid]],
         uint  tpitg[[thread_position_in_threadgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]],
@@ -454,13 +481,25 @@ kernel void kernel_soft_max_4(
 
     device const float4 * psrc4 =                (device const float4 *)(src0 + i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00);
     device const float4 * pmask = src1 != src0 ? (device const float4 *)(src1 +                                      i01*ne00) : nullptr;
+    device const float4 * ppos  = src2 != src0 ? (device const float4 *)(src2)                                                 : nullptr;
     device       float4 * pdst4 =                (device       float4 *)(dst  + i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00);
+
+    float slope = 0.0f;
+
+    if (max_bias > 0.0f) {
+        const int64_t h = i02;
+
+        const float base = h < n_head_log2 ? m0 : m1;
+        const int   exp  = h < n_head_log2 ? h + 1 : 2*(h - n_head_log2) + 1;
+
+        slope = pow(base, exp);
+    }
 
     // parallel max
     float4 lmax4 = -INFINITY;
 
     for (int i00 = tpitg; i00 < ne00/4; i00 += ntg) {
-        lmax4 = fmax(lmax4, psrc4[i00]*scale + (pmask ? pmask[i00] : 0.0f));
+        lmax4 = fmax(lmax4, psrc4[i00]*scale + (pmask ? pmask[i00] : 0.0f) + (ppos ? slope*ppos[i00] : 0.0f));
     }
 
     const float lmax = MAX(MAX(lmax4[0], lmax4[1]), MAX(lmax4[2], lmax4[3]));
@@ -486,7 +525,7 @@ kernel void kernel_soft_max_4(
     // parallel sum
     float4 lsum4 = 0.0f;
     for (int i00 = tpitg; i00 < ne00/4; i00 += ntg) {
-        const float4 exp_psrc4 = exp((psrc4[i00]*scale + (pmask ? pmask[i00] : 0.0f)) - max_val);
+        const float4 exp_psrc4 = exp((psrc4[i00]*scale + (pmask ? pmask[i00] : 0.0f) + (ppos ? slope*ppos[i00] : 0.0f)) - max_val);
         lsum4 += exp_psrc4;
         pdst4[i00] = exp_psrc4;
     }
@@ -853,15 +892,16 @@ void mul_vec_q_n_f32_impl(
         device const void  * src0,
         device const float * src1,
         device       float * dst,
-                   int64_t   ne00,
-                   int64_t   ne01,
-                   int64_t   ne02,
-                   int64_t   ne10,
-                   int64_t   ne12,
-                   int64_t   ne0,
-                   int64_t   ne1,
-                   uint      r2,
-                   uint      r3,
+                   constant int64_t &   ne00,
+                   constant int64_t &   ne01,
+                   constant int64_t &   ne02,
+                   constant int64_t &   ne10,
+                   constant int64_t &   ne12,
+                   constant int64_t &   ne0,
+                   constant int64_t &   ne1,
+                   constant uint &      r2,
+                   constant uint &      r3,
+                   threadgroup int8_t * shared_values,
                    uint3 tgpig, uint tiisg, uint sgitg) {
     const int nb = ne00/QK4_0;
 
@@ -938,7 +978,7 @@ kernel void kernel_mul_mv_q4_0_f32(
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
-    mul_vec_q_n_f32_impl<block_q4_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,tgpig,tiisg,sgitg);
+    mul_vec_q_n_f32_impl<block_q4_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,nullptr,tgpig,tiisg,sgitg);
 }
 
 kernel void kernel_mul_mv_q4_1_f32(
@@ -964,7 +1004,7 @@ kernel void kernel_mul_mv_q4_1_f32(
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint tiisg[[thread_index_in_simdgroup]],
         uint sgitg[[simdgroup_index_in_threadgroup]]) {
-     mul_vec_q_n_f32_impl<block_q4_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,tgpig,tiisg,sgitg);
+     mul_vec_q_n_f32_impl<block_q4_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,nullptr,tgpig,tiisg,sgitg);
 }
 
 kernel void kernel_mul_mv_q5_0_f32(
@@ -990,7 +1030,7 @@ kernel void kernel_mul_mv_q5_0_f32(
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
-    mul_vec_q_n_f32_impl<block_q5_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,tgpig,tiisg,sgitg);
+    mul_vec_q_n_f32_impl<block_q5_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,nullptr,tgpig,tiisg,sgitg);
 }
 
 kernel void kernel_mul_mv_q5_1_f32(
@@ -1016,7 +1056,7 @@ kernel void kernel_mul_mv_q5_1_f32(
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
-    mul_vec_q_n_f32_impl<block_q5_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,tgpig,tiisg,sgitg);
+    mul_vec_q_n_f32_impl<block_q5_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,nullptr,tgpig,tiisg,sgitg);
 }
 
 
@@ -1035,6 +1075,7 @@ void kernel_mul_mv_q8_0_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t   * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -1115,7 +1156,7 @@ kernel void kernel_mul_mv_q8_0_f32(
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
-    kernel_mul_mv_q8_0_f32_impl(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,tgpig,tiisg,sgitg);
+    kernel_mul_mv_q8_0_f32_impl(src0,src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,nullptr,tgpig,tiisg,sgitg);
 }
 
 #define N_F32_F32 4
@@ -1924,11 +1965,56 @@ kernel void kernel_pad_f32(
     }
 }
 
+kernel void kernel_arange_f32(
+    device        char * dst,
+    constant   int64_t & ne0,
+    constant   float   & start,
+    constant   float   & step,
+    uint3 tgpig[[threadgroup_position_in_grid]],
+    uint3 tpitg[[thread_position_in_threadgroup]],
+    uint3   ntg[[threads_per_threadgroup]]) {
+
+    device float * dst_ptr = (device float *) dst;
+
+    for (int i0 = tpitg.x; i0 < ne0; i0 += ntg.x) {
+        dst_ptr[i0] = start + step * i0;
+    }
+}
+
+kernel void kernel_timestep_embedding_f32(
+    device  const char * src0,
+    device        char * dst,
+    constant  uint64_t & nb1,
+    constant  int      & dim,
+    constant  int      & max_period,
+    uint3 tgpig[[threadgroup_position_in_grid]],
+    uint3 tpitg[[thread_position_in_threadgroup]],
+    uint3   ntg[[threads_per_threadgroup]]) {
+
+    int i = tgpig.x;
+    device float * embed_data = (device float *)(dst +  i*nb1);
+
+    int half_ = dim / 2;
+    for (int j = tpitg.x; j < half_; j += ntg.x) {
+        float timestep = ((device float *)src0)[i];
+        float freq = (float)exp(-log((float)max_period) * j / half_);
+        float arg = timestep * freq;
+        embed_data[j        ] = cos(arg);
+        embed_data[j + half_] = sin(arg);
+    }
+
+    if (dim % 2 != 0 && tpitg.x == 0) {
+        embed_data[dim] = 0.f;
+    }
+}
+
 // bitonic sort implementation following the CUDA kernels as reference
 typedef void (argsort_t)(
-        device const float * x,
-        device     int32_t * dst,
-        constant   int64_t & ncols,
+        device const float  * x,
+        device     int32_t  * dst,
+        constant   int64_t  & ncols,
+        constant   int64_t  & ncols_pad,
+        threadgroup int32_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]]);
 
@@ -1937,33 +2023,42 @@ kernel void kernel_argsort_f32_i32(
         device const float   * x,
         device       int32_t * dst,
         constant     int64_t & ncols,
+        constant     int64_t & ncols_pad,
+        threadgroup int32_t  * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]]) {
     // bitonic sort
     int col = tpitg[0];
     int row = tgpig[1];
 
-    if (col >= ncols) return;
+    if (col >= ncols_pad) return;
 
-    device const float   * x_row   = x   + row * ncols;
-    device       int32_t * dst_row = dst + row * ncols;
+    device const float   * x_row   = x + row * ncols;
+    threadgroup int32_t  * dst_row = shared_values;
 
     // initialize indices
-    if (col < ncols) {
-        dst_row[col] = col;
-    }
+    dst_row[col] = col;
+
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
-    for (int k = 2; k <= ncols; k *= 2) {
+    for (int k = 2; k <= ncols_pad; k *= 2) {
         for (int j = k / 2; j > 0; j /= 2) {
             int ixj = col ^ j;
             if (ixj > col) {
                 if ((col & k) == 0) {
-                    if (order == GGML_SORT_ASC ? x_row[dst_row[col]] > x_row[dst_row[ixj]] : x_row[dst_row[col]] < x_row[dst_row[ixj]]) {
+                    if (dst_row[col] >= ncols ||
+                        (dst_row[ixj] < ncols && (order == GGML_SORT_ORDER_ASC ?
+                            x_row[dst_row[col]] > x_row[dst_row[ixj]] :
+                            x_row[dst_row[col]] < x_row[dst_row[ixj]]))
+                    ) {
                         SWAP(dst_row[col], dst_row[ixj]);
                     }
                 } else {
-                    if (order == GGML_SORT_ASC ? x_row[dst_row[col]] < x_row[dst_row[ixj]] : x_row[dst_row[col]] > x_row[dst_row[ixj]]) {
+                    if (dst_row[ixj] >= ncols ||
+                        (dst_row[col] < ncols && (order == GGML_SORT_ORDER_ASC ?
+                            x_row[dst_row[col]] < x_row[dst_row[ixj]] :
+                            x_row[dst_row[col]] > x_row[dst_row[ixj]]))
+                    ) {
                         SWAP(dst_row[col], dst_row[ixj]);
                     }
                 }
@@ -1971,10 +2066,15 @@ kernel void kernel_argsort_f32_i32(
             threadgroup_barrier(mem_flags::mem_threadgroup);
         }
     }
+
+    // copy the result to dst without the padding
+    if (col < ncols) {
+        dst[row * ncols + col] = dst_row[col];
+    }
 }
 
-template [[host_name("kernel_argsort_f32_i32_asc")]]  kernel argsort_t kernel_argsort_f32_i32<GGML_SORT_ASC>;
-template [[host_name("kernel_argsort_f32_i32_desc")]] kernel argsort_t kernel_argsort_f32_i32<GGML_SORT_DESC>;
+template [[host_name("kernel_argsort_f32_i32_asc")]]  kernel argsort_t kernel_argsort_f32_i32<GGML_SORT_ORDER_ASC>;
+template [[host_name("kernel_argsort_f32_i32_desc")]] kernel argsort_t kernel_argsort_f32_i32<GGML_SORT_ORDER_DESC>;
 
 kernel void kernel_leaky_relu_f32(
         device const float * src0,
@@ -2341,6 +2441,242 @@ kernel void kernel_cpy_f32_q4_1(
     }
 }
 
+kernel void kernel_cpy_f32_q5_0(
+        device const float * src0,
+        device        void * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne03,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant  uint64_t & nb03,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   int64_t & ne2,
+        constant   int64_t & ne3,
+        constant  uint64_t & nb0,
+        constant  uint64_t & nb1,
+        constant  uint64_t & nb2,
+        constant  uint64_t & nb3,
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint3 tpitg[[thread_position_in_threadgroup]],
+        uint3   ntg[[threads_per_threadgroup]]) {
+    const int64_t i03 = tgpig[2];
+    const int64_t i02 = tgpig[1];
+    const int64_t i01 = tgpig[0];
+
+    const int64_t n = i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00;
+
+    const int64_t i3 = n / (ne2*ne1*ne0);
+    const int64_t i2 = (n - i3*ne2*ne1*ne0) / (ne1*ne0);
+    const int64_t i1 = (n - i3*ne2*ne1*ne0 - i2*ne1*ne0) / ne0;
+    const int64_t i0 = (n - i3*ne2*ne1*ne0 - i2*ne1*ne0 - i1*ne0)/QK5_0;
+
+    device block_q5_0 * dst_data = (device block_q5_0 *) ((device char *) dst + i3*nb3 + i2*nb2 + i1*nb1 + i0*nb0);
+
+    for (int64_t i00 = tpitg.x*QK5_0; i00 < ne00; i00 += ntg.x*QK5_0) {
+        device const float * src = (device float *)((device char *) src0 + i03*nb03 + i02*nb02 + i01*nb01 + i00*nb00);
+
+        float amax = 0.0f; // absolute max
+        float max  = 0.0f;
+
+        for (int j = 0; j < QK5_0; j++) {
+            const float v = src[j];
+            if (amax < fabs(v)) {
+                amax = fabs(v);
+                max  = v;
+            }
+        }
+
+        const float d = max / -16;
+        const float id = d ? 1.0f/d : 0.0f;
+
+        dst_data[i00/QK5_0].d = d;
+
+        uint32_t qh = 0;
+        for (int j = 0; j < QK5_0/2; ++j) {
+            const float x0 = src[0       + j]*id;
+            const float x1 = src[QK5_0/2 + j]*id;
+
+            const uint8_t xi0 = MIN(31, (int8_t)(x0 + 16.5f));
+            const uint8_t xi1 = MIN(31, (int8_t)(x1 + 16.5f));
+
+            dst_data[i00/QK5_0].qs[j] = (xi0 & 0xf) | ((xi1 & 0xf) << 4);
+            qh |= ((xi0 & 0x10u) >> 4) << (j + 0);
+            qh |= ((xi1 & 0x10u) >> 4) << (j + QK5_0/2);
+        }
+        thread const uint8_t * qh8 = (thread const uint8_t *)&qh;
+        for (int j = 0; j < 4; ++j) {
+            dst_data[i00/QK5_0].qh[j] = qh8[j];
+        }
+    }
+}
+
+kernel void kernel_cpy_f32_q5_1(
+        device const float * src0,
+        device        void * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne03,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant  uint64_t & nb03,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   int64_t & ne2,
+        constant   int64_t & ne3,
+        constant  uint64_t & nb0,
+        constant  uint64_t & nb1,
+        constant  uint64_t & nb2,
+        constant  uint64_t & nb3,
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint3 tpitg[[thread_position_in_threadgroup]],
+        uint3   ntg[[threads_per_threadgroup]]) {
+    const int64_t i03 = tgpig[2];
+    const int64_t i02 = tgpig[1];
+    const int64_t i01 = tgpig[0];
+
+    const int64_t n = i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00;
+
+    const int64_t i3 = n / (ne2*ne1*ne0);
+    const int64_t i2 = (n - i3*ne2*ne1*ne0) / (ne1*ne0);
+    const int64_t i1 = (n - i3*ne2*ne1*ne0 - i2*ne1*ne0) / ne0;
+    const int64_t i0 = (n - i3*ne2*ne1*ne0 - i2*ne1*ne0 - i1*ne0)/QK5_1;
+
+    device block_q5_1 * dst_data = (device block_q5_1 *) ((device char *) dst + i3*nb3 + i2*nb2 + i1*nb1 + i0*nb0);
+
+    for (int64_t i00 = tpitg.x*QK5_1; i00 < ne00; i00 += ntg.x*QK5_1) {
+        device const float * src = (device float *)((device char *) src0 + i03*nb03 + i02*nb02 + i01*nb01 + i00*nb00);
+
+        float max = src[0];
+        float min = src[0];
+
+        for (int j = 1; j < QK5_1; j++) {
+            const float v = src[j];
+            min = v < min ? v : min;
+            max = v > max ? v : max;
+        }
+
+        const float d = (max - min) / 31;
+        const float id = d ? 1.0f/d : 0.0f;
+
+        dst_data[i00/QK5_1].d = d;
+        dst_data[i00/QK5_1].m = min;
+
+        uint32_t qh = 0;
+        for (int j = 0; j < QK5_1/2; ++j) {
+            const float x0 = (src[0       + j] - min)*id;
+            const float x1 = (src[QK5_1/2 + j] - min)*id;
+
+            const uint8_t xi0 = (uint8_t)(x0 + 0.5f);
+            const uint8_t xi1 = (uint8_t)(x1 + 0.5f);
+
+            dst_data[i00/QK5_1].qs[j] = (xi0 & 0xf) | ((xi1 & 0xf) << 4);
+            qh |= ((xi0 & 0x10u) >> 4) << (j + 0);
+            qh |= ((xi1 & 0x10u) >> 4) << (j + QK5_1/2);
+        }
+        thread const uint8_t * qh8 = (thread const uint8_t *)&qh;
+        for (int j = 0; j < 4; ++j) {
+            dst_data[i00/QK5_1].qh[j] = qh8[j];
+        }
+    }
+}
+
+static inline int best_index_int8(int n, constant float * val, float x) {
+    if (x <= val[0]) return 0;
+    if (x >= val[n-1]) return n-1;
+    int ml = 0, mu = n-1;
+    while (mu-ml > 1) {
+        int mav = (ml+mu)/2;
+        if (x < val[mav]) mu = mav; else ml = mav;
+    }
+    return x - val[mu-1] < val[mu] - x ? mu-1 : mu;
+}
+
+constexpr constant static float kvalues_iq4nl_f[16] = {
+    -127.f, -104.f, -83.f, -65.f, -49.f, -35.f, -22.f, -10.f, 1.f, 13.f, 25.f, 38.f, 53.f, 69.f, 89.f, 113.f
+};
+
+kernel void kernel_cpy_f32_iq4_nl(
+        device const float * src0,
+        device        void * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne03,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant  uint64_t & nb03,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   int64_t & ne2,
+        constant   int64_t & ne3,
+        constant  uint64_t & nb0,
+        constant  uint64_t & nb1,
+        constant  uint64_t & nb2,
+        constant  uint64_t & nb3,
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint3 tpitg[[thread_position_in_threadgroup]],
+        uint3   ntg[[threads_per_threadgroup]]) {
+    const int64_t i03 = tgpig[2];
+    const int64_t i02 = tgpig[1];
+    const int64_t i01 = tgpig[0];
+
+    const int64_t n = i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00;
+
+    const int64_t i3 = n / (ne2*ne1*ne0);
+    const int64_t i2 = (n - i3*ne2*ne1*ne0) / (ne1*ne0);
+    const int64_t i1 = (n - i3*ne2*ne1*ne0 - i2*ne1*ne0) / ne0;
+    const int64_t i0 = (n - i3*ne2*ne1*ne0 - i2*ne1*ne0 - i1*ne0)/QK4_NL;
+
+    device block_iq4_nl * dst_data = (device block_iq4_nl *) ((device char *) dst + i3*nb3 + i2*nb2 + i1*nb1 + i0*nb0);
+
+    for (int64_t i00 = tpitg.x*QK4_NL; i00 < ne00; i00 += ntg.x*QK4_NL) {
+        device const float * src = (device float *)((device char *) src0 + i03*nb03 + i02*nb02 + i01*nb01 + i00*nb00);
+
+        float amax = 0.0f; // absolute max
+        float max  = 0.0f;
+
+        for (int j = 0; j < QK4_0; j++) {
+            const float v = src[j];
+            if (amax < fabs(v)) {
+                amax = fabs(v);
+                max  = v;
+            }
+        }
+
+        const float d = max / kvalues_iq4nl_f[0];
+        const float id = d ? 1.0f/d : 0.0f;
+
+        float sumqx = 0, sumq2 = 0;
+        for (int j = 0; j < QK4_NL/2; ++j) {
+            const float x0 = src[0        + j]*id;
+            const float x1 = src[QK4_NL/2 + j]*id;
+
+            const uint8_t xi0 = best_index_int8(16, kvalues_iq4nl_f, x0);
+            const uint8_t xi1 = best_index_int8(16, kvalues_iq4nl_f, x1);
+
+            dst_data[i00/QK4_NL].qs[j] = xi0 | (xi1 << 4);
+
+            const float v0 = kvalues_iq4nl_f[xi0];
+            const float v1 = kvalues_iq4nl_f[xi1];
+            const float w0 = src[0        + j]*src[0        + j];
+            const float w1 = src[QK4_NL/2 + j]*src[QK4_NL/2 + j];
+            sumqx += w0*v0*src[j] + w1*v1*src[QK4_NL/2 + j];
+            sumq2 += w0*v0*v0 + w1*v1*v1;
+
+        }
+
+        dst_data[i00/QK4_NL].d = sumq2 > 0 ? sumqx/sumq2 : d;
+
+    }
+}
+
 kernel void kernel_concat(
     device  const char * src0,
     device  const char * src1,
@@ -2397,101 +2733,6 @@ kernel void kernel_concat(
     }
 }
 
-//============================================ k-quants ======================================================
-
-#ifndef QK_K
-#define QK_K 256
-#else
-static_assert(QK_K == 256 || QK_K == 64, "QK_K must be 256 or 64");
-#endif
-
-#if QK_K == 256
-#define K_SCALE_SIZE 12
-#else
-#define K_SCALE_SIZE 4
-#endif
-
-typedef struct {
-    uint8_t scales[QK_K/16]; // scales and mins, quantized with 4 bits
-    uint8_t qs[QK_K/4];      // quants
-    half d;           // super-block scale for quantized scales
-    half dmin;        // super-block scale for quantized mins
-} block_q2_K;
-// 84 bytes / block
-
-typedef struct {
-    uint8_t hmask[QK_K/8];     // quants - high bit
-    uint8_t qs[QK_K/4];        // quants - low 2 bits
-#if QK_K == 64
-    uint8_t scales[2];
-#else
-    uint8_t scales[K_SCALE_SIZE]; // scales, quantized with 6 bits
-#endif
-    half d;             // super-block scale
-} block_q3_K;
-
-#if QK_K == 64
-typedef struct {
-    half    d[2];          // super-block scales/mins
-    uint8_t scales[2];
-    uint8_t qs[QK_K/2];    // 4-bit quants
-} block_q4_K;
-#else
-typedef struct {
-    half d;             // super-block scale for quantized scales
-    half dmin;          // super-block scale for quantized mins
-    uint8_t scales[K_SCALE_SIZE]; // scales and mins, quantized with 6 bits
-    uint8_t qs[QK_K/2];        // 4--bit quants
-} block_q4_K;
-#endif
-
-#if QK_K == 64
-typedef struct {
-    half  d;                     // super-block scales/mins
-    int8_t  scales[QK_K/16];     // 8-bit block scales
-    uint8_t qh[QK_K/8];          // quants, high bit
-    uint8_t qs[QK_K/2];          // quants, low 4 bits
-} block_q5_K;
-#else
-typedef struct {
-    half d;                      // super-block scale for quantized scales
-    half dmin;                   // super-block scale for quantized mins
-    uint8_t scales[3*QK_K/64];   // scales and mins, quantized with 6 bits
-    uint8_t qh[QK_K/8];          // quants, high bit
-    uint8_t qs[QK_K/2];          // quants, low 4 bits
-} block_q5_K;
-// 176 bytes / block
-#endif
-
-typedef struct {
-    uint8_t ql[QK_K/2];      // quants, lower 4 bits
-    uint8_t qh[QK_K/4];      // quants, upper 2 bits
-    int8_t  scales[QK_K/16]; // scales, quantized with 8 bits
-    half d;                  // super-block scale
-} block_q6_K;
-// 210 bytes / block
-
-typedef struct {
-    half d;
-    uint16_t qs[QK_K/8];
-} block_iq2_xxs;
-// 66 bytes / block for QK_K = 256, so 2.0625 bpw
-
-typedef struct {
-    half d;
-    uint16_t qs[QK_K/8];
-    uint8_t  scales[QK_K/32];
-} block_iq2_xs;
-// 74 bytes / block for QK_K = 256, so 2.3125 bpw
-
-typedef struct {
-    half d;
-    uint8_t qs[3*QK_K/8];
-} block_iq3_xxs;
-// 98 bytes / block for QK_K = 256, so 3.0625 bpw
-
-//====================================== dot products =========================
-
 void kernel_mul_mv_q2_K_f32_impl(
         device const  void * src0,
         device const float * src1,
@@ -2505,6 +2746,7 @@ void kernel_mul_mv_q2_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -2667,7 +2909,7 @@ kernel void kernel_mul_mv_q2_K_f32(
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
 
-    kernel_mul_mv_q2_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, tgpig, tiisg, sgitg);
+    kernel_mul_mv_q2_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
 }
 
 #if QK_K == 256
@@ -2684,6 +2926,7 @@ void kernel_mul_mv_q3_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -2842,6 +3085,7 @@ void kernel_mul_mv_q3_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -2931,7 +3175,7 @@ kernel void kernel_mul_mv_q3_K_f32(
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
 
-    kernel_mul_mv_q3_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, tgpig, tiisg, sgitg);
+    kernel_mul_mv_q3_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
 }
 
 #if QK_K == 256
@@ -2948,6 +3192,7 @@ void kernel_mul_mv_q4_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -3061,6 +3306,7 @@ void kernel_mul_mv_q4_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -3169,7 +3415,7 @@ kernel void kernel_mul_mv_q4_K_f32(
         uint tiisg[[thread_index_in_simdgroup]],
         uint sgitg[[simdgroup_index_in_threadgroup]]) {
 
-    kernel_mul_mv_q4_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, tgpig, tiisg, sgitg);
+    kernel_mul_mv_q4_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
 }
 
 void kernel_mul_mv_q5_K_f32_impl(
@@ -3185,6 +3431,7 @@ void kernel_mul_mv_q5_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -3375,7 +3622,7 @@ kernel void kernel_mul_mv_q5_K_f32(
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
 
-    kernel_mul_mv_q5_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, tgpig, tiisg, sgitg);
+    kernel_mul_mv_q5_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
 }
 
 void kernel_mul_mv_q6_K_f32_impl(
@@ -3391,6 +3638,7 @@ void kernel_mul_mv_q6_K_f32_impl(
         constant   int64_t & ne1,
         constant   uint    & r2,
         constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
@@ -3509,257 +3757,10 @@ kernel void kernel_mul_mv_q6_K_f32(
         uint  tiisg[[thread_index_in_simdgroup]],
         uint  sgitg[[simdgroup_index_in_threadgroup]]) {
 
-    kernel_mul_mv_q6_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, tgpig, tiisg, sgitg);
+    kernel_mul_mv_q6_K_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
 }
 
 // ======================= "True" 2-bit
-
-constexpr constant static uint64_t iq2xxs_grid[256] = {
-    0x0808080808080808, 0x080808080808082b, 0x0808080808081919, 0x0808080808082b08,
-    0x0808080808082b2b, 0x0808080808190819, 0x0808080808191908, 0x08080808082b0808,
-    0x08080808082b082b, 0x08080808082b2b08, 0x08080808082b2b2b, 0x0808080819080819,
-    0x0808080819081908, 0x0808080819190808, 0x0808080819192b08, 0x08080808192b0819,
-    0x08080808192b1908, 0x080808082b080808, 0x080808082b08082b, 0x080808082b082b2b,
-    0x080808082b2b082b, 0x0808081908080819, 0x0808081908081908, 0x0808081908190808,
-    0x0808081908191919, 0x0808081919080808, 0x080808192b081908, 0x080808192b192b08,
-    0x0808082b08080808, 0x0808082b0808082b, 0x0808082b082b082b, 0x0808082b2b08082b,
-    0x0808190808080819, 0x0808190808081908, 0x0808190808190808, 0x08081908082b0819,
-    0x08081908082b1908, 0x0808190819080808, 0x080819081908082b, 0x0808190819082b08,
-    0x08081908192b0808, 0x080819082b080819, 0x080819082b081908, 0x080819082b190808,
-    0x080819082b2b1908, 0x0808191908080808, 0x080819190808082b, 0x0808191908082b08,
-    0x08081919082b0808, 0x080819191908192b, 0x08081919192b2b19, 0x080819192b080808,
-    0x080819192b190819, 0x0808192b08082b19, 0x0808192b08190808, 0x0808192b19080808,
-    0x0808192b2b081908, 0x0808192b2b2b1908, 0x08082b0808080808, 0x08082b0808081919,
-    0x08082b0808082b08, 0x08082b0808191908, 0x08082b08082b2b08, 0x08082b0819080819,
-    0x08082b0819081908, 0x08082b0819190808, 0x08082b081919082b, 0x08082b082b082b08,
-    0x08082b1908081908, 0x08082b1919080808, 0x08082b2b0808082b, 0x08082b2b08191908,
-    0x0819080808080819, 0x0819080808081908, 0x0819080808190808, 0x08190808082b0819,
-    0x0819080819080808, 0x08190808192b0808, 0x081908082b081908, 0x081908082b190808,
-    0x081908082b191919, 0x0819081908080808, 0x0819081908082b08, 0x08190819082b0808,
-    0x0819081919190808, 0x0819081919192b2b, 0x081908192b080808, 0x0819082b082b1908,
-    0x0819082b19081919, 0x0819190808080808, 0x0819190808082b08, 0x08191908082b0808,
-    0x08191908082b1919, 0x0819190819082b19, 0x081919082b080808, 0x0819191908192b08,
-    0x08191919192b082b, 0x0819192b08080808, 0x0819192b0819192b, 0x08192b0808080819,
-    0x08192b0808081908, 0x08192b0808190808, 0x08192b0819080808, 0x08192b082b080819,
-    0x08192b1908080808, 0x08192b1908081919, 0x08192b192b2b0808, 0x08192b2b19190819,
-    0x082b080808080808, 0x082b08080808082b, 0x082b080808082b2b, 0x082b080819081908,
-    0x082b0808192b0819, 0x082b08082b080808, 0x082b08082b08082b, 0x082b0819082b2b19,
-    0x082b081919082b08, 0x082b082b08080808, 0x082b082b0808082b, 0x082b190808080819,
-    0x082b190808081908, 0x082b190808190808, 0x082b190819080808, 0x082b19081919192b,
-    0x082b191908080808, 0x082b191919080819, 0x082b1919192b1908, 0x082b192b2b190808,
-    0x082b2b0808082b08, 0x082b2b08082b0808, 0x082b2b082b191908, 0x082b2b2b19081908,
-    0x1908080808080819, 0x1908080808081908, 0x1908080808190808, 0x1908080808192b08,
-    0x19080808082b0819, 0x19080808082b1908, 0x1908080819080808, 0x1908080819082b08,
-    0x190808081919192b, 0x19080808192b0808, 0x190808082b080819, 0x190808082b081908,
-    0x190808082b190808, 0x1908081908080808, 0x19080819082b0808, 0x19080819192b0819,
-    0x190808192b080808, 0x190808192b081919, 0x1908082b08080819, 0x1908082b08190808,
-    0x1908082b19082b08, 0x1908082b1919192b, 0x1908082b192b2b08, 0x1908190808080808,
-    0x1908190808082b08, 0x19081908082b0808, 0x190819082b080808, 0x190819082b192b19,
-    0x190819190819082b, 0x19081919082b1908, 0x1908192b08080808, 0x19082b0808080819,
-    0x19082b0808081908, 0x19082b0808190808, 0x19082b0819080808, 0x19082b0819081919,
-    0x19082b1908080808, 0x19082b1919192b08, 0x19082b19192b0819, 0x19082b192b08082b,
-    0x19082b2b19081919, 0x19082b2b2b190808, 0x1919080808080808, 0x1919080808082b08,
-    0x1919080808190819, 0x1919080808192b19, 0x19190808082b0808, 0x191908082b080808,
-    0x191908082b082b08, 0x1919081908081908, 0x191908191908082b, 0x191908192b2b1908,
-    0x1919082b2b190819, 0x191919082b190808, 0x191919082b19082b, 0x1919191908082b2b,
-    0x1919192b08080819, 0x1919192b19191908, 0x19192b0808080808, 0x19192b0808190819,
-    0x19192b0808192b19, 0x19192b08192b1908, 0x19192b1919080808, 0x19192b2b08082b08,
-    0x192b080808081908, 0x192b080808190808, 0x192b080819080808, 0x192b0808192b2b08,
-    0x192b081908080808, 0x192b081919191919, 0x192b082b08192b08, 0x192b082b192b0808,
-    0x192b190808080808, 0x192b190808081919, 0x192b191908190808, 0x192b19190819082b,
-    0x192b19192b081908, 0x192b2b081908082b, 0x2b08080808080808, 0x2b0808080808082b,
-    0x2b08080808082b2b, 0x2b08080819080819, 0x2b0808082b08082b, 0x2b08081908081908,
-    0x2b08081908192b08, 0x2b08081919080808, 0x2b08082b08190819, 0x2b08190808080819,
-    0x2b08190808081908, 0x2b08190808190808, 0x2b08190808191919, 0x2b08190819080808,
-    0x2b081908192b0808, 0x2b08191908080808, 0x2b0819191908192b, 0x2b0819192b191908,
-    0x2b08192b08082b19, 0x2b08192b19080808, 0x2b08192b192b0808, 0x2b082b080808082b,
-    0x2b082b1908081908, 0x2b082b2b08190819, 0x2b19080808081908, 0x2b19080808190808,
-    0x2b190808082b1908, 0x2b19080819080808, 0x2b1908082b2b0819, 0x2b1908190819192b,
-    0x2b1908192b080808, 0x2b19082b19081919, 0x2b19190808080808, 0x2b191908082b082b,
-    0x2b19190819081908, 0x2b19191919190819, 0x2b192b082b080819, 0x2b192b19082b0808,
-    0x2b2b08080808082b, 0x2b2b080819190808, 0x2b2b08082b081919, 0x2b2b081908082b19,
-    0x2b2b082b08080808, 0x2b2b190808192b08, 0x2b2b2b0819190808, 0x2b2b2b1908081908,
-};
-
-constexpr constant static uint64_t iq2xs_grid[512] = {
-    0x0808080808080808, 0x080808080808082b, 0x0808080808081919, 0x0808080808082b08,
-    0x0808080808082b2b, 0x0808080808190819, 0x0808080808191908, 0x080808080819192b,
-    0x0808080808192b19, 0x08080808082b0808, 0x08080808082b082b, 0x08080808082b1919,
-    0x08080808082b2b08, 0x0808080819080819, 0x0808080819081908, 0x080808081908192b,
-    0x0808080819082b19, 0x0808080819190808, 0x080808081919082b, 0x0808080819191919,
-    0x0808080819192b08, 0x08080808192b0819, 0x08080808192b1908, 0x080808082b080808,
-    0x080808082b08082b, 0x080808082b081919, 0x080808082b082b08, 0x080808082b190819,
-    0x080808082b191908, 0x080808082b192b19, 0x080808082b2b0808, 0x0808081908080819,
-    0x0808081908081908, 0x080808190808192b, 0x0808081908082b19, 0x0808081908190808,
-    0x080808190819082b, 0x0808081908191919, 0x0808081908192b08, 0x0808081908192b2b,
-    0x08080819082b0819, 0x08080819082b1908, 0x0808081919080808, 0x080808191908082b,
-    0x0808081919081919, 0x0808081919082b08, 0x0808081919190819, 0x0808081919191908,
-    0x08080819192b0808, 0x08080819192b2b08, 0x080808192b080819, 0x080808192b081908,
-    0x080808192b190808, 0x0808082b08080808, 0x0808082b0808082b, 0x0808082b08081919,
-    0x0808082b08082b08, 0x0808082b08190819, 0x0808082b08191908, 0x0808082b082b0808,
-    0x0808082b19080819, 0x0808082b19081908, 0x0808082b19190808, 0x0808082b19191919,
-    0x0808082b2b080808, 0x0808082b2b082b2b, 0x0808190808080819, 0x0808190808081908,
-    0x080819080808192b, 0x0808190808082b19, 0x0808190808190808, 0x080819080819082b,
-    0x0808190808191919, 0x0808190808192b08, 0x08081908082b0819, 0x08081908082b1908,
-    0x0808190819080808, 0x080819081908082b, 0x0808190819081919, 0x0808190819082b08,
-    0x0808190819190819, 0x0808190819191908, 0x080819081919192b, 0x08081908192b0808,
-    0x080819082b080819, 0x080819082b081908, 0x080819082b190808, 0x0808191908080808,
-    0x080819190808082b, 0x0808191908081919, 0x0808191908082b08, 0x0808191908190819,
-    0x0808191908191908, 0x08081919082b0808, 0x0808191919080819, 0x0808191919081908,
-    0x0808191919190808, 0x08081919192b0819, 0x080819192b080808, 0x0808192b08080819,
-    0x0808192b08081908, 0x0808192b08190808, 0x0808192b082b192b, 0x0808192b19080808,
-    0x0808192b1908082b, 0x0808192b2b081908, 0x08082b0808080808, 0x08082b080808082b,
-    0x08082b0808081919, 0x08082b0808082b08, 0x08082b0808082b2b, 0x08082b0808190819,
-    0x08082b0808191908, 0x08082b08082b0808, 0x08082b08082b1919, 0x08082b0819080819,
-    0x08082b0819081908, 0x08082b0819190808, 0x08082b0819192b08, 0x08082b082b080808,
-    0x08082b082b2b0808, 0x08082b082b2b2b2b, 0x08082b1908080819, 0x08082b1908081908,
-    0x08082b1908190808, 0x08082b1919080808, 0x08082b192b080819, 0x08082b192b082b19,
-    0x08082b2b08080808, 0x08082b2b082b0808, 0x08082b2b082b2b08, 0x08082b2b2b19192b,
-    0x08082b2b2b2b0808, 0x0819080808080819, 0x0819080808081908, 0x081908080808192b,
-    0x0819080808082b19, 0x0819080808190808, 0x081908080819082b, 0x0819080808191919,
-    0x0819080808192b08, 0x08190808082b0819, 0x08190808082b1908, 0x0819080819080808,
-    0x081908081908082b, 0x0819080819081919, 0x0819080819082b08, 0x0819080819190819,
-    0x0819080819191908, 0x08190808192b0808, 0x08190808192b2b2b, 0x081908082b080819,
-    0x081908082b081908, 0x081908082b190808, 0x0819081908080808, 0x081908190808082b,
-    0x0819081908081919, 0x0819081908082b08, 0x0819081908190819, 0x0819081908191908,
-    0x08190819082b0808, 0x0819081919080819, 0x0819081919081908, 0x0819081919190808,
-    0x081908192b080808, 0x081908192b191908, 0x081908192b19192b, 0x0819082b08080819,
-    0x0819082b08081908, 0x0819082b0808192b, 0x0819082b08190808, 0x0819082b19080808,
-    0x0819082b192b0808, 0x0819190808080808, 0x081919080808082b, 0x0819190808081919,
-    0x0819190808082b08, 0x0819190808190819, 0x0819190808191908, 0x08191908082b0808,
-    0x0819190819080819, 0x0819190819081908, 0x0819190819082b19, 0x0819190819190808,
-    0x08191908192b1908, 0x081919082b080808, 0x0819191908080819, 0x0819191908081908,
-    0x0819191908190808, 0x0819191919080808, 0x0819192b08080808, 0x0819192b08191908,
-    0x0819192b19082b19, 0x08192b0808080819, 0x08192b0808081908, 0x08192b0808190808,
-    0x08192b080819082b, 0x08192b0819080808, 0x08192b0819191908, 0x08192b082b08192b,
-    0x08192b1908080808, 0x08192b1908081919, 0x08192b19192b192b, 0x08192b2b19190819,
-    0x08192b2b2b2b2b19, 0x082b080808080808, 0x082b08080808082b, 0x082b080808081919,
-    0x082b080808082b08, 0x082b080808082b2b, 0x082b080808190819, 0x082b080808191908,
-    0x082b0808082b0808, 0x082b080819080819, 0x082b080819081908, 0x082b080819190808,
-    0x082b08082b080808, 0x082b08082b2b0808, 0x082b081908080819, 0x082b081908081908,
-    0x082b081908190808, 0x082b081919080808, 0x082b081919082b08, 0x082b0819192b1919,
-    0x082b082b08080808, 0x082b082b082b082b, 0x082b082b2b080808, 0x082b082b2b2b2b08,
-    0x082b190808080819, 0x082b190808081908, 0x082b190808190808, 0x082b1908082b2b19,
-    0x082b190819080808, 0x082b191908080808, 0x082b191919080819, 0x082b19191919082b,
-    0x082b19192b192b19, 0x082b192b08080819, 0x082b192b08192b2b, 0x082b192b2b2b192b,
-    0x082b2b0808080808, 0x082b2b0808082b08, 0x082b2b0808082b2b, 0x082b2b08082b0808,
-    0x082b2b0819191919, 0x082b2b082b082b08, 0x082b2b082b2b082b, 0x082b2b19192b2b08,
-    0x082b2b192b190808, 0x082b2b2b08082b08, 0x082b2b2b082b0808, 0x082b2b2b2b08082b,
-    0x082b2b2b2b082b08, 0x082b2b2b2b082b2b, 0x1908080808080819, 0x1908080808081908,
-    0x190808080808192b, 0x1908080808082b19, 0x1908080808190808, 0x190808080819082b,
-    0x1908080808191919, 0x1908080808192b08, 0x19080808082b0819, 0x19080808082b1908,
-    0x1908080819080808, 0x190808081908082b, 0x1908080819081919, 0x1908080819082b08,
-    0x1908080819082b2b, 0x1908080819190819, 0x1908080819191908, 0x19080808192b0808,
-    0x19080808192b1919, 0x190808082b080819, 0x190808082b081908, 0x190808082b190808,
-    0x1908081908080808, 0x190808190808082b, 0x1908081908081919, 0x1908081908082b08,
-    0x1908081908190819, 0x1908081908191908, 0x19080819082b0808, 0x1908081919080819,
-    0x1908081919081908, 0x1908081919190808, 0x190808192b080808, 0x190808192b081919,
-    0x190808192b2b082b, 0x1908082b08080819, 0x1908082b08081908, 0x1908082b08190808,
-    0x1908082b0819082b, 0x1908082b082b2b19, 0x1908082b19080808, 0x1908190808080808,
-    0x190819080808082b, 0x1908190808081919, 0x1908190808082b08, 0x1908190808190819,
-    0x1908190808191908, 0x1908190808192b19, 0x19081908082b0808, 0x1908190819080819,
-    0x1908190819081908, 0x1908190819190808, 0x190819082b080808, 0x190819082b191908,
-    0x1908191908080819, 0x1908191908081908, 0x1908191908190808, 0x19081919082b1908,
-    0x1908191919080808, 0x190819192b192b2b, 0x1908192b08080808, 0x1908192b08082b2b,
-    0x1908192b19081908, 0x1908192b19190808, 0x19082b0808080819, 0x19082b0808081908,
-    0x19082b0808190808, 0x19082b0819080808, 0x19082b0819081919, 0x19082b0819191908,
-    0x19082b08192b082b, 0x19082b1908080808, 0x19082b1908190819, 0x19082b1919081908,
-    0x19082b1919190808, 0x19082b19192b2b19, 0x19082b2b08081908, 0x1919080808080808,
-    0x191908080808082b, 0x1919080808081919, 0x1919080808082b08, 0x1919080808190819,
-    0x1919080808191908, 0x19190808082b0808, 0x19190808082b2b08, 0x1919080819080819,
-    0x1919080819081908, 0x1919080819190808, 0x191908082b080808, 0x1919081908080819,
-    0x1919081908081908, 0x1919081908190808, 0x1919081908191919, 0x1919081919080808,
-    0x191908191908082b, 0x1919082b08080808, 0x1919082b19081908, 0x1919082b2b2b2b2b,
-    0x1919190808080819, 0x1919190808081908, 0x1919190808190808, 0x19191908082b0819,
-    0x1919190819080808, 0x19191908192b0808, 0x191919082b080819, 0x191919082b2b0819,
-    0x1919191908080808, 0x1919191908082b08, 0x191919192b080808, 0x191919192b082b08,
-    0x1919192b082b0819, 0x1919192b192b2b08, 0x1919192b2b2b0819, 0x19192b0808080808,
-    0x19192b0808191908, 0x19192b0819080819, 0x19192b0819190808, 0x19192b082b192b19,
-    0x19192b1908192b2b, 0x19192b1919080808, 0x19192b191908082b, 0x19192b2b2b081919,
-    0x192b080808080819, 0x192b080808081908, 0x192b080808190808, 0x192b080819080808,
-    0x192b080819191908, 0x192b0808192b082b, 0x192b08082b08192b, 0x192b08082b2b2b19,
-    0x192b081908080808, 0x192b082b082b1908, 0x192b082b19082b2b, 0x192b082b2b19082b,
-    0x192b190808080808, 0x192b19080819192b, 0x192b191908190808, 0x192b191919080808,
-    0x192b191919081919, 0x192b19192b2b1908, 0x192b2b0808080819, 0x192b2b08192b2b2b,
-    0x192b2b19082b1919, 0x192b2b2b0808192b, 0x192b2b2b19191908, 0x192b2b2b192b082b,
-    0x2b08080808080808, 0x2b0808080808082b, 0x2b08080808081919, 0x2b08080808082b08,
-    0x2b08080808190819, 0x2b08080808191908, 0x2b080808082b0808, 0x2b080808082b2b2b,
-    0x2b08080819080819, 0x2b08080819081908, 0x2b08080819190808, 0x2b0808082b080808,
-    0x2b0808082b08082b, 0x2b0808082b2b2b08, 0x2b0808082b2b2b2b, 0x2b08081908080819,
-    0x2b08081908081908, 0x2b0808190808192b, 0x2b08081908190808, 0x2b08081919080808,
-    0x2b08081919190819, 0x2b08081919192b19, 0x2b08082b08080808, 0x2b08082b082b0808,
-    0x2b08082b2b080808, 0x2b08082b2b08082b, 0x2b08082b2b2b0808, 0x2b08082b2b2b2b08,
-    0x2b08190808080819, 0x2b08190808081908, 0x2b08190808190808, 0x2b0819080819082b,
-    0x2b08190808191919, 0x2b08190819080808, 0x2b081908192b0808, 0x2b0819082b082b19,
-    0x2b08191908080808, 0x2b08191919081908, 0x2b0819192b2b1919, 0x2b08192b08192b08,
-    0x2b08192b192b2b2b, 0x2b082b0808080808, 0x2b082b0808082b08, 0x2b082b08082b1919,
-    0x2b082b0819192b2b, 0x2b082b082b080808, 0x2b082b082b08082b, 0x2b082b082b2b2b08,
-    0x2b082b190808192b, 0x2b082b2b082b082b, 0x2b082b2b2b080808, 0x2b082b2b2b082b08,
-    0x2b082b2b2b19192b, 0x2b082b2b2b2b2b08, 0x2b19080808080819, 0x2b19080808081908,
-    0x2b19080808190808, 0x2b19080819080808, 0x2b1908081919192b, 0x2b1908082b081908,
-    0x2b19081908080808, 0x2b190819082b082b, 0x2b190819192b1908, 0x2b19082b1919192b,
-    0x2b19082b2b082b19, 0x2b19190808080808, 0x2b19190808081919, 0x2b19190819081908,
-    0x2b19190819190808, 0x2b19190819192b08, 0x2b191919082b2b19, 0x2b1919192b190808,
-    0x2b1919192b19082b, 0x2b19192b19080819, 0x2b192b0819190819, 0x2b192b082b2b192b,
-    0x2b192b1919082b19, 0x2b192b2b08191919, 0x2b192b2b192b0808, 0x2b2b080808080808,
-    0x2b2b08080808082b, 0x2b2b080808082b08, 0x2b2b080808082b2b, 0x2b2b0808082b0808,
-    0x2b2b0808082b2b2b, 0x2b2b08082b2b0808, 0x2b2b081919190819, 0x2b2b081919192b19,
-    0x2b2b08192b2b192b, 0x2b2b082b08080808, 0x2b2b082b0808082b, 0x2b2b082b08082b08,
-    0x2b2b082b082b2b2b, 0x2b2b082b2b080808, 0x2b2b082b2b2b0808, 0x2b2b190819080808,
-    0x2b2b19082b191919, 0x2b2b192b192b1919, 0x2b2b192b2b192b08, 0x2b2b2b0808082b2b,
-    0x2b2b2b08082b0808, 0x2b2b2b08082b082b, 0x2b2b2b08082b2b08, 0x2b2b2b082b2b0808,
-    0x2b2b2b082b2b2b08, 0x2b2b2b1908081908, 0x2b2b2b192b081908, 0x2b2b2b192b08192b,
-    0x2b2b2b2b082b2b08, 0x2b2b2b2b082b2b2b, 0x2b2b2b2b2b190819, 0x2b2b2b2b2b2b2b2b,
-};
-
-constexpr constant static uint32_t iq3xxs_grid[256] = {
-    0x04040404, 0x04040414, 0x04040424, 0x04040c0c, 0x04040c1c, 0x04040c3e, 0x04041404, 0x04041414,
-    0x04041c0c, 0x04042414, 0x04043e1c, 0x04043e2c, 0x040c040c, 0x040c041c, 0x040c0c04, 0x040c0c14,
-    0x040c140c, 0x040c142c, 0x040c1c04, 0x040c1c14, 0x040c240c, 0x040c2c24, 0x040c3e04, 0x04140404,
-    0x04140414, 0x04140424, 0x04140c0c, 0x04141404, 0x04141414, 0x04141c0c, 0x04141c1c, 0x04141c3e,
-    0x04142c0c, 0x04142c3e, 0x04143e2c, 0x041c040c, 0x041c043e, 0x041c0c04, 0x041c0c14, 0x041c142c,
-    0x041c3e04, 0x04240c1c, 0x04241c3e, 0x04242424, 0x04242c3e, 0x04243e1c, 0x04243e2c, 0x042c040c,
-    0x042c043e, 0x042c1c14, 0x042c2c14, 0x04341c2c, 0x04343424, 0x043e0c04, 0x043e0c24, 0x043e0c34,
-    0x043e241c, 0x043e340c, 0x0c04040c, 0x0c04041c, 0x0c040c04, 0x0c040c14, 0x0c04140c, 0x0c04141c,
-    0x0c041c04, 0x0c041c14, 0x0c041c24, 0x0c04243e, 0x0c042c04, 0x0c0c0404, 0x0c0c0414, 0x0c0c0c0c,
-    0x0c0c1404, 0x0c0c1414, 0x0c14040c, 0x0c14041c, 0x0c140c04, 0x0c140c14, 0x0c14140c, 0x0c141c04,
-    0x0c143e14, 0x0c1c0404, 0x0c1c0414, 0x0c1c1404, 0x0c1c1c0c, 0x0c1c2434, 0x0c1c3434, 0x0c24040c,
-    0x0c24042c, 0x0c242c04, 0x0c2c1404, 0x0c2c1424, 0x0c2c2434, 0x0c2c3e0c, 0x0c34042c, 0x0c3e1414,
-    0x0c3e2404, 0x14040404, 0x14040414, 0x14040c0c, 0x14040c1c, 0x14041404, 0x14041414, 0x14041434,
-    0x14041c0c, 0x14042414, 0x140c040c, 0x140c041c, 0x140c042c, 0x140c0c04, 0x140c0c14, 0x140c140c,
-    0x140c1c04, 0x140c341c, 0x140c343e, 0x140c3e04, 0x14140404, 0x14140414, 0x14140c0c, 0x14140c3e,
-    0x14141404, 0x14141414, 0x14141c3e, 0x14142404, 0x14142c2c, 0x141c040c, 0x141c0c04, 0x141c0c24,
-    0x141c3e04, 0x141c3e24, 0x14241c2c, 0x14242c1c, 0x142c041c, 0x142c143e, 0x142c240c, 0x142c3e24,
-    0x143e040c, 0x143e041c, 0x143e0c34, 0x143e242c, 0x1c04040c, 0x1c040c04, 0x1c040c14, 0x1c04140c,
-    0x1c04141c, 0x1c042c04, 0x1c04342c, 0x1c043e14, 0x1c0c0404, 0x1c0c0414, 0x1c0c1404, 0x1c0c1c0c,
-    0x1c0c2424, 0x1c0c2434, 0x1c14040c, 0x1c14041c, 0x1c140c04, 0x1c14142c, 0x1c142c14, 0x1c143e14,
-    0x1c1c0c0c, 0x1c1c1c1c, 0x1c241c04, 0x1c24243e, 0x1c243e14, 0x1c2c0404, 0x1c2c0434, 0x1c2c1414,
-    0x1c2c2c2c, 0x1c340c24, 0x1c341c34, 0x1c34341c, 0x1c3e1c1c, 0x1c3e3404, 0x24040424, 0x24040c3e,
-    0x24041c2c, 0x24041c3e, 0x24042c1c, 0x24042c3e, 0x240c3e24, 0x24141404, 0x24141c3e, 0x24142404,
-    0x24143404, 0x24143434, 0x241c043e, 0x241c242c, 0x24240424, 0x24242c0c, 0x24243424, 0x242c142c,
-    0x242c241c, 0x242c3e04, 0x243e042c, 0x243e0c04, 0x243e0c14, 0x243e1c04, 0x2c040c14, 0x2c04240c,
-    0x2c043e04, 0x2c0c0404, 0x2c0c0434, 0x2c0c1434, 0x2c0c2c2c, 0x2c140c24, 0x2c141c14, 0x2c143e14,
-    0x2c1c0414, 0x2c1c2c1c, 0x2c240c04, 0x2c24141c, 0x2c24143e, 0x2c243e14, 0x2c2c0414, 0x2c2c1c0c,
-    0x2c342c04, 0x2c3e1424, 0x2c3e2414, 0x34041424, 0x34042424, 0x34042434, 0x34043424, 0x340c140c,
-    0x340c340c, 0x34140c3e, 0x34143424, 0x341c1c04, 0x341c1c34, 0x34242424, 0x342c042c, 0x342c2c14,
-    0x34341c1c, 0x343e041c, 0x343e140c, 0x3e04041c, 0x3e04042c, 0x3e04043e, 0x3e040c04, 0x3e041c14,
-    0x3e042c14, 0x3e0c1434, 0x3e0c2404, 0x3e140c14, 0x3e14242c, 0x3e142c14, 0x3e1c0404, 0x3e1c0c2c,
-    0x3e1c1c1c, 0x3e1c3404, 0x3e24140c, 0x3e24240c, 0x3e2c0404, 0x3e2c0414, 0x3e2c1424, 0x3e341c04,
-};
-
-
-constexpr constant static uint8_t ksigns_iq2xs[128] = {
-      0, 129, 130,   3, 132,   5,   6, 135, 136,   9,  10, 139,  12, 141, 142,  15,
-    144,  17,  18, 147,  20, 149, 150,  23,  24, 153, 154,  27, 156,  29,  30, 159,
-    160,  33,  34, 163,  36, 165, 166,  39,  40, 169, 170,  43, 172,  45,  46, 175,
-     48, 177, 178,  51, 180,  53,  54, 183, 184,  57,  58, 187,  60, 189, 190,  63,
-    192,  65,  66, 195,  68, 197, 198,  71,  72, 201, 202,  75, 204,  77,  78, 207,
-     80, 209, 210,  83, 212,  85,  86, 215, 216,  89,  90, 219,  92, 221, 222,  95,
-     96, 225, 226,  99, 228, 101, 102, 231, 232, 105, 106, 235, 108, 237, 238, 111,
-    240, 113, 114, 243, 116, 245, 246, 119, 120, 249, 250, 123, 252, 125, 126, 255,
-};
-
-constexpr constant static uint8_t kmask_iq2xs[8] = {1, 2, 4, 8, 16, 32, 64, 128};
 
 void kernel_mul_mv_iq2_xxs_f32_impl(
         device const  void * src0,
@@ -3812,7 +3813,6 @@ void kernel_mul_mv_iq2_xxs_f32_impl(
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }
 
-#if QK_K == 256
     const int ix = tiisg;
 
     device const float * y4 = y + 32 * ix;
@@ -3853,9 +3853,6 @@ void kernel_mul_mv_iq2_xxs_f32_impl(
 
         y4 += 32 * 32;
     }
-#else
-    // TODO
-#endif
 
     for (int row = 0; row < N_DST; ++row) {
         all_sum = simd_sum(sumf[row]);
@@ -3945,7 +3942,6 @@ void kernel_mul_mv_iq2_xs_f32_impl(
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }
 
-#if QK_K == 256
     const int ix = tiisg;
 
     device const float * y4 = y + 32 * ix;
@@ -3996,9 +3992,6 @@ void kernel_mul_mv_iq2_xs_f32_impl(
 
         y4 += 32 * 32;
     }
-#else
-    // TODO
-#endif
 
     for (int row = 0; row < N_DST; ++row) {
         all_sum = simd_sum(sumf[row]);
@@ -4088,7 +4081,6 @@ void kernel_mul_mv_iq3_xxs_f32_impl(
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }
 
-#if QK_K == 256
     const int ix = tiisg;
 
     device const float * y4 = y + 32 * ix;
@@ -4132,9 +4124,6 @@ void kernel_mul_mv_iq3_xxs_f32_impl(
 
         y4 += 32 * 32;
     }
-#else
-    // TODO
-#endif
 
     for (int row = 0; row < N_DST; ++row) {
         all_sum = simd_sum(sumf[row]);
@@ -4173,6 +4162,777 @@ kernel void kernel_mul_mv_iq3_xxs_f32(
     kernel_mul_mv_iq3_xxs_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, shared_values, tgpig, tiisg, sgitg);
 }
 
+void kernel_mul_mv_iq3_s_f32_impl(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    const int nb = ne00/QK_K;
+    const int r0 = tgpig.x;
+    const int r1 = tgpig.y;
+    const int im = tgpig.z;
+
+    const int first_row = (r0 * N_SIMDGROUP + sgitg) * N_DST;
+    const int ib_row = first_row * nb;
+
+    const uint i12 = im%ne12;
+    const uint i13 = im/ne12;
+
+    const uint offset0 = (i12/r2)*(nb*ne01) + (i13/r3)*(nb*ne01*ne02);
+
+    device const block_iq3_s * x = (device const block_iq3_s *) src0 + ib_row + offset0;
+    device const float       * y = (device const float       *) src1 + r1*ne10 + im*ne00*ne1;
+
+    float yl[32];
+    float sumf[N_DST]={0.f}, all_sum;
+
+    const int nb32 = nb * (QK_K / 32);
+
+    threadgroup uint32_t * values = (threadgroup uint32_t *)shared_values;
+    {
+        int nval = 8;
+        int pos  = (32*sgitg + tiisg)*nval;
+        for (int i = 0; i < nval; ++i) values[pos + i] = iq3s_grid[pos + i];
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+
+    const int ix = tiisg;
+
+    device const float * y4 = y + 32 * ix;
+
+    for (int ib32 = ix; ib32 < nb32; ib32 += 32) {
+
+        for (int i = 0; i < 32; ++i) {
+            yl[i] = y4[i];
+        }
+
+        const int ibl = ib32 / (QK_K / 32);
+        const int ib  = ib32 % (QK_K / 32);
+
+        device const block_iq3_s * xr = x + ibl;
+        device const uint8_t * qs = xr->qs + 8 * ib;
+        device const uint8_t * qh = xr->qh + ib;
+        device const uint8_t * sc = xr->scales + (ib/2);
+        device const uint8_t * signs = xr->signs + 4 * ib;
+        device const half * dh = &xr->d;
+
+        for (int row = 0; row < N_DST; row++) {
+
+            const float db = dh[0];
+            const float d = db * (1 + 2*((sc[0] >> 4*(ib%2)) & 0xf));
+
+            float2 sum = {0};
+            for (int l = 0; l < 4; ++l) {
+                const threadgroup uint32_t * table1 = qh[0] & kmask_iq2xs[2*l+0] ? values + 256 : values;
+                const threadgroup uint32_t * table2 = qh[0] & kmask_iq2xs[2*l+1] ? values + 256 : values;
+                const threadgroup uint8_t * grid1 = (const threadgroup uint8_t *)(table1 + qs[2*l+0]);
+                const threadgroup uint8_t * grid2 = (const threadgroup uint8_t *)(table2 + qs[2*l+1]);
+                for (int j = 0; j < 4; ++j) {
+                    sum[0] += yl[8*l + j + 0] * grid1[j] * select(1, -1, signs[l] & kmask_iq2xs[j+0]);
+                    sum[1] += yl[8*l + j + 4] * grid2[j] * select(1, -1, signs[l] & kmask_iq2xs[j+4]);
+                }
+            }
+            sumf[row] += d * (sum[0] + sum[1]);
+
+            dh  += nb*sizeof(block_iq3_s)/2;
+            qs  += nb*sizeof(block_iq3_s);
+            qh  += nb*sizeof(block_iq3_s);
+            sc  += nb*sizeof(block_iq3_s);
+            signs += nb*sizeof(block_iq3_s);
+        }
+
+        y4 += 32 * 32;
+    }
+
+    for (int row = 0; row < N_DST; ++row) {
+        all_sum = simd_sum(sumf[row]);
+        if (tiisg == 0) {
+            dst[r1*ne0 + im*ne0*ne1 + first_row + row] = all_sum;
+        }
+    }
+}
+
+[[host_name("kernel_mul_mv_iq3_s_f32")]]
+kernel void kernel_mul_mv_iq3_s_f32(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    kernel_mul_mv_iq3_s_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, shared_values, tgpig, tiisg, sgitg);
+}
+
+void kernel_mul_mv_iq2_s_f32_impl(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    const int nb = ne00/QK_K;
+    const int r0 = tgpig.x;
+    const int r1 = tgpig.y;
+    const int im = tgpig.z;
+
+    const int first_row = (r0 * N_SIMDGROUP + sgitg) * N_DST;
+    const int ib_row = first_row * nb;
+
+    const uint i12 = im%ne12;
+    const uint i13 = im/ne12;
+
+    const uint offset0 = (i12/r2)*(nb*ne01) + (i13/r3)*(nb*ne01*ne02);
+
+    device const block_iq2_s * x = (device const block_iq2_s *) src0 + ib_row + offset0;
+    device const float       * y = (device const float       *) src1 + r1*ne10 + im*ne00*ne1;
+
+    float yl[32];
+    float sumf[N_DST]={0.f}, all_sum;
+
+    const int nb32 = nb * (QK_K / 32);
+
+    //threadgroup uint64_t * values = (threadgroup uint64_t *)shared_values;
+    //{
+    //    int nval = 32;
+    //    int pos  = (32*sgitg + tiisg)*nval;
+    //    for (int i = 0; i < nval; ++i) values[pos + i] = iq2s_grid[pos + i];
+    //    threadgroup_barrier(mem_flags::mem_threadgroup);
+    //}
+
+    const int ix = tiisg;
+
+    device const float * y4 = y + 32 * ix;
+
+    for (int ib32 = ix; ib32 < nb32; ib32 += 32) {
+
+        for (int i = 0; i < 32; ++i) {
+            yl[i] = y4[i];
+        }
+
+        const int ibl = ib32 / (QK_K / 32);
+        const int ib  = ib32 % (QK_K / 32);
+
+        device const block_iq2_s * xr = x + ibl;
+        device const uint8_t * qs = xr->qs + 4 * ib;
+        device const uint8_t * qh = xr->qh + ib;
+        device const uint8_t * sc = xr->scales + ib;
+        device const uint8_t * signs = qs + QK_K/8;
+        device const half * dh = &xr->d;
+
+        for (int row = 0; row < N_DST; row++) {
+
+            const float db = dh[0];
+            const float d1 = db * (0.5f + (sc[0] & 0xf));
+            const float d2 = db * (0.5f + (sc[0] >>  4));
+
+            float2 sum = {0};
+            for (int l = 0; l < 2; ++l) {
+                //const threadgroup uint8_t * grid1 = (const threadgroup uint8_t *)(values + (qs[l+0] | ((qh[0] << (8-2*l)) & 0x300)));
+                //const threadgroup uint8_t * grid2 = (const threadgroup uint8_t *)(values + (qs[l+2] | ((qh[0] << (4-2*l)) & 0x300)));
+                constant uint8_t * grid1 = (constant uint8_t *)(iq2s_grid + (qs[l+0] | ((qh[0] << (8-2*l)) & 0x300)));
+                constant uint8_t * grid2 = (constant uint8_t *)(iq2s_grid + (qs[l+2] | ((qh[0] << (4-2*l)) & 0x300)));
+                for (int j = 0; j < 8; ++j) {
+                    sum[0] += yl[8*l + j +  0] * grid1[j] * select(1, -1, signs[l+0] & kmask_iq2xs[j]);
+                    sum[1] += yl[8*l + j + 16] * grid2[j] * select(1, -1, signs[l+2] & kmask_iq2xs[j]);
+                }
+            }
+            sumf[row] += d1 * sum[0] + d2 * sum[1];
+
+            dh  += nb*sizeof(block_iq2_s)/2;
+            qs  += nb*sizeof(block_iq2_s);
+            qh  += nb*sizeof(block_iq2_s);
+            sc  += nb*sizeof(block_iq2_s);
+            signs += nb*sizeof(block_iq2_s);
+        }
+
+        y4 += 32 * 32;
+    }
+
+    for (int row = 0; row < N_DST; ++row) {
+        all_sum = simd_sum(sumf[row]);
+        if (tiisg == 0) {
+            dst[r1*ne0 + im*ne0*ne1 + first_row + row] = all_sum * 0.25f;
+        }
+    }
+}
+
+[[host_name("kernel_mul_mv_iq2_s_f32")]]
+kernel void kernel_mul_mv_iq2_s_f32(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    kernel_mul_mv_iq2_s_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, shared_values, tgpig, tiisg, sgitg);
+}
+
+void kernel_mul_mv_iq1_s_f32_impl(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    const int nb = ne00/QK_K;
+    const int r0 = tgpig.x;
+    const int r1 = tgpig.y;
+    const int im = tgpig.z;
+
+    const int first_row = (r0 * N_SIMDGROUP + sgitg) * N_DST;
+    const int ib_row = first_row * nb;
+
+    const uint i12 = im%ne12;
+    const uint i13 = im/ne12;
+
+    const uint offset0 = (i12/r2)*(nb*ne01) + (i13/r3)*(nb*ne01*ne02);
+    device const block_iq1_s * x = (device const block_iq1_s *) src0 + ib_row + offset0;
+    device const float       * y = (device const float       *) src1 + r1*ne10 + im*ne00*ne1;
+
+    float yl[32];
+    float sumf[N_DST]={0.f}, all_sum;
+
+    const int nb32 = nb * (QK_K / 32);
+
+    const int ix = tiisg;
+
+    device const float * y4 = y + 32 * ix;
+
+    for (int ib32 = ix; ib32 < nb32; ib32 += 32) {
+
+        float sumy = 0;
+        for (int i = 0; i < 32; ++i) {
+            yl[i] = y4[i];
+            sumy += yl[i];
+        }
+
+        const int ibl = ib32 / (QK_K / 32);
+        const int ib  = ib32 % (QK_K / 32);
+
+        device const block_iq1_s * xr = x + ibl;
+        device const uint8_t  * qs = xr->qs + 4 * ib;
+        device const uint16_t * qh = xr->qh + ib;
+        device const half     * dh = &xr->d;
+
+        for (int row = 0; row < N_DST; row++) {
+
+            constant uint8_t * grid1 = (constant uint8_t *)(iq1s_grid_gpu + (qs[0] | ((qh[0] << 8) & 0x700)));
+            constant uint8_t * grid2 = (constant uint8_t *)(iq1s_grid_gpu + (qs[1] | ((qh[0] << 5) & 0x700)));
+            constant uint8_t * grid3 = (constant uint8_t *)(iq1s_grid_gpu + (qs[2] | ((qh[0] << 2) & 0x700)));
+            constant uint8_t * grid4 = (constant uint8_t *)(iq1s_grid_gpu + (qs[3] | ((qh[0] >> 1) & 0x700)));
+
+            float sum = 0;
+            for (int j = 0; j < 4; ++j) {
+                sum += yl[j+ 0] * (grid1[j] & 0xf) + yl[j+ 4] * (grid1[j] >> 4)
+                     + yl[j+ 8] * (grid2[j] & 0xf) + yl[j+12] * (grid2[j] >> 4)
+                     + yl[j+16] * (grid3[j] & 0xf) + yl[j+20] * (grid3[j] >> 4)
+                     + yl[j+24] * (grid4[j] & 0xf) + yl[j+28] * (grid4[j] >> 4);
+            }
+            sumf[row] += (float)dh[0] * (sum + sumy * (qh[0] & 0x8000 ? -1 - IQ1S_DELTA : -1 + IQ1S_DELTA)) * (2*((qh[0] >> 12) & 7) + 1);
+
+            dh += nb*sizeof(block_iq1_s)/2;
+            qs += nb*sizeof(block_iq1_s);
+            qh += nb*sizeof(block_iq1_s)/2;
+        }
+
+        y4 += 32 * 32;
+    }
+
+    for (int row = 0; row < N_DST; ++row) {
+        all_sum = simd_sum(sumf[row]);
+        if (tiisg == 0) {
+            dst[r1*ne0 + im*ne0*ne1 + first_row + row] = all_sum;
+        }
+    }
+}
+
+void kernel_mul_mv_iq1_m_f32_impl(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    const int nb = ne00/QK_K;
+    const int r0 = tgpig.x;
+    const int r1 = tgpig.y;
+    const int im = tgpig.z;
+
+    const int first_row = (r0 * N_SIMDGROUP + sgitg) * N_DST;
+    const int ib_row = first_row * nb;
+
+    const uint i12 = im%ne12;
+    const uint i13 = im/ne12;
+
+    const uint offset0 = (i12/r2)*(nb*ne01) + (i13/r3)*(nb*ne01*ne02);
+    device const block_iq1_m * x = (device const block_iq1_m *) src0 + ib_row + offset0;
+    device const float       * y = (device const float       *) src1 + r1*ne10 + im*ne00*ne1;
+
+    float yl[32];
+    float sumf[N_DST]={0.f}, all_sum;
+
+    const int nb32 = nb * (QK_K / 32);
+
+    const int ix = tiisg;
+
+    device const float * y4 = y + 32 * ix;
+
+#if QK_K != 64
+    iq1m_scale_t scale;
+#endif
+
+    for (int ib32 = ix; ib32 < nb32; ib32 += 32) {
+
+        float4 sumy = {0.f};
+        for (int i = 0; i < 8; ++i) {
+            yl[i+ 0] = y4[i+ 0]; sumy[0] += yl[i+ 0];
+            yl[i+ 8] = y4[i+ 8]; sumy[1] += yl[i+ 8];
+            yl[i+16] = y4[i+16]; sumy[2] += yl[i+16];
+            yl[i+24] = y4[i+24]; sumy[3] += yl[i+24];
+        }
+
+        const int ibl = ib32 / (QK_K / 32);
+        const int ib  = ib32 % (QK_K / 32);
+
+        device const block_iq1_m * xr = x + ibl;
+        device const uint8_t  * qs = xr->qs + 4 * ib;
+        device const uint8_t  * qh = xr->qh + 2 * ib;
+        device const uint16_t * sc = (device const uint16_t *)xr->scales;
+
+        for (int row = 0; row < N_DST; row++) {
+
+#if QK_K != 64
+            scale.u16 = (sc[0] >> 12) | ((sc[1] >> 8) & 0x00f0) | ((sc[2] >> 4) & 0x0f00) | (sc[3] & 0xf000);
+#endif
+
+            constant uint8_t * grid1 = (constant uint8_t *)(iq1s_grid_gpu + (qs[0] | ((qh[0] << 8) & 0x700)));
+            constant uint8_t * grid2 = (constant uint8_t *)(iq1s_grid_gpu + (qs[1] | ((qh[0] << 4) & 0x700)));
+            constant uint8_t * grid3 = (constant uint8_t *)(iq1s_grid_gpu + (qs[2] | ((qh[1] << 8) & 0x700)));
+            constant uint8_t * grid4 = (constant uint8_t *)(iq1s_grid_gpu + (qs[3] | ((qh[1] << 4) & 0x700)));
+
+            float2 sum = {0.f};
+            for (int j = 0; j < 4; ++j) {
+                sum[0] += yl[j+ 0] * (grid1[j] & 0xf) + yl[j+ 4] * (grid1[j] >> 4)
+                        + yl[j+ 8] * (grid2[j] & 0xf) + yl[j+12] * (grid2[j] >> 4);
+                sum[1] += yl[j+16] * (grid3[j] & 0xf) + yl[j+20] * (grid3[j] >> 4)
+                        + yl[j+24] * (grid4[j] & 0xf) + yl[j+28] * (grid4[j] >> 4);
+            }
+            const float delta1 = sumy[0] * (qh[0] & 0x08 ? -1 - IQ1M_DELTA : -1 + IQ1M_DELTA) + sumy[1] * (qh[0] & 0x80 ? -1 - IQ1M_DELTA : -1 + IQ1M_DELTA);
+            const float delta2 = sumy[2] * (qh[1] & 0x08 ? -1 - IQ1M_DELTA : -1 + IQ1M_DELTA) + sumy[3] * (qh[1] & 0x80 ? -1 - IQ1M_DELTA : -1 + IQ1M_DELTA);
+#if QK_K == 64
+            const float d = (float) *((device const half *)(sc - 1));
+            sumf[row] += d * ((sum[0] + delta1) * (2*((sc[0] >> (8*(ib%2)+0)) & 0xf) + 1) +
+                              (sum[1] + delta2) * (2*((sc[0] >> (8*(ib%2)+4)) & 0xf) + 1));
+#else
+            sumf[row] += (float)scale.f16 * ((sum[0] + delta1) * (2*((sc[ib/2] >> (6*(ib%2)+0)) & 7) + 1) +
+                                             (sum[1] + delta2) * (2*((sc[ib/2] >> (6*(ib%2)+3)) & 7) + 1));
+#endif
+
+            sc += nb*sizeof(block_iq1_m)/2;
+            qs += nb*sizeof(block_iq1_m);
+            qh += nb*sizeof(block_iq1_m);
+        }
+
+        y4 += 32 * 32;
+    }
+
+    for (int row = 0; row < N_DST; ++row) {
+        all_sum = simd_sum(sumf[row]);
+        if (tiisg == 0) {
+            dst[r1*ne0 + im*ne0*ne1 + first_row + row] = all_sum;
+        }
+    }
+}
+
+void kernel_mul_mv_iq4_nl_f32_impl(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values_i8 [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    threadgroup float * shared_values = (threadgroup float *)shared_values_i8;
+    const int nb = ne00/QK4_NL;
+    const int r0 = tgpig.x;
+    const int r1 = tgpig.y;
+    const int im = tgpig.z;
+    const int first_row = (r0 * 2 + sgitg) * 2;
+    const int ib_row = first_row * nb;
+
+    const uint i12 = im%ne12;
+    const uint i13 = im/ne12;
+
+    const uint offset0 = (i12/r2)*(nb*ne01) + (i13/r3)*(nb*ne01*ne02);
+    device const block_iq4_nl * x = (device const block_iq4_nl *) src0 + ib_row + offset0;
+    device const float        * y = (device const float        *) src1 + r1*ne10 + im*ne00*ne1;
+
+    const int ix = tiisg/2;  // 0...15
+    const int it = tiisg%2;  // 0 or 1
+
+    shared_values[tiisg] = kvalues_iq4nl_f[tiisg%16];
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    float4 yl[4];
+    float sumf[2]={0.f}, all_sum;
+
+    device const float * yb = y + ix * QK4_NL + it * 8;
+
+    uint32_t aux32[2];
+    thread const uint8_t * q8 = (thread const uint8_t *)aux32;
+
+    float4 qf1, qf2;
+
+    for (int ib = ix; ib < nb; ib += 16) {
+
+        device const float4 * y4 = (device const float4 *)yb;
+        yl[0] = y4[0]; yl[1] = y4[4]; yl[2] = y4[1]; yl[3] = y4[5];
+
+        for (int row = 0; row < 2; ++row) {
+
+            device const block_iq4_nl & xb = x[row*nb + ib];
+            device const uint16_t * q4 = (device const uint16_t *)(xb.qs + 8*it);
+
+            float4 acc1 = {0.f}, acc2 = {0.f};
+
+            aux32[0] = q4[0] | (q4[1] << 16);
+            aux32[1] = (aux32[0] >> 4) & 0x0f0f0f0f;
+            aux32[0] &= 0x0f0f0f0f;
+            qf1 = {shared_values[q8[0]], shared_values[q8[1]], shared_values[q8[2]], shared_values[q8[3]]};
+            qf2 = {shared_values[q8[4]], shared_values[q8[5]], shared_values[q8[6]], shared_values[q8[7]]};
+            acc1 += yl[0] * qf1;
+            acc2 += yl[1] * qf2;
+
+            aux32[0] = q4[2] | (q4[3] << 16);
+            aux32[1] = (aux32[0] >> 4) & 0x0f0f0f0f;
+            aux32[0] &= 0x0f0f0f0f;
+            qf1 = {shared_values[q8[0]], shared_values[q8[1]], shared_values[q8[2]], shared_values[q8[3]]};
+            qf2 = {shared_values[q8[4]], shared_values[q8[5]], shared_values[q8[6]], shared_values[q8[7]]};
+            acc1 += yl[2] * qf1;
+            acc2 += yl[3] * qf2;
+
+            acc1 += acc2;
+
+            sumf[row] += (float)xb.d * (acc1[0] + acc1[1] + acc1[2] + acc1[3]);
+
+        }
+
+        yb += 16 * QK4_NL;
+    }
+
+    for (int row = 0; row < 2; ++row) {
+        all_sum = simd_sum(sumf[row]);
+        if (tiisg == 0) {
+            dst[r1*ne0 + im*ne0*ne1 + first_row + row] = all_sum;
+        }
+    }
+}
+
+#if QK_K != 64
+void kernel_mul_mv_iq4_xs_f32_impl(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t  * shared_values_i8 [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+    threadgroup float * shared_values = (threadgroup float *)shared_values_i8;
+    const int nb = ne00/QK_K;
+    const int r0 = tgpig.x;
+    const int r1 = tgpig.y;
+    const int im = tgpig.z;
+    const int first_row = (r0 * 2 + sgitg) * 2;
+    const int ib_row = first_row * nb;
+
+    const uint i12 = im%ne12;
+    const uint i13 = im/ne12;
+
+    const uint offset0 = (i12/r2)*(nb*ne01) + (i13/r3)*(nb*ne01*ne02);
+    device const block_iq4_xs * x = (device const block_iq4_xs *) src0 + ib_row + offset0;
+    device const float        * y = (device const float        *) src1 + r1*ne10 + im*ne00*ne1;
+
+    const int ix = tiisg/16;  // 0 or 1
+    const int it = tiisg%16;  // 0...15
+    const int ib = it/2;
+    const int il = it%2;
+
+    shared_values[tiisg] = kvalues_iq4nl_f[tiisg%16];
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    float4 yl[4];
+    float sumf[2]={0.f}, all_sum;
+
+    device const float * yb = y + ix * QK_K + ib * 32 + il * 8;
+
+    uint32_t aux32[2];
+    thread const uint8_t * q8 = (thread const uint8_t *)aux32;
+
+    float4 qf1, qf2;
+
+    for (int ibl = ix; ibl < nb; ibl += 2) {
+
+        device const float4 * y4 = (device const float4 *)yb;
+        yl[0] = y4[0]; yl[1] = y4[4]; yl[2] = y4[1]; yl[3] = y4[5];
+
+        for (int row = 0; row < 2; ++row) {
+
+            device const block_iq4_xs & xb = x[row*nb + ibl];
+            device const uint32_t * q4 = (device const uint32_t *)(xb.qs + 16*ib + 8*il);
+
+            float4 acc1 = {0.f}, acc2 = {0.f};
+
+            aux32[0] = q4[0] & 0x0f0f0f0f;
+            aux32[1] = (q4[0] >> 4) & 0x0f0f0f0f;
+            qf1 = {shared_values[q8[0]], shared_values[q8[1]], shared_values[q8[2]], shared_values[q8[3]]};
+            qf2 = {shared_values[q8[4]], shared_values[q8[5]], shared_values[q8[6]], shared_values[q8[7]]};
+            acc1 += yl[0] * qf1;
+            acc2 += yl[1] * qf2;
+
+            aux32[0] = q4[1] & 0x0f0f0f0f;
+            aux32[1] = (q4[1] >> 4) & 0x0f0f0f0f;
+            qf1 = {shared_values[q8[0]], shared_values[q8[1]], shared_values[q8[2]], shared_values[q8[3]]};
+            qf2 = {shared_values[q8[4]], shared_values[q8[5]], shared_values[q8[6]], shared_values[q8[7]]};
+            acc1 += yl[2] * qf1;
+            acc2 += yl[3] * qf2;
+
+            acc1 += acc2;
+
+            const int ls = (((xb.scales_l[ib/2] >> 4*(ib%2)) & 0xf) | (((xb.scales_h >> 2*ib) & 3) << 4)) - 32;
+            sumf[row] += (float)xb.d * ls * (acc1[0] + acc1[1] + acc1[2] + acc1[3]);
+
+        }
+
+        yb += 2 * QK_K;
+    }
+
+    for (int row = 0; row < 2; ++row) {
+        all_sum = simd_sum(sumf[row]);
+        if (tiisg == 0) {
+            dst[r1*ne0 + im*ne0*ne1 + first_row + row] = all_sum;
+        }
+    }
+}
+#endif
+
+[[host_name("kernel_mul_mv_iq1_s_f32")]]
+kernel void kernel_mul_mv_iq1_s_f32(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    kernel_mul_mv_iq1_s_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
+}
+
+[[host_name("kernel_mul_mv_iq1_m_f32")]]
+kernel void kernel_mul_mv_iq1_m_f32(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    kernel_mul_mv_iq1_m_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, nullptr, tgpig, tiisg, sgitg);
+}
+
+[[host_name("kernel_mul_mv_iq4_nl_f32")]]
+kernel void kernel_mul_mv_iq4_nl_f32(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint tiisg[[thread_index_in_simdgroup]],
+        uint sgitg[[simdgroup_index_in_threadgroup]]) {
+
+    kernel_mul_mv_iq4_nl_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, shared_values, tgpig, tiisg, sgitg);
+}
+
+[[host_name("kernel_mul_mv_iq4_xs_f32")]]
+kernel void kernel_mul_mv_iq4_xs_f32(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint tiisg[[thread_index_in_simdgroup]],
+        uint sgitg[[simdgroup_index_in_threadgroup]]) {
+
+#if QK_K == 64
+    kernel_mul_mv_iq4_nl_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, shared_values, tgpig, tiisg, sgitg);
+#else
+    kernel_mul_mv_iq4_xs_f32_impl(src0, src1, dst, ne00, ne01, ne02, ne10, ne12, ne0, ne1, r2, r3, shared_values, tgpig, tiisg, sgitg);
+#endif
+}
 
 //============================= templates and their specializations =============================
 
@@ -4369,6 +5129,8 @@ void dequantize_q4_K(device const block_q4_K *xb, short il, thread type4x4 & reg
     const float dl = d * sc[0];
     const float ml = min * sc[1];
 #else
+    (void) get_scale_min_k4_just2;
+
     q = q + 16 * (il&1);
     device const uint8_t * s = xb->scales;
     device const half2 * dh = (device const half2 *)xb->d;
@@ -4516,6 +5278,142 @@ void dequantize_iq3_xxs(device const block_iq3_xxs * xb, short il, thread type4x
         reg[2][i] = dl * grid1[i] * (signs & kmask_iq2xs[i+0] ? -1.f : 1.f);
         reg[3][i] = dl * grid2[i] * (signs & kmask_iq2xs[i+4] ? -1.f : 1.f);
     }
+}
+
+template <typename type4x4>
+void dequantize_iq3_s(device const block_iq3_s * xb, short il, thread type4x4 & reg) {
+    // il is 0...15 for QK_K = 256 => index of block of 32 is il/2
+    const float d = xb->d;
+    const int ib32 = il/2;
+    il = il%2;
+    // il = 0 or 1. il = 0 processes the first 16 quants in a block of 32, il = 1 the second 16
+    device const uint8_t * qs = xb->qs + 8*ib32;
+    device const uint8_t * signs = xb->signs + 4*ib32 + 2*il;
+    const uint8_t qh = xb->qh[ib32] >> 4*il;
+    const float dl = d * (1 + 2*((xb->scales[ib32/2] >> 4*(ib32%2)) & 0xf));
+    constant uint8_t * grid1 = (constant uint8_t *)(iq3s_grid + (qs[4*il+0] | ((qh << 8) & 256)));
+    constant uint8_t * grid2 = (constant uint8_t *)(iq3s_grid + (qs[4*il+1] | ((qh << 7) & 256)));
+    for (int i = 0; i < 4; ++i) {
+        reg[0][i] = dl * grid1[i] * select(1, -1, signs[0] & kmask_iq2xs[i+0]);
+        reg[1][i] = dl * grid2[i] * select(1, -1, signs[0] & kmask_iq2xs[i+4]);
+    }
+    grid1 = (constant uint8_t *)(iq3s_grid + (qs[4*il+2] | ((qh << 6) & 256)));
+    grid2 = (constant uint8_t *)(iq3s_grid + (qs[4*il+3] | ((qh << 5) & 256)));
+    for (int i = 0; i < 4; ++i) {
+        reg[2][i] = dl * grid1[i] * select(1, -1, signs[1] & kmask_iq2xs[i+0]);
+        reg[3][i] = dl * grid2[i] * select(1, -1, signs[1] & kmask_iq2xs[i+4]);
+    }
+}
+
+template <typename type4x4>
+void dequantize_iq2_s(device const block_iq2_s * xb, short il, thread type4x4 & reg) {
+    // il is 0...15 for QK_K = 256 => index of block of 32 is il/2
+    const float d = xb->d;
+    const int ib32 = il/2;
+    il = il%2;
+    // il = 0 or 1. il = 0 processes the first 16 quants in a block of 32, il = 1 the second 16
+    device const uint8_t * qs = xb->qs + 4*ib32 + 2*il;
+    device const uint8_t * signs = qs + QK_K/8;
+    const uint8_t qh = xb->qh[ib32] >> 4*il;
+    const float dl = d * (0.5f + ((xb->scales[ib32] >> 4*il) & 0xf)) * 0.25f;
+    constant uint8_t * grid1 = (constant uint8_t *)(iq2s_grid + (qs[0] | ((qh << 8) & 0x300)));
+    constant uint8_t * grid2 = (constant uint8_t *)(iq2s_grid + (qs[1] | ((qh << 6) & 0x300)));
+    for (int i = 0; i < 8; ++i) {
+        reg[i/4+0][i%4] = dl * grid1[i] * select(1, -1, signs[0] & kmask_iq2xs[i]);
+        reg[i/4+2][i%4] = dl * grid2[i] * select(1, -1, signs[1] & kmask_iq2xs[i]);
+    }
+}
+
+template <typename type4x4>
+void dequantize_iq1_s(device const block_iq1_s * xb, short il, thread type4x4 & reg) {
+    // il is 0...15 for QK_K = 256 => index of block of 32 is il/2
+    const int ib32 = il/2;
+    il = il%2;
+    const float d = xb->d;
+    device const uint8_t  * qs = xb->qs + 4*ib32 + 2*il;
+    device const uint16_t * qh = xb->qh;
+    const float dl = d * (2*((qh[ib32] >> 12) & 7) + 1);
+    const float ml = dl * (qh[ib32] & 0x8000 ? -1 - IQ1S_DELTA : -1 + IQ1S_DELTA);
+    const uint16_t h = qh[ib32] >> 6*il;
+    constant uint8_t * grid1 = (constant uint8_t *)(iq1s_grid_gpu + (qs[0] | ((h << 8) & 0x700)));
+    constant uint8_t * grid2 = (constant uint8_t *)(iq1s_grid_gpu + (qs[1] | ((h << 5) & 0x700)));
+    for (int i = 0; i < 4; ++i) {
+        reg[0][i] = dl * (grid1[i] & 0xf) + ml;
+        reg[1][i] = dl * (grid1[i] >>  4) + ml;
+        reg[2][i] = dl * (grid2[i] & 0xf) + ml;
+        reg[3][i] = dl * (grid2[i] >>  4) + ml;
+    }
+}
+
+template <typename type4x4>
+void dequantize_iq1_m(device const block_iq1_m * xb, short il, thread type4x4 & reg) {
+    // il is 0...15 for QK_K = 256 => index of block of 32 is il/2
+    const int ib32 = il/2;
+    il = il%2;
+    device const uint16_t * sc = (device const uint16_t *)xb->scales;
+#if QK_K == 64
+    const float d = xb->d;
+#else
+    iq1m_scale_t scale;
+    scale.u16 = (sc[0] >> 12) | ((sc[1] >> 8) & 0x00f0) | ((sc[2] >> 4) & 0x0f00) | (sc[3] & 0xf000);
+    const float d = scale.f16;
+#endif
+    device const uint8_t * qs = xb->qs + 4*ib32 + 2*il;
+    device const uint8_t * qh = xb->qh + 2*ib32 + il;
+#if QK_K == 64
+    const float dl  = d * (2*((sc[ib32/2] >> (8*(ib32%2)+4*il)) & 0xf) + 1);
+#else
+    const float dl  = d * (2*((sc[ib32/2] >> (6*(ib32%2)+3*il)) & 7) + 1);
+#endif
+    const float ml1 = dl * (qh[0] & 0x08 ? -1 - IQ1M_DELTA : -1 + IQ1M_DELTA);
+    const float ml2 = dl * (qh[0] & 0x80 ? -1 - IQ1M_DELTA : -1 + IQ1M_DELTA);
+    constant uint8_t * grid1 = (constant uint8_t *)(iq1s_grid_gpu + (qs[0] | ((qh[0] << 8) & 0x700)));
+    constant uint8_t * grid2 = (constant uint8_t *)(iq1s_grid_gpu + (qs[1] | ((qh[0] << 4) & 0x700)));
+    for (int i = 0; i < 4; ++i) {
+        reg[0][i] = dl * (grid1[i] & 0xf) + ml1;
+        reg[1][i] = dl * (grid1[i] >>  4) + ml1;
+        reg[2][i] = dl * (grid2[i] & 0xf) + ml2;
+        reg[3][i] = dl * (grid2[i] >>  4) + ml2;
+    }
+}
+
+template <typename type4x4>
+void dequantize_iq4_nl(device const block_iq4_nl * xb, short il, thread type4x4 & reg) {
+    device const uint16_t * q4 = (device const uint16_t *)xb->qs;
+    const float d = xb->d;
+    uint32_t aux32;
+    thread const uint8_t * q8 = (thread const uint8_t *)&aux32;
+    for (int i = 0; i < 4; ++i) {
+        aux32 = ((q4[2*i] | (q4[2*i+1] << 16)) >> 4*il) & 0x0f0f0f0f;
+        reg[i][0] = d * kvalues_iq4nl_f[q8[0]];
+        reg[i][1] = d * kvalues_iq4nl_f[q8[1]];
+        reg[i][2] = d * kvalues_iq4nl_f[q8[2]];
+        reg[i][3] = d * kvalues_iq4nl_f[q8[3]];
+    }
+}
+
+template <typename type4x4>
+void dequantize_iq4_xs(device const block_iq4_xs * xb, short il, thread type4x4 & reg) {
+#if QK_K == 64
+    dequantize_iq4_nl(xb, il, reg);
+#else
+    // il is 0...15 for QK_K = 256 => index of block of 32 is il/2
+    const int ib32 = il/2;
+    il = il%2;
+    // il = 0 or 1. il = 0 processes the first 16 quants in a block of 32, il = 1 the second 16
+    device const uint32_t * q4 = (device const uint32_t *)xb->qs + 4*ib32;
+    const int ls = ((xb->scales_l[ib32/2] >> 4*(ib32%2)) & 0xf) | (((xb->scales_h >> 2*ib32) & 3) << 4);
+    const float d = (float)xb->d * (ls - 32);
+    uint32_t aux32;
+    thread const uint8_t * q8 = (thread const uint8_t *)&aux32;
+    for (int i = 0; i < 4; ++i) {
+        aux32 = (q4[i] >> 4*il) & 0x0f0f0f0f;
+        reg[i][0] = d * kvalues_iq4nl_f[q8[0]];
+        reg[i][1] = d * kvalues_iq4nl_f[q8[1]];
+        reg[i][2] = d * kvalues_iq4nl_f[q8[2]];
+        reg[i][3] = d * kvalues_iq4nl_f[q8[3]];
+    }
+#endif
 }
 
 template<typename block_q, short nl, void (*dequantize_func)(device const block_q *, short, thread float4x4 &)>
@@ -4786,7 +5684,7 @@ template<typename block_q, short nl, void (*dequantize_func)(device const block_
 void kernel_mul_mm_id_impl(
         device const  uchar * src0,
         device const  uchar * src1,
-        thread        short * src1ids,
+        threadgroup   short * src1ids,
         device        float * dst,
         constant    int64_t & ne00,
         constant    int64_t & ne02,
@@ -4950,9 +5848,10 @@ kernel void kernel_mul_mm(device const  uchar * src0,
 
 template<typename block_q, short nl, void (*dequantize_func)(device const block_q *, short, thread half4x4 &)>
 kernel void kernel_mul_mm_id(
-        device const   uchar * ids,
+        device const   uchar * src0s,
         device const   uchar * src1,
         device         float * dst,
+        device const   uchar * ids,
         constant    uint64_t & nbi1,
         constant     int64_t & ne00,
         constant     int64_t & ne02,
@@ -4969,29 +5868,21 @@ kernel void kernel_mul_mm_id(
         constant        uint & r2,
         constant        uint & r3,
         constant         int & idx,
-        device const   uchar * src00,
-        device const   uchar * src01,
-        device const   uchar * src02,
-        device const   uchar * src03,
-        device const   uchar * src04,
-        device const   uchar * src05,
-        device const   uchar * src06,
-        device const   uchar * src07,
         threadgroup    uchar * shared_memory [[threadgroup(0)]],
         uint3                  tgpig[[threadgroup_position_in_grid]],
         uint                   tiitg[[thread_index_in_threadgroup]],
         uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const uchar * src0s[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
 
     // expert id
     const int32_t id = tgpig.z/(ne12*ne13);
+    device const uchar * src0 = src0s + id*nb02;
 
     tgpig.z = tgpig.z%(ne12*ne13);
 
     // row indices of src1 for expert id
-    int64_t _ne1 = 0;
-    short src1ids[512];
+    threadgroup short * src1ids = (threadgroup short *)(shared_memory + 8192);
 
+    int64_t _ne1 = 0;
     for (int64_t i1 = 0; i1 < ne1; i1++) {
         if (((device int32_t *) (ids + i1*nbi1))[idx] == id) {
             src1ids[_ne1++] = i1;
@@ -4999,7 +5890,7 @@ kernel void kernel_mul_mm_id(
     }
 
     kernel_mul_mm_id_impl<block_q, nl, dequantize_func>(
-        src0s[id],
+        src0,
         src1,
         src1ids,
         dst,
@@ -5060,6 +5951,16 @@ template [[host_name("kernel_get_rows_q6_K")]] kernel get_rows_t kernel_get_rows
 template [[host_name("kernel_get_rows_iq2_xxs")]] kernel get_rows_t kernel_get_rows<block_iq2_xxs, QK_NL, dequantize_iq2_xxs>;
 template [[host_name("kernel_get_rows_iq2_xs")]]  kernel get_rows_t kernel_get_rows<block_iq2_xs,  QK_NL, dequantize_iq2_xs>;
 template [[host_name("kernel_get_rows_iq3_xxs")]] kernel get_rows_t kernel_get_rows<block_iq3_xxs, QK_NL, dequantize_iq3_xxs>;
+template [[host_name("kernel_get_rows_iq3_s")]]   kernel get_rows_t kernel_get_rows<block_iq3_s,   QK_NL, dequantize_iq3_s>;
+template [[host_name("kernel_get_rows_iq2_s")]]   kernel get_rows_t kernel_get_rows<block_iq2_s,   QK_NL, dequantize_iq2_s>;
+template [[host_name("kernel_get_rows_iq1_s")]]   kernel get_rows_t kernel_get_rows<block_iq1_s,   QK_NL, dequantize_iq1_s>;
+template [[host_name("kernel_get_rows_iq1_m")]]   kernel get_rows_t kernel_get_rows<block_iq1_m,   QK_NL, dequantize_iq1_m>;
+template [[host_name("kernel_get_rows_iq4_nl")]]  kernel get_rows_t kernel_get_rows<block_iq4_nl,  2,     dequantize_iq4_nl>;
+#if QK_K == 64
+template [[host_name("kernel_get_rows_iq4_xs")]]  kernel get_rows_t kernel_get_rows<block_iq4_xs,  2,     dequantize_iq4_xs>;
+#else
+template [[host_name("kernel_get_rows_iq4_xs")]]  kernel get_rows_t kernel_get_rows<block_iq4_xs,  QK_NL, dequantize_iq4_xs>;
+#endif
 
 //
 // matrix-matrix multiplication
@@ -5084,30 +5985,41 @@ typedef void (mat_mm_t)(
         threadgroup   uchar *,
         uint3, uint, uint);
 
-template [[host_name("kernel_mul_mm_f32_f32")]]  kernel mat_mm_t kernel_mul_mm<float4x4,   1,     dequantize_f32>;
-template [[host_name("kernel_mul_mm_f16_f32")]]  kernel mat_mm_t kernel_mul_mm<half4x4,    1,     dequantize_f16>;
-template [[host_name("kernel_mul_mm_q4_0_f32")]] kernel mat_mm_t kernel_mul_mm<block_q4_0, 2,     dequantize_q4_0>;
-template [[host_name("kernel_mul_mm_q4_1_f32")]] kernel mat_mm_t kernel_mul_mm<block_q4_1, 2,     dequantize_q4_1>;
-template [[host_name("kernel_mul_mm_q5_0_f32")]] kernel mat_mm_t kernel_mul_mm<block_q5_0, 2,     dequantize_q5_0>;
-template [[host_name("kernel_mul_mm_q5_1_f32")]] kernel mat_mm_t kernel_mul_mm<block_q5_1, 2,     dequantize_q5_1>;
-template [[host_name("kernel_mul_mm_q8_0_f32")]] kernel mat_mm_t kernel_mul_mm<block_q8_0, 2,     dequantize_q8_0>;
-template [[host_name("kernel_mul_mm_q2_K_f32")]] kernel mat_mm_t kernel_mul_mm<block_q2_K, QK_NL, dequantize_q2_K>;
-template [[host_name("kernel_mul_mm_q3_K_f32")]] kernel mat_mm_t kernel_mul_mm<block_q3_K, QK_NL, dequantize_q3_K>;
-template [[host_name("kernel_mul_mm_q4_K_f32")]] kernel mat_mm_t kernel_mul_mm<block_q4_K, QK_NL, dequantize_q4_K>;
-template [[host_name("kernel_mul_mm_q5_K_f32")]] kernel mat_mm_t kernel_mul_mm<block_q5_K, QK_NL, dequantize_q5_K>;
-template [[host_name("kernel_mul_mm_q6_K_f32")]] kernel mat_mm_t kernel_mul_mm<block_q6_K, QK_NL, dequantize_q6_K>;
+template [[host_name("kernel_mul_mm_f32_f32")]]     kernel mat_mm_t kernel_mul_mm<float4x4,      1,     dequantize_f32>;
+template [[host_name("kernel_mul_mm_f16_f32")]]     kernel mat_mm_t kernel_mul_mm<half4x4,       1,     dequantize_f16>;
+template [[host_name("kernel_mul_mm_q4_0_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q4_0,    2,     dequantize_q4_0>;
+template [[host_name("kernel_mul_mm_q4_1_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q4_1,    2,     dequantize_q4_1>;
+template [[host_name("kernel_mul_mm_q5_0_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q5_0,    2,     dequantize_q5_0>;
+template [[host_name("kernel_mul_mm_q5_1_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q5_1,    2,     dequantize_q5_1>;
+template [[host_name("kernel_mul_mm_q8_0_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q8_0,    2,     dequantize_q8_0>;
+template [[host_name("kernel_mul_mm_q2_K_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q2_K,    QK_NL, dequantize_q2_K>;
+template [[host_name("kernel_mul_mm_q3_K_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q3_K,    QK_NL, dequantize_q3_K>;
+template [[host_name("kernel_mul_mm_q4_K_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q4_K,    QK_NL, dequantize_q4_K>;
+template [[host_name("kernel_mul_mm_q5_K_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q5_K,    QK_NL, dequantize_q5_K>;
+template [[host_name("kernel_mul_mm_q6_K_f32")]]    kernel mat_mm_t kernel_mul_mm<block_q6_K,    QK_NL, dequantize_q6_K>;
 template [[host_name("kernel_mul_mm_iq2_xxs_f32")]] kernel mat_mm_t kernel_mul_mm<block_iq2_xxs, QK_NL, dequantize_iq2_xxs>;
 template [[host_name("kernel_mul_mm_iq2_xs_f32")]]  kernel mat_mm_t kernel_mul_mm<block_iq2_xs,  QK_NL, dequantize_iq2_xs>;
 template [[host_name("kernel_mul_mm_iq3_xxs_f32")]] kernel mat_mm_t kernel_mul_mm<block_iq3_xxs, QK_NL, dequantize_iq3_xxs>;
+template [[host_name("kernel_mul_mm_iq3_s_f32")]]   kernel mat_mm_t kernel_mul_mm<block_iq3_s,   QK_NL, dequantize_iq3_s>;
+template [[host_name("kernel_mul_mm_iq2_s_f32")]]   kernel mat_mm_t kernel_mul_mm<block_iq2_s,   QK_NL, dequantize_iq2_s>;
+template [[host_name("kernel_mul_mm_iq1_s_f32")]]   kernel mat_mm_t kernel_mul_mm<block_iq1_s,   QK_NL, dequantize_iq1_s>;
+template [[host_name("kernel_mul_mm_iq1_m_f32")]]   kernel mat_mm_t kernel_mul_mm<block_iq1_m,   QK_NL, dequantize_iq1_m>;
+template [[host_name("kernel_mul_mm_iq4_nl_f32")]]  kernel mat_mm_t kernel_mul_mm<block_iq4_nl,  2,     dequantize_iq4_nl>;
+#if QK_K == 64
+template [[host_name("kernel_mul_mm_iq4_xs_f32")]]  kernel mat_mm_t kernel_mul_mm<block_iq4_nl,  2,     dequantize_iq4_xs>;
+#else
+template [[host_name("kernel_mul_mm_iq4_xs_f32")]]  kernel mat_mm_t kernel_mul_mm<block_iq4_xs,  QK_NL, dequantize_iq4_xs>;
+#endif
 
 //
 // indirect matrix-matrix multiplication
 //
 
 typedef void (mat_mm_id_t)(
-        device const   uchar * ids,
+        device const   uchar * src0s,
         device const   uchar * src1,
         device         float * dst,
+        device const   uchar * ids,
         constant    uint64_t & nbi1,
         constant     int64_t & ne00,
         constant     int64_t & ne02,
@@ -5124,42 +6036,176 @@ typedef void (mat_mm_id_t)(
         constant        uint & r2,
         constant        uint & r3,
         constant         int & idx,
-        device const   uchar * src00,
-        device const   uchar * src01,
-        device const   uchar * src02,
-        device const   uchar * src03,
-        device const   uchar * src04,
-        device const   uchar * src05,
-        device const   uchar * src06,
-        device const   uchar * src07,
         threadgroup    uchar *,
         uint3, uint, uint);
 
-template [[host_name("kernel_mul_mm_id_f32_f32")]]  kernel mat_mm_id_t kernel_mul_mm_id<float4x4,   1,     dequantize_f32>;
-template [[host_name("kernel_mul_mm_id_f16_f32")]]  kernel mat_mm_id_t kernel_mul_mm_id<half4x4,    1,     dequantize_f16>;
-template [[host_name("kernel_mul_mm_id_q4_0_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q4_0, 2,     dequantize_q4_0>;
-template [[host_name("kernel_mul_mm_id_q4_1_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q4_1, 2,     dequantize_q4_1>;
-template [[host_name("kernel_mul_mm_id_q5_0_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q5_0, 2,     dequantize_q5_0>;
-template [[host_name("kernel_mul_mm_id_q5_1_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q5_1, 2,     dequantize_q5_1>;
-template [[host_name("kernel_mul_mm_id_q8_0_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q8_0, 2,     dequantize_q8_0>;
-template [[host_name("kernel_mul_mm_id_q2_K_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q2_K, QK_NL, dequantize_q2_K>;
-template [[host_name("kernel_mul_mm_id_q3_K_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q3_K, QK_NL, dequantize_q3_K>;
-template [[host_name("kernel_mul_mm_id_q4_K_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q4_K, QK_NL, dequantize_q4_K>;
-template [[host_name("kernel_mul_mm_id_q5_K_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q5_K, QK_NL, dequantize_q5_K>;
-template [[host_name("kernel_mul_mm_id_q6_K_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_q6_K, QK_NL, dequantize_q6_K>;
+template [[host_name("kernel_mul_mm_id_f32_f32")]]     kernel mat_mm_id_t kernel_mul_mm_id<float4x4,      1,     dequantize_f32>;
+template [[host_name("kernel_mul_mm_id_f16_f32")]]     kernel mat_mm_id_t kernel_mul_mm_id<half4x4,       1,     dequantize_f16>;
+template [[host_name("kernel_mul_mm_id_q4_0_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q4_0,    2,     dequantize_q4_0>;
+template [[host_name("kernel_mul_mm_id_q4_1_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q4_1,    2,     dequantize_q4_1>;
+template [[host_name("kernel_mul_mm_id_q5_0_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q5_0,    2,     dequantize_q5_0>;
+template [[host_name("kernel_mul_mm_id_q5_1_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q5_1,    2,     dequantize_q5_1>;
+template [[host_name("kernel_mul_mm_id_q8_0_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q8_0,    2,     dequantize_q8_0>;
+template [[host_name("kernel_mul_mm_id_q2_K_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q2_K,    QK_NL, dequantize_q2_K>;
+template [[host_name("kernel_mul_mm_id_q3_K_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q3_K,    QK_NL, dequantize_q3_K>;
+template [[host_name("kernel_mul_mm_id_q4_K_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q4_K,    QK_NL, dequantize_q4_K>;
+template [[host_name("kernel_mul_mm_id_q5_K_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q5_K,    QK_NL, dequantize_q5_K>;
+template [[host_name("kernel_mul_mm_id_q6_K_f32")]]    kernel mat_mm_id_t kernel_mul_mm_id<block_q6_K,    QK_NL, dequantize_q6_K>;
 template [[host_name("kernel_mul_mm_id_iq2_xxs_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_iq2_xxs, QK_NL, dequantize_iq2_xxs>;
 template [[host_name("kernel_mul_mm_id_iq2_xs_f32")]]  kernel mat_mm_id_t kernel_mul_mm_id<block_iq2_xs,  QK_NL, dequantize_iq2_xs>;
 template [[host_name("kernel_mul_mm_id_iq3_xxs_f32")]] kernel mat_mm_id_t kernel_mul_mm_id<block_iq3_xxs, QK_NL, dequantize_iq3_xxs>;
+template [[host_name("kernel_mul_mm_id_iq3_s_f32")]]   kernel mat_mm_id_t kernel_mul_mm_id<block_iq3_s,   QK_NL, dequantize_iq3_s>;
+template [[host_name("kernel_mul_mm_id_iq2_s_f32")]]   kernel mat_mm_id_t kernel_mul_mm_id<block_iq2_s,   QK_NL, dequantize_iq2_s>;
+template [[host_name("kernel_mul_mm_id_iq1_s_f32")]]   kernel mat_mm_id_t kernel_mul_mm_id<block_iq1_s,   QK_NL, dequantize_iq1_s>;
+template [[host_name("kernel_mul_mm_id_iq1_m_f32")]]   kernel mat_mm_id_t kernel_mul_mm_id<block_iq1_m,   QK_NL, dequantize_iq1_m>;
+template [[host_name("kernel_mul_mm_id_iq4_nl_f32")]]  kernel mat_mm_id_t kernel_mul_mm_id<block_iq4_nl,  2,     dequantize_iq4_nl>;
+#if QK_K == 64
+template [[host_name("kernel_mul_mm_id_iq4_xs_f32")]]  kernel mat_mm_id_t kernel_mul_mm_id<block_iq4_xs,  2,     dequantize_iq4_xs>;
+#else
+template [[host_name("kernel_mul_mm_id_iq4_xs_f32")]]  kernel mat_mm_id_t kernel_mul_mm_id<block_iq4_xs,  QK_NL, dequantize_iq4_xs>;
+#endif
 
 //
 // matrix-vector multiplication
 //
 
-[[host_name("kernel_mul_mv_id_f32_f32")]]
-kernel void kernel_mul_mv_id_f32_f32(
-        device const    char * ids,
+typedef void (kernel_mul_mv_impl_t)(
+        device const  char * src0,
+        device const  char * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant  uint64_t & nb00,
+        constant  uint64_t & nb01,
+        constant  uint64_t & nb02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne11,
+        constant   int64_t & ne12,
+        constant  uint64_t & nb10,
+        constant  uint64_t & nb11,
+        constant  uint64_t & nb12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]]);
+
+typedef void (kernel_mul_mv2_impl_t)(
+        device const  void * src0,
+        device const float * src1,
+        device       float * dst,
+        constant   int64_t & ne00,
+        constant   int64_t & ne01,
+        constant   int64_t & ne02,
+        constant   int64_t & ne10,
+        constant   int64_t & ne12,
+        constant   int64_t & ne0,
+        constant   int64_t & ne1,
+        constant   uint    & r2,
+        constant   uint    & r3,
+        threadgroup int8_t * shared_values [[threadgroup(0)]],
+        uint3 tgpig[[threadgroup_position_in_grid]],
+        uint  tiisg[[thread_index_in_simdgroup]],
+        uint  sgitg[[simdgroup_index_in_threadgroup]]);
+
+template<kernel_mul_mv_impl_t impl_fn>
+void mmv_fn(
+        device const    char * src0,
         device const    char * src1,
         device         float * dst,
+        constant     int64_t & ne00,
+        constant     int64_t & ne01,
+        constant     int64_t & ne02,
+        constant    uint64_t & nb00,
+        constant    uint64_t & nb01,
+        constant    uint64_t & nb02,
+        constant     int64_t & ne10,
+        constant     int64_t & ne11,
+        constant     int64_t & ne12,
+        constant     int64_t & ne13,
+        constant    uint64_t & nb10,
+        constant    uint64_t & nb11,
+        constant    uint64_t & nb12,
+        constant     int64_t & ne0,
+        constant     int64_t & ne1,
+        constant    uint64_t & nb1,
+        constant        uint & r2,
+        constant        uint & r3,
+        threadgroup int8_t   * shared_values [[threadgroup(0)]],
+        uint3                  tgpig[[threadgroup_position_in_grid]],
+        uint                   tiitg[[thread_index_in_threadgroup]],
+        uint                   tiisg[[thread_index_in_simdgroup]],
+        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
+    impl_fn(src0,src1,dst,ne00,ne01,ne02,nb00,nb01,nb02,ne10,ne11,ne12,nb10,nb11,nb12,ne0,ne1,r2,r3,tgpig,tiisg);
+}
+
+template<kernel_mul_mv2_impl_t impl_fn>
+void mmv_fn(
+        device const    char * src0,
+        device const    char * src1,
+        device         float * dst,
+        constant     int64_t & ne00,
+        constant     int64_t & ne01,
+        constant     int64_t & ne02,
+        constant    uint64_t & nb00,
+        constant    uint64_t & nb01,
+        constant    uint64_t & nb02,
+        constant     int64_t & ne10,
+        constant     int64_t & ne11,
+        constant     int64_t & ne12,
+        constant     int64_t & ne13,
+        constant    uint64_t & nb10,
+        constant    uint64_t & nb11,
+        constant    uint64_t & nb12,
+        constant     int64_t & ne0,
+        constant     int64_t & ne1,
+        constant    uint64_t & nb1,
+        constant        uint & r2,
+        constant        uint & r3,
+        threadgroup int8_t   * shared_values [[threadgroup(0)]],
+        uint3                  tgpig[[threadgroup_position_in_grid]],
+        uint                   tiitg[[thread_index_in_threadgroup]],
+        uint                   tiisg[[thread_index_in_simdgroup]],
+        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
+    impl_fn(src0,(const device float *)src1,dst,ne00,ne01,ne02,ne10,ne12,ne0,ne1,r2,r3,shared_values,tgpig,tiisg,sgitg);
+}
+
+typedef void (mul_mv_impl_fn_t)(
+        device const    char * src0,
+        device const    char * src1,
+        device         float * dst,
+        constant     int64_t & ne00,
+        constant     int64_t & ne01,
+        constant     int64_t & ne02,
+        constant    uint64_t & nb00,
+        constant    uint64_t & nb01,
+        constant    uint64_t & nb02,
+        constant     int64_t & ne10,
+        constant     int64_t & ne11,
+        constant     int64_t & ne12,
+        constant     int64_t & ne13,
+        constant    uint64_t & nb10,
+        constant    uint64_t & nb11,
+        constant    uint64_t & nb12,
+        constant     int64_t & ne0,
+        constant     int64_t & ne1,
+        constant    uint64_t & nb1,
+        constant        uint & r2,
+        constant        uint & r3,
+        threadgroup int8_t   * shared_values [[threadgroup(0)]],
+        uint3                  tgpig[[threadgroup_position_in_grid]],
+        uint                   tiitg[[thread_index_in_threadgroup]],
+        uint                   tiisg[[thread_index_in_simdgroup]],
+        uint                   sgitg[[simdgroup_index_in_threadgroup]]);
+
+template<mul_mv_impl_fn_t impl_fn>
+kernel void kernel_mul_mv_id(
+        device const    char * src0s,
+        device const    char * src1,
+        device         float * dst,
+        device const    char * ids,
         constant    uint64_t & nbi1,
         constant     int64_t & ne00,
         constant     int64_t & ne01,
@@ -5180,28 +6226,20 @@ kernel void kernel_mul_mv_id_f32_f32(
         constant        uint & r2,
         constant        uint & r3,
         constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
+        threadgroup int8_t   * shared_values [[threadgroup(0)]],
         uint3                  tgpig[[threadgroup_position_in_grid]],
         uint                   tiitg[[thread_index_in_threadgroup]],
         uint                   tiisg[[thread_index_in_simdgroup]],
         uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
     const int64_t bid = tgpig.z/(ne12*ne13);
 
     tgpig.z = tgpig.z%(ne12*ne13);
 
     const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
+    device const char * src0 = src0s + id*nb02;
 
-    kernel_mul_mv_f32_f32_impl(
-        src0[id],
+    impl_fn(
+        src0,
         src1 + bid*nb11,
         dst  + bid*ne0,
         ne00,
@@ -5213,786 +6251,27 @@ kernel void kernel_mul_mv_id_f32_f32(
         ne10,
         ne11,
         ne12,
+        ne13,
         nb10,
         nb11,
         nb12,
         ne0,
         ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg);
-}
-
-[[host_name("kernel_mul_mv_id_f16_f32")]]
-kernel void kernel_mul_mv_id_f16_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_f16_f32_impl(
-        src0[id],
-        src1 + bid*nb11,
-        dst  + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        nb00,
-        nb01,
-        nb02,
-        ne10,
-        ne11,
-        ne12,
-        nb10,
-        nb11,
-        nb12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg);
-}
-
-[[host_name("kernel_mul_mv_id_q8_0_f32")]]
-kernel void kernel_mul_mv_id_q8_0_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_q8_0_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q4_0_f32")]]
-kernel void kernel_mul_mv_id_q4_0_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    mul_vec_q_n_f32_impl<block_q4_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q4_1_f32")]]
-kernel void kernel_mul_mv_id_q4_1_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    mul_vec_q_n_f32_impl<block_q4_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q5_0_f32")]]
-kernel void kernel_mul_mv_id_q5_0_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    mul_vec_q_n_f32_impl<block_q5_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q5_1_f32")]]
-kernel void kernel_mul_mv_id_q5_1_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    mul_vec_q_n_f32_impl<block_q5_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q2_K_f32")]]
-kernel void kernel_mul_mv_id_q2_K_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_q2_K_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q3_K_f32")]]
-kernel void kernel_mul_mv_id_q3_K_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_q3_K_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q4_K_f32")]]
-kernel void kernel_mul_mv_id_q4_K_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_q4_K_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q5_K_f32")]]
-kernel void kernel_mul_mv_id_q5_K_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_q5_K_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_q6_K_f32")]]
-kernel void kernel_mul_mv_id_q6_K_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_q6_K_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_iq2_xxs_f32")]]
-kernel void kernel_mul_mv_id_iq2_xxs_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        threadgroup int8_t   * shared_values [[threadgroup(0)]],
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_iq2_xxs_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
+        nb1,
         r2,
         r3,
         shared_values,
         tgpig,
+        tiitg,
         tiisg,
         sgitg);
 }
 
-[[host_name("kernel_mul_mv_id_iq2_xs_f32")]]
-kernel void kernel_mul_mv_id_iq2_xs_f32(
-        device const    char * ids,
+typedef void (kernel_mul_mv_id_t)(
+        device const    char * src0s,
         device const    char * src1,
         device         float * dst,
+        device const    char * ids,
         constant    uint64_t & nbi1,
         constant     int64_t & ne00,
         constant     int64_t & ne01,
@@ -6013,107 +6292,33 @@ kernel void kernel_mul_mv_id_iq2_xs_f32(
         constant        uint & r2,
         constant        uint & r3,
         constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
         threadgroup int8_t   * shared_values [[threadgroup(0)]],
         uint3                  tgpig[[threadgroup_position_in_grid]],
         uint                   tiitg[[thread_index_in_threadgroup]],
         uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
+        uint                   sgitg[[simdgroup_index_in_threadgroup]]);
 
-    const int64_t bid = tgpig.z/(ne12*ne13);
+template [[host_name("kernel_mul_mv_id_f32_f32")]]  kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_f32_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_f16_f32")]]  kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_f16_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_q8_0_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_q8_0_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_q4_0_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<mul_vec_q_n_f32_impl<block_q4_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>>>;
+template [[host_name("kernel_mul_mv_id_q4_1_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<mul_vec_q_n_f32_impl<block_q4_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>>>;
+template [[host_name("kernel_mul_mv_id_q5_0_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<mul_vec_q_n_f32_impl<block_q5_0, N_DST, N_SIMDGROUP, N_SIMDWIDTH>>>;
+template [[host_name("kernel_mul_mv_id_q5_1_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<mul_vec_q_n_f32_impl<block_q5_1, N_DST, N_SIMDGROUP, N_SIMDWIDTH>>>;
+template [[host_name("kernel_mul_mv_id_q2_K_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_q2_K_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_q3_K_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_q3_K_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_q4_K_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_q4_K_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_q5_K_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_q5_K_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_q6_K_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_q6_K_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq1_s_f32")]]   kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq1_s_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq1_m_f32")]]   kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq1_m_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq2_xxs_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq2_xxs_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq2_xs_f32")]]  kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq2_xs_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq3_xxs_f32")]] kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq3_xxs_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq3_s_f32")]]   kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq3_s_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq2_s_f32")]]   kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq2_s_f32_impl>>;
+template [[host_name("kernel_mul_mv_id_iq4_nl_f32")]]  kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq4_nl_f32_impl>>;
+#if QK_K != 64
+template [[host_name("kernel_mul_mv_id_iq4_xs_f32")]]  kernel kernel_mul_mv_id_t kernel_mul_mv_id<mmv_fn<kernel_mul_mv_iq4_xs_f32_impl>>;
+#endif
 
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_iq2_xs_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        shared_values,
-        tgpig,
-        tiisg,
-        sgitg);
-}
-
-[[host_name("kernel_mul_mv_id_iq3_xxs_f32")]]
-kernel void kernel_mul_mv_id_iq3_xxs_f32(
-        device const    char * ids,
-        device const    char * src1,
-        device         float * dst,
-        constant    uint64_t & nbi1,
-        constant     int64_t & ne00,
-        constant     int64_t & ne01,
-        constant     int64_t & ne02,
-        constant    uint64_t & nb00,
-        constant    uint64_t & nb01,
-        constant    uint64_t & nb02,
-        constant     int64_t & ne10,
-        constant     int64_t & ne11,
-        constant     int64_t & ne12,
-        constant     int64_t & ne13,
-        constant    uint64_t & nb10,
-        constant    uint64_t & nb11,
-        constant    uint64_t & nb12,
-        constant     int64_t & ne0,
-        constant     int64_t & ne1,
-        constant    uint64_t & nb1,
-        constant        uint & r2,
-        constant        uint & r3,
-        constant         int & idx,
-        device const    char * src00,
-        device const    char * src01,
-        device const    char * src02,
-        device const    char * src03,
-        device const    char * src04,
-        device const    char * src05,
-        device const    char * src06,
-        device const    char * src07,
-        threadgroup int8_t   * shared_values [[threadgroup(0)]],
-        uint3                  tgpig[[threadgroup_position_in_grid]],
-        uint                   tiitg[[thread_index_in_threadgroup]],
-        uint                   tiisg[[thread_index_in_simdgroup]],
-        uint                   sgitg[[simdgroup_index_in_threadgroup]]) {
-    device const char * src0[8] = {src00, src01, src02, src03, src04, src05, src06, src07};
-
-    const int64_t bid = tgpig.z/(ne12*ne13);
-
-    tgpig.z = tgpig.z%(ne12*ne13);
-
-    const int32_t id = ((device int32_t *) (ids + bid*nbi1))[idx];
-
-    kernel_mul_mv_iq3_xxs_f32_impl(
-        src0[id],
-        (device const float *) (src1 + bid*nb11),
-        dst + bid*ne0,
-        ne00,
-        ne01,
-        ne02,
-        ne10,
-        ne12,
-        ne0,
-        ne1,
-        r2,
-        r3,
-        shared_values,
-        tgpig,
-        tiisg,
-        sgitg);
-}

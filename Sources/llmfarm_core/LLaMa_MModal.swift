@@ -20,7 +20,7 @@ public class LLaMa_MModal: LLaMa {
         #if os(iOS)
         self.clip_ctx = clip_model_load(contextParams.clip_model, 1, 0 );
         #else
-        self.clip_ctx = clip_model_load(contextParams.clip_model, 1,contextParams.use_metal ? 1: 0 );
+        self.clip_ctx = clip_model_load(contextParams.clip_model, 1,contextParams.use_metal ? 1: 0);
         #endif
         return true
     }
