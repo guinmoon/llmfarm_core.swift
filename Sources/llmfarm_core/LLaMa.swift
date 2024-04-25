@@ -383,7 +383,7 @@ public class LLaMa: LLMBase {
         }
         
         if self.contextParams.add_eos_token {
-            embeddings.append(llama_token_eos(self.context))
+            embeddings.append(llm_token_eos())
         }
         
         return embeddings
