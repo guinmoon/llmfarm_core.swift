@@ -298,22 +298,22 @@ bool llama_load_state(struct llama_context * ctx, const char * fname){
 
 char* llama_token_to_str_res = new char[3];
 
-const char * llama_token_to_str(const struct llama_context * ctx, llama_token token) {
-    std::vector<char> result(8, 0);
-    const int n_tokens = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size());
-    if (n_tokens < 0) {
-        result.resize(-n_tokens);
-        int check = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size());
-        GGML_ASSERT(check == -n_tokens);
-    } else {
-        result.resize(n_tokens);
-    }
-//    auto res = std::string(result.data(), result.size());
-//    fprintf(stderr, "%s: %s\n", __func__,res.c_str());
-    strcpy(llama_token_to_str_res, std::string(result.data(), result.size()).c_str());
-    return  llama_token_to_str_res;
-//    return res.c_str();
-}
+//const char * llama_token_to_str(const struct llama_context * ctx, llama_token token) {
+//    std::vector<char> result(8, 0);
+//    const int n_tokens = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size());
+//    if (n_tokens < 0) {
+//        result.resize(-n_tokens);
+//        int check = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size());
+//        GGML_ASSERT(check == -n_tokens);
+//    } else {
+//        result.resize(n_tokens);
+//    }
+////    auto res = std::string(result.data(), result.size());
+////    fprintf(stderr, "%s: %s\n", __func__,res.c_str());
+//    strcpy(llama_token_to_str_res, std::string(result.data(), result.size()).c_str());
+//    return  llama_token_to_str_res;
+////    return res.c_str();
+//}
 
 
 struct llama_grammar* llama_load_grammar(const char* grammar_path){
