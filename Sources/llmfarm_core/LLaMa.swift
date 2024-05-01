@@ -17,7 +17,7 @@ public class LLaMa: LLMBase {
     public var hardware_arch: String=""
     public var temporary_invalid_cchars: [CChar]  = []
     public var progressCallback: ((Float)  -> (Bool))? = nil    
-//    public var sparams: llama_sampling_params
+//    public var sparams: llama_sampling_params_spm
     
     //  int32_t     n_prev                = 64;       // number of previous tokens to remember
     // int32_t     n_probs               = 0;        // if greater than 0, output the probabilities of top n_probs tokens.

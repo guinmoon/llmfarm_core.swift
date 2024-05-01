@@ -158,6 +158,29 @@ llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dad
 llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu );
 llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) ;
 
+
+typedef struct llama_sampling_params_spm {
+    int32_t     n_prev                ;       // number of previous tokens to remember
+    int32_t     n_probs               ;        // if greater than 0, output the probabilities of top n_probs tokens.
+    int32_t     min_keep              ;        // 0 = disabled, otherwise samplers should return at least min_keep tokens
+    int32_t     top_k                 ;       // <= 0 to use vocab size
+    float       top_p                 ;    // 1.0 = disabled
+    float       min_p                 ;    // 0.0 = disabled
+    float       tfs_z                 ;    // 1.0 = disabled
+    float       typical_p             ;    // 1.0 = disabled
+    float       temp                  ;    // <= 0.0 to sample greedily, 0.0 to not output probabilities
+    float       dynatemp_range        ;    // 0.0 = disabled
+    float       dynatemp_exponent     ;    // controls how entropy maps to temperature in dynamic temperature sampler
+    int32_t     penalty_last_n        ;       // last n tokens to penalize (0 = disable penalty, -1 = context size)
+    float       penalty_repeat        ;    // 1.0 = disabled
+    float       penalty_freq          ;    // 0.0 = disabled
+    float       penalty_present       ;    // 0.0 = disabled
+    int32_t     mirostat              ;        // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+    float       mirostat_tau          ;    // target entropy
+    float       mirostat_eta          ;    // learning rate
+    bool        penalize_nl           ;     // consider newlines as a repeatable token
+} llama_sampling_params_spm;
+
 #ifdef __cplusplus
 }
 #endif
