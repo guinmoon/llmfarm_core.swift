@@ -281,10 +281,11 @@ extension String {
 public func get_system_prompt(_ prompt_format_in: String) -> (String,String){
     var prompt_format = prompt_format_in
     var system_prompt = ""
-    if prompt_format_in.contains("[system](") {
-        let beg_i = prompt_format_in.distance(of:"[system](")! + 9
+    let pattern = "[system]("
+    if prompt_format_in.contains(pattern) {
+        let beg_i = prompt_format_in.distance(of:pattern)! + pattern.count
         var end_i = -1
-        for i in (beg_i...prompt_format_in.count){
+        for i in (beg_i...prompt_format_in.count-1){
             if prompt_format_in[i..<i+1] == ")"{
                 end_i = i
                 break
