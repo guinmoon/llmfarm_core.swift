@@ -69,6 +69,8 @@ public class LLaMa: LLMBase {
         context_params.seed = UInt32(contextParams.seed)
         context_params.n_threads = UInt32(contextParams.n_threads)
         context_params.logits_all = contextParams.logitsAll
+//        context_params.flash_attn = contextParams.flash_attn        
+        context_params.flash_attn = false
         //        context_params.n_batch = contextParams.
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock

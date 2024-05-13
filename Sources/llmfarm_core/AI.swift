@@ -367,6 +367,9 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     if (model_config["mmap"] != nil){
         tmp_param.useMMap = model_config["mmap"] as! Bool
     }
+    if (model_config["flash_attn"] != nil){
+        tmp_param.flash_attn = model_config["flash_attn"] as! Bool
+    }
     if (model_config["add_bos_token"] != nil){
         tmp_param.add_bos_token = model_config["add_bos_token"] as! Bool
     }
@@ -432,6 +435,7 @@ public struct ModelAndContextParams {
     public var add_bos_token = true
     public var add_eos_token = false
     public var parse_special_tokens = true
+    public var flash_attn = false
     
     
     public var warm_prompt = "\n\n\n"
