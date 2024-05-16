@@ -181,6 +181,8 @@ typedef struct llama_sampling_params_spm {
     bool        penalize_nl           ;     // consider newlines as a repeatable token
 } llama_sampling_params_spm;
 
+char * get_tensor_name(struct ggml_tensor * t);
+
 #ifdef __cplusplus
 }
 #endif

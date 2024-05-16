@@ -23,7 +23,7 @@ public class AI {
     var aiQueue = DispatchQueue(label: "LLMFarm-Main", qos: .userInitiated, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
     
     //var model: Model!
-    public var model: LLMBase!
+    public var model: LLMBase?
     public var modelPath: String
     public var modelName: String
     public var chatName: String
@@ -44,110 +44,71 @@ public class AI {
         self.model = nil
     }
     
-     public func loadModel_sync(_ aiModel: ModelInference, contextParams: ModelAndContextParams = .default,
-                 model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool {
-         print("AI init")
-         do{
-             switch aiModel {
-             case .LLama_bin:
-                 self.model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .LLama_gguf:
-                 self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
-                     let res = model_load_progress_callback!(progress)
-                     return res
-                 })
-             case .LLama_mm:
-                 self.model = try LLaMa_MModal(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
-                     let res = model_load_progress_callback!(progress)
-                     return res
-                 })
-             case .GPTNeox:
-                 self.model = try GPTNeoX(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .GPTNeox_gguf:
-                 self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .GPT2:
-                 self.model = try GPT2(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .Replit:
-                 self.model = try Replit(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .Starcoder:
-                 self.model = try Starcoder(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .Starcoder_gguf:
-                 self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             case .RWKV:
-                 self.model = try RWKV(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-             }
-             return true
-         }
-         catch {
-             throw error
-         }
-     }
     
-    public func loadModel(  _ aiModel: ModelInference,
-                            _ model_load_progress_callback: ((Float)  -> (Bool))? = {f in return true},
-                            _ completion: ((String) -> ())? = {s in },
-                            contextParams: ModelAndContextParams = .default) {
-        aiQueue.async {
-            guard let completion = completion else { return }
-            
-            
-            DispatchQueue.main.async {
-                model_load_progress_callback?(0)
+    public func initModel(_ inference: ModelInference,contextParams: ModelAndContextParams = .default) {
+        self.model = nil
+        switch inference {
+        case .LLama_bin:
+            self.model = try? LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
+        case .LLama_gguf:
+            self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
+        case .LLama_mm:
+            self.model = try? LLaMa_MModal(path: self.modelPath, contextParams: contextParams)
+        case .GPTNeox:
+            self.model = try? GPTNeoX(path: self.modelPath, contextParams: contextParams)
+        case .GPTNeox_gguf:
+            self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
+        case .GPT2:
+            self.model = try? GPT2(path: self.modelPath, contextParams: contextParams)
+        case .Replit:
+            self.model = try? Replit(path: self.modelPath, contextParams: contextParams)
+        case .Starcoder:
+            self.model = try? Starcoder(path: self.modelPath, contextParams: contextParams)
+        case .Starcoder_gguf:
+            self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
+        case .RWKV:
+            self.model = try? RWKV(path: self.modelPath, contextParams: contextParams)
+        }
+    
+    }
+
+
+    public func loadModel_sync() throws {
+         do{
+            try ExceptionCather.catchException {
+               try? self.model?.load_model()
             }
+        }
+        catch{
+            print(error)
+            throw error
+        }
+    }
+
+    
+    public func loadModel() {
+        aiQueue.async {
             do{
                 try ExceptionCather.catchException {
-                    print("AI init")
-                    do{
-                        switch aiModel {
-                        case .LLama_bin:
-                            self.model = try LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .LLama_gguf:
-                            self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
-                                let res = model_load_progress_callback!(progress)
-                                return res
-                            })
-                        case .LLama_mm:
-                            self.model = try LLaMa_MModal(path: self.modelPath, contextParams: contextParams,model_load_progress_callback: { progress in
-                                let res = model_load_progress_callback!(progress)
-                                return res
-                            })
-                        case .GPTNeox:
-                            self.model = try GPTNeoX(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .GPTNeox_gguf:
-                            self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .GPT2:
-                            self.model = try GPT2(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .Replit:
-                            self.model = try Replit(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .Starcoder:
-                            self.model = try Starcoder(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .Starcoder_gguf:
-                            self.model = try LLaMa(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        case .RWKV:
-                            self.model = try RWKV(path: self.modelPath, contextParams: contextParams,model_load_progress_callback:nil)
-                        }
-                    }catch{
-                        print(error)
-                        DispatchQueue.main.async {                            
-                            completion("[Error] \(error)")
-                        }
-                    }
+                    try? self.model?.load_model()
                 }
             }
             catch{
                 print(error)
-                DispatchQueue.main.async {                    
-                    completion("[Error] \(error)")
+                DispatchQueue.main.async {
+                    if self.model?.modelLoadCompleteCallback != nil{
+                        self.model?.modelLoadCompleteCallback!("[Error] \(error)")
+                        self.model?.modelLoadCompleteCallback!("[Error] \(error)")
+                    }
                 }
             }
             DispatchQueue.main.async {
-                _ = model_load_progress_callback?(1.0)
-                completion("[Done]")
+                _ = self.model?.modelLoadProgressCallback?(1.0)
+                self.model?.modelLoadCompleteCallback?("[Done]")
             }
-            
         }
-
     }
+
 
     public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?,system_prompt:String?, img_path: String? = nil) {
         flagResponding = true
@@ -167,7 +128,7 @@ public class AI {
             var output:String? = ""
             do{
                 try ExceptionCather.catchException {
-                    output = try? self.model.predict(input, { str, time in
+                    output = try? self.model?.predict(input, { str, time in
                         if self.flagExit {
                             // Reset flag
                             self.flagExit = false

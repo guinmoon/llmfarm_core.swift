@@ -5,8 +5,9 @@ public class GPT2: LLMBase {
     
     public var hardware_arch: String=""
 
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                        model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool{        
+    public override func llm_load_model(path: String = "", 
+                                        contextParams: ModelAndContextParams = .default,
+                                        params:gpt_context_params) throws -> Bool{        
         var context_params = gpt_context_default_params()
         context_params.n_ctx = contextParams.context
         //        params.n_parts = contextParams.parts
@@ -57,8 +58,9 @@ public class LLaMa_dadbed9: LLMBase {
 
     public var hardware_arch: String=""
     
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                        model_load_progress_callback:((Float)  -> (Bool))? = {a in return true} ) throws -> Bool{
+    public override func llm_load_model(path: String = "", 
+                                        contextParams: ModelAndContextParams = .default, 
+                                        params:gpt_context_params) throws -> Bool{
         var params = llama_dadbed9_context_default_params()
         params.n_ctx = contextParams.context
 //        params.n_parts = contextParams.parts
@@ -165,8 +167,7 @@ public class LLaMa_dadbed9: LLMBase {
 
 public class GPTNeoX: LLMBase {
 
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                        model_load_progress_callback:((Float)  -> (Bool))? = {a in return true} ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params) throws -> Bool{
         self.context = gpt_neox_init_from_file(path, params)
         if self.context == nil {
             return false
@@ -191,8 +192,7 @@ public class GPTNeoX: LLMBase {
 
 public class Replit: LLMBase {
 
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                        model_load_progress_callback:((Float)  -> (Bool))? = {a in return true} ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params) throws -> Bool{
         self.context = replit_init_from_file(path, params)
         if self.context == nil {
             return false
@@ -243,8 +243,7 @@ public class Replit: LLMBase {
 
 public class Starcoder: LLMBase {
 
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                        model_load_progress_callback:((Float)  -> (Bool))? = {a in return true} ) throws -> Bool{
+    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params) throws -> Bool{
         self.context = starcoder_init_from_file(path, params)
         if self.context == nil {
             return false

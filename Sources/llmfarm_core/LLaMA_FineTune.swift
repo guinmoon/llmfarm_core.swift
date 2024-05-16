@@ -19,6 +19,7 @@ public class LLaMa_FineTune: FineTune {
     public override func finetune(_ progressCallback: ((String)  -> ())?) throws{
         let checkpoint_in = self.lora_out  + "_i" + String(self.adam_iter) + "_b" + String(self.batch) + "_c" + String(self.ctx) + "-LATEST.tmp"
         let checkpoint_out = self.lora_out + "_i" + String(self.adam_iter) + "_b" + String(self.batch) + "_c" + String(self.ctx)  + "-ITERATION.tmp"
+        
         var args = ["progr_name", "--model-base", self.model_base, "--lora-out", self.lora_out, "--train-data", self.train_data,
                     "--threads", String(self.threads), "--adam-iter", String(self.adam_iter), "--batch", String(self.batch), "--ctx", String(self.ctx),
                     "--checkpoint-in", checkpoint_in,

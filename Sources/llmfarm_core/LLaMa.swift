@@ -15,8 +15,8 @@ public class LLaMa: LLMBase {
     public var ctx_sampling: OpaquePointer?
     public var batch: llama_batch?
     public var hardware_arch: String=""
-    public var temporary_invalid_cchars: [CChar]  = []
-    public var progressCallback: ((Float)  -> (Bool))? = nil    
+    public var temporary_invalid_cchars: [CChar]  = []    
+    
 //    public var sparams: llama_sampling_params_spm
     
     //  int32_t     n_prev                = 64;       // number of previous tokens to remember
@@ -59,11 +59,13 @@ public class LLaMa: LLMBase {
 //        sparams.penalize_nl = sampleParams.penalize_nl;
 //    }
 
-    public override func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                        model_load_progress_callback:((Float)  -> (Bool))?) throws -> Bool{
+    public override func llm_load_model(path: String = "", 
+                                        contextParams: ModelAndContextParams = .default,
+                                        params:gpt_context_params) throws -> Bool {
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
 //        init_sampling_param()
+        
 //        self.ctx_sampling = llama_sampling_init(sparams);
         context_params.n_ctx = UInt32(contextParams.context)
         context_params.seed = UInt32(contextParams.seed)
@@ -71,25 +73,33 @@ public class LLaMa: LLMBase {
         context_params.logits_all = contextParams.logitsAll
 //        context_params.flash_attn = contextParams.flash_attn        
         context_params.flash_attn = false
+
+        
+        // context_params.cb_eval_user_data = &cb_data;
+
         //        context_params.n_batch = contextParams.
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
-        model_params.use_mmap = contextParams.useMMap
-        //        A C function pointer can only be formed from a reference to a 'func' or a literal closure
-        self.progressCallback = model_load_progress_callback
+        model_params.use_mmap = contextParams.useMMap        
+        // self.modelLoadProgressCallback = model_load_progress_callback
         self.retain_new_self_ptr()
         model_params.progress_callback = { progress,b in
-            //                let LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(LLaMa_obj_ptr!).takeRetainedValue()
-            //                let LLaMa_ptr = Unmanaged<LLaMa>.fromOpaque(LLaMa_obj!).takeRetainedValue()
-//            LLaMa_obj?.retain_new_self_ptr()
-            if (LLaMa_obj?.progressCallback != nil){
-                let res = LLaMa_obj?.progressCallback!(progress)
+            if (LLaMa_obj?.modelLoadProgressCallback != nil){
+                let res = LLaMa_obj?.modelLoadProgressCallback!(progress)
                 return res ?? false
             }
-            
             return true
         }
-        
+//        context_params.cb_eval = { t, ask, user_data in
+////            var  t:ggml_tensor? = a?.pointee
+//            let t_name = String(cString:get_tensor_name(t))
+//            if (LLaMa_obj?.evalCallback != nil){
+//                let res = LLaMa_obj?.evalCallback!(t_name)
+//                return true
+//            }
+////            print(t_name)
+//            return true
+//        };
         if contextParams.use_metal{
             model_params.n_gpu_layers = 100
         }else{
@@ -108,14 +118,15 @@ public class LLaMa: LLMBase {
         if contextParams.lora_adapters.count>0{
             model_params.use_mmap = false
         }
+
+        self.modelLoadProgressCallback?(0)
         
         llama_backend_init()
         
         self.model = llama_load_model_from_file(path, model_params)
         if self.model == nil{
             return false
-        }
-        
+        }        
         for lora in contextParams.lora_adapters{
             llama_model_apply_lora_from_file(model,lora.0,lora.1,nil,6);
         }
@@ -143,9 +154,6 @@ public class LLaMa: LLMBase {
     
     private func retain_new_self_ptr(){
         LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(Unmanaged.passRetained(self).toOpaque()).takeRetainedValue()
-        //        LLaMa_obj_ptr = Unmanaged.passRetained(self).toOpaque()
-        //        LLaMa_obj_ptr = UnsafeMutablePointer(OpaquePointer(bitPattern: Unmanaged.passUnretained(self)))
-        // LLaMa_ptr = Unmanaged<LLaMa_MModal>.fromOpaque(LLaMaMM_obj_ptr!).takeRetainedValue()
     }
     
     public override func destroy_objects(){

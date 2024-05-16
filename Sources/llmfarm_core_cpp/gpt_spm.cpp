@@ -357,3 +357,74 @@ llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, 
 llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) {
     return llama_sample_token_mirostat_v2(ctx, (llama_token_data_array *)candidates,tau,eta,mu );
 }
+
+
+struct callback_data {
+    std::vector<uint8_t> data;
+};
+
+
+static std::string ggml_ne_string(const ggml_tensor * t) {
+    std::string str;
+    for (int i = 0; i < GGML_MAX_DIMS; ++i) {
+        str += std::to_string(t->ne[i]);
+        if (i + 1 < GGML_MAX_DIMS) {
+            str += ", ";
+        }
+    }
+    return str;
+}
+
+char tensor_name_str[128] = {0};
+
+char * get_tensor_name(struct ggml_tensor * t){
+    if (t){
+        //        sprintf(tensor_name_str, "%s", t->name);
+        const struct ggml_tensor * src0 = t->src[0];
+        const struct ggml_tensor * src1 = t->src[1];
+        
+        if (src1) {
+            sprintf(tensor_name_str, "%s{%s}", src1->name, ggml_ne_string(src1).c_str());
+        }
+    }
+    return  tensor_name_str;
+}
+
+// static bool ggml_debug(struct ggml_tensor * t, bool ask, void * user_data) {
+//     auto * cb_data = (callback_data *) user_data;
+
+//     const struct ggml_tensor * src0 = t->src[0];
+//     const struct ggml_tensor * src1 = t->src[1];
+
+//     if (ask) {
+//         return true; // Always retrieve data
+//     }
+
+//     char src1_str[128] = {0};
+//     if (src1) {
+//         sprintf(src1_str, "%s{%s}", src1->name, ggml_ne_string(src1).c_str());
+//     }
+
+//     printf("%s: %24s = (%s) %10s(%s{%s}, %s}) = {%s}\n", __func__,
+//            t->name, ggml_type_name(t->type), ggml_op_desc(t),
+//            src0->name, ggml_ne_string(src0).c_str(),
+//            src1 ? src1_str : "",
+//            ggml_ne_string(t).c_str());
+
+
+//     // copy the data from the GPU memory if needed
+//     const bool is_host = ggml_backend_buffer_is_host(t->buffer);
+
+//     if (!is_host) {
+//         auto n_bytes = ggml_nbytes(t);
+//         cb_data->data.resize(n_bytes);
+//         ggml_backend_tensor_get(t, cb_data->data.data(), 0, n_bytes);
+//     }
+
+//     if (!ggml_is_quantized(t->type)) {
+//         uint8_t * data = is_host ? (uint8_t *) t->data : cb_data->data.data();
+//         ggml_print_tensor(data, t->type, t->ne, t->nb, 3);
+//     }
+
+//     return true;
+// }

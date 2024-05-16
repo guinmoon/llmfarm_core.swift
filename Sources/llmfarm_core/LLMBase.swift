@@ -45,7 +45,11 @@ public class LLMBase {
     public var sampleParams: ModelSampleParams = .default    
     public var core_resourses = get_core_bundle_path()    
     public var session_tokens: [Int32] = []
-
+    public var modelLoadProgressCallback: ((Float)  -> (Bool))? = nil    
+    public var modelLoadCompleteCallback: ((String)  -> ())? = nil
+    public var evalCallback: ((Int)  -> (Bool))? = nil
+    public var evalDebugCallback: ((String)  -> (Bool))? = nil
+    public var modelPath: String
     
     // Used to keep old context until it needs to be rotated or purge out for new tokens
     var past: [[ModelToken]] = [] // Will house both queries and responses in order
@@ -54,10 +58,25 @@ public class LLMBase {
     
     
     
-    public  init(path: String, contextParams: ModelAndContextParams = .default, 
-                 model_load_progress_callback:((Float)  -> (Bool))?) throws {
+    public  init(path: String, contextParams: ModelAndContextParams = .default) throws {
+        
+        self.modelPath = path
+//        self.modelLoadProgressCallback = model_load_progress_callback
         self.contextParams = contextParams
         //        var params = gptneox_context_default_params()
+        
+        // Check if model file exists
+        if !FileManager.default.fileExists(atPath: self.modelPath) {
+            throw ModelError.modelNotFound(self.modelPath)
+        }
+        // load_model()
+    }
+
+    public func load_model() throws {
+         // Load model at path
+        //        self.context = gptneox_init_from_file(path, params)
+        //        let test = test_fn()
+        var load_res:Bool? = false
         var params = gpt_context_default_params()
         params.n_ctx = contextParams.context
         params.n_parts = contextParams.parts
@@ -67,17 +86,9 @@ public class LLMBase {
         params.vocab_only = contextParams.vocabOnly
         params.use_mlock = contextParams.useMlock
         params.embedding = contextParams.embedding
-        // Check if model file exists
-        if !FileManager.default.fileExists(atPath: path) {
-            throw ModelError.modelNotFound(path)
-        }
-        // Load model at path
-        //        self.context = gptneox_init_from_file(path, params)
-        //        let test = test_fn()
-        var load_res:Bool? = false
         do{
             try ExceptionCather.catchException {
-                load_res = try? self.llm_load_model(path:path,contextParams:contextParams,params: params,model_load_progress_callback:model_load_progress_callback)
+                load_res = try? self.llm_load_model(path:self.modelPath,contextParams:contextParams,params: params)
             }
         
             if load_res != true{
@@ -86,8 +97,8 @@ public class LLMBase {
             
             print("%s: seed = %d\n", params.seed);
             
-            if contextParams.grammar_path != nil && contextParams.grammar_path! != ""{
-                try? self.load_grammar(contextParams.grammar_path!)
+            if self.contextParams.grammar_path != nil && self.contextParams.grammar_path! != ""{
+                try? self.load_grammar(self.contextParams.grammar_path!)
             }
             
             print(String(cString: print_system_info()))
@@ -124,8 +135,10 @@ public class LLMBase {
         }
     }
     
-    public  func llm_load_model(path: String = "", contextParams: ModelAndContextParams = .default, params:gpt_context_params,
-                                model_load_progress_callback:((Float)  -> (Bool))? = {a in return true}) throws -> Bool{
+    public  func llm_load_model(path: String = "", 
+                                contextParams: ModelAndContextParams = .default,
+                                params:gpt_context_params) throws -> Bool
+    {
         return false
     }
     
@@ -359,8 +372,8 @@ public class LLMBase {
                 // Move tokens to batch
                 let evalCount = min(inputTokens.count, Int(params.n_batch))
                 inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
-                
                 inputTokens.removeFirst(evalCount)
+
                 if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
                     self.nPast = 0
                     try ExceptionCather.catchException {
@@ -434,10 +447,8 @@ public class LLMBase {
                          return str
                      }
                      if callback(output, time) {
-//                    if callback(output, 0) {
                         // Early exit if requested by callback
                         print(" * exit requested by callback *")
-                        //generating = false
                         completion_loop = false //outputRemaining = 0
                         break
                     }
