@@ -73,46 +73,7 @@ To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `P
 
 # Usage
 
-## [More examples in the Demo Project](/DemoProject)
-
-### Example generate output from a prompt
-
-
-```swift
-import Foundation
-import llmfarm_core
-
-let maxOutputLength = 256
-var total_output = 0
-
-func mainCallback(_ str: String, _ time: Double) -> Bool {
-    print("\(str)",terminator: "")
-    total_output += str.count
-    if(total_output>maxOutputLength){
-        return true
-    }
-    return false
-}
-
-
-
-let ai = AI(_modelPath: "/Users/guinmoon/dev/alpaca_llama_etc/llama-2-7b-chat-q4_K_M.gguf",_chatName: "chat")
-var params:ModelAndContextParams = .default
-params.promptFormat = .Custom
-params.custom_prompt_format = """
-SYSTEM: You are a helpful, respectful and honest assistant.
-USER: {prompt}
-ASSISTANT:
-"""
-var input_text = "State the meaning of life"
-params.use_metal = true
-
-_ = try? ai.loadModel_sync(ModelInference.LLama_gguf,contextParams: params)
-
-let output = try? ai.model.predict(input_text, mainCallback)
-
-
-```
+## [See examples in the Demo Project](/DemoProject)
 
 # Projects based on this library
  * ## [LLM Farm](https://github.com/guinmoon/LLMFarm)
