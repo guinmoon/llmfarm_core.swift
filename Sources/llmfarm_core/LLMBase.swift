@@ -115,6 +115,14 @@ public class LLMBase {
         }
     }
     
+    public func load_clip_model() -> Bool{
+        return true
+    }
+    
+    public func deinit_clip_model(){
+        
+    }
+    
     public func destroy_objects(){
         
     }
@@ -338,8 +346,10 @@ public class LLMBase {
         if img_path != nil{
             do {  
                 try ExceptionCather.catchException {
+                    _ = self.load_clip_model()
                     _ = self.make_image_embed(img_path!)
                     _ = try? self.llm_eval_clip()
+                    self.deinit_clip_model()
                 }
              }catch{
                 print(error)

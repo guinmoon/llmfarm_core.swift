@@ -14,6 +14,9 @@ public class LLaMa_MModal: LLaMa {
     
     
     public override func load_clip_model() -> Bool{
+        if self.clip_ctx != nil {
+            return true
+        }
         if contextParams.clip_model == nil {
             return false
         }
@@ -23,6 +26,11 @@ public class LLaMa_MModal: LLaMa {
         self.clip_ctx = clip_model_load(contextParams.clip_model, 1,contextParams.use_metal ? 1: 0);
         #endif
         return true
+    }
+    
+    public override func deinit_clip_model(){
+        clip_free(clip_ctx);
+        self.clip_ctx = nil
     }
     
     public override func make_image_embed(_ image_path:String) -> Bool{
@@ -35,7 +43,9 @@ public class LLaMa_MModal: LLaMa {
     }
     
     public override func destroy_clip(){
-        clip_free(clip_ctx);
+        if self.clip_ctx != nil{
+            clip_free(clip_ctx);
+        }
     }
     
     public override func llm_eval_clip() throws -> Bool{

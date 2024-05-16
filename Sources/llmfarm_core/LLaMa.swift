@@ -148,9 +148,7 @@ public class LLaMa: LLMBase {
         return true
     }
     
-    public func load_clip_model() -> Bool{
-        return true
-    }
+    
     
     private func retain_new_self_ptr(){
         LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(Unmanaged.passRetained(self).toOpaque()).takeRetainedValue()
