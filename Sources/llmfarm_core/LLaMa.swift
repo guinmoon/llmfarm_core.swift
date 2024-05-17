@@ -135,12 +135,14 @@ public class LLaMa: LLMBase {
         if self.context == nil {
             return false
         }
-        //        var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 100000)
-        //        var tokens_count:Int = 0
-        //        llama_load_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",tokens_tmp.mutPtr, 100000,&tokens_count)
-        //        self.session_tokens.append(contentsOf: tokens_tmp[0..<tokens_count])
-        //        try? llm_eval(inputBatch:self.session_tokens)
-        //        llama_load_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
+        
+//        var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 4096)
+//        var tokens_count:Int = 0
+//        llama_state_load_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",tokens_tmp.mutPtr, 4096,&tokens_count)
+//        self.outputRepeatTokens.append(contentsOf: tokens_tmp[0..<tokens_count-1])
+//        self.nPast = tokens_tmp[tokens_count-1]
+
+        
         if !load_clip_model(){
             return false
         }
@@ -175,7 +177,8 @@ public class LLaMa: LLMBase {
     
     deinit {
         //        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-        //        llama_save_session_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.session_tokens, self.session_tokens.count)       
+//        self.outputRepeatTokens.append(self.nPast)
+//        llama_state_save_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.outputRepeatTokens, self.outputRepeatTokens.count)
         print("deinit LLaMa")
         self.destroy_objects()
         print("LLaMa deinited")
@@ -223,25 +226,22 @@ public class LLaMa: LLMBase {
          }
         return true
     }
+
+    public override func kv_shift() throws{
+        let n_discard = self.nPast/2
+        llama_kv_cache_seq_rm (context, 0, 0            , n_discard);
+        llama_kv_cache_seq_add(context, 0, n_discard, self.nPast, -n_discard);      
+        self.nPast -= n_discard;
+        try ExceptionCather.catchException {
+            _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
+        }
+        self.nPast+=1
+        self.outputRepeatTokens = []
+        print("Context Limit!")
+    }
     
     func completion_init(tokens_list: [ModelToken]) {
-//        print("attempting to complete \"\(text)\"")
-
-        // tokens_list = tokenize(text: text, add_bos: true)
         temporary_invalid_cchars = []
-
-//        let n_ctx = llama_n_ctx(context)
-//        let n_kv_req = tokens_list.count + (Int(n_len) - tokens_list.count)
-//
-//        print("\n n_len = \(n_len), n_ctx = \(n_ctx), n_kv_req = \(n_kv_req)")
-//
-//        if n_kv_req > n_ctx {
-//            print("error: n_kv_req > n_ctx, the required KV cache size is not big enough")
-//        }
-
-//        for id in tokens_list {
-//            print(String(cString: token_to_piece(token: id) + [0]))
-//        }
 
         llama_batch_clear(&batch!)
 
@@ -255,7 +255,6 @@ public class LLaMa: LLMBase {
             print("llama_decode() failed")
         }
 
-//        n_cur = batch.n_tokens
     }
         
 

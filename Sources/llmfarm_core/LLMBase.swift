@@ -50,6 +50,7 @@ public class LLMBase {
     public var evalCallback: ((Int)  -> (Bool))? = nil
     public var evalDebugCallback: ((String)  -> (Bool))? = nil
     public var modelPath: String
+    public var outputRepeatTokens: [ModelToken] = []
     
     // Used to keep old context until it needs to be rotated or purge out for new tokens
     var past: [[ModelToken]] = [] // Will house both queries and responses in order
@@ -329,9 +330,7 @@ public class LLMBase {
     }
     
     
-    
-    public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
-        let params = sampleParams
+    public func _eval_system_prompt(system_prompt:String? = nil) throws{
         if system_prompt != nil{
             var system_pormpt_Tokens = tokenizePrompt(system_prompt ?? "", .None)            
             var eval_res:Bool? = nil
@@ -343,6 +342,9 @@ public class LLMBase {
             }
             self.nPast += Int32(system_pormpt_Tokens.count)
         }
+    }
+
+    public func _eval_img(img_path:String? = nil) throws{
         if img_path != nil{
             do {  
                 try ExceptionCather.catchException {
@@ -356,6 +358,22 @@ public class LLMBase {
                 throw error
              }     
         }
+    }
+    
+    public func kv_shift() throws{
+        self.nPast = self.nPast / 2
+        try ExceptionCather.catchException {
+            _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
+        }
+        print("Context Limit!")
+    }
+
+    public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
+        let params = sampleParams
+        
+        try _eval_system_prompt(system_prompt:system_prompt)
+        try _eval_img(img_path:img_path)
+        
         let contextLength = Int32(contextParams.context)
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
@@ -385,11 +403,8 @@ public class LLMBase {
                 inputTokens.removeFirst(evalCount)
 
                 if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
-                    self.nPast = 0
-                    try ExceptionCather.catchException {
-                        _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
-                    }
-//                    throw ModelError.contextLimit
+                    try self.kv_shift()
+                    callback("**C_LIMIT**",0)
                 }
                 var eval_res:Bool? = nil
                 try ExceptionCather.catchException {
@@ -401,7 +416,7 @@ public class LLMBase {
                 nPast += Int32(evalCount)
             }
             // Output
-            var outputRepeatTokens: [ModelToken] = []
+            outputRepeatTokens = []
             var outputTokens: [ModelToken] = []
             var output = [String]()
             // Loop until target count is reached
@@ -467,14 +482,9 @@ public class LLMBase {
                 if completion_loop {
                     // Send generated token back into model for next generation
                     var eval_res:Bool? = nil
-                    if self.nPast >= self.contextParams.context - 4{
-                        self.nPast = self.nPast / 2
-                        outputToken = self.llm_token_eos()
-                        try ExceptionCather.catchException {
-                            _ = try? self.llm_eval(inputBatch: [outputToken])
-                        }
-                        print("Context Limit!")
-//                        throw ModelError.contextLimit
+                    if self.nPast >= self.contextParams.context - 2{
+                        try self.kv_shift()
+                        callback("**C_LIMIT**",0)
                     }
                     try ExceptionCather.catchException {
                         eval_res = try? self.llm_eval(inputBatch: [outputToken])
