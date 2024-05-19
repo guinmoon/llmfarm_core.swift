@@ -283,6 +283,11 @@ public class LLMBase {
     }
     
     
+    public func load_state(){}
+    
+    public func save_state(){}
+    
+    
     public func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
         return false
     }

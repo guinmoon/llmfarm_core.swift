@@ -340,6 +340,10 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     if (model_config["parse_special_tokens"] != nil){
         tmp_param.parse_special_tokens = model_config["parse_special_tokens"] as! Bool
     }
+    if (model_config["save_load_state"] != nil){
+        tmp_param.save_load_state = model_config["save_load_state"] as! Bool
+    }
+    
 
     if (model_config["model"] as! String).hasSuffix(".gguf"){
             tmp_param.model_inference = ModelInference.LLama_gguf
@@ -379,6 +383,7 @@ public struct ModelAndContextParams {
     public var seed: UInt32 = 0xFFFFFFFF      // RNG seed, 0 for random
     public var n_threads: Int32 = 1
     public var lora_adapters: [(String,Float)] = []
+    public var state_dump_path: String = ""
 
     public var promptFormat: ModelPromptStyle = .None
     public var custom_prompt_format = ""
@@ -397,6 +402,7 @@ public struct ModelAndContextParams {
     public var add_eos_token = false
     public var parse_special_tokens = true
     public var flash_attn = false
+    public var save_load_state = true
     
     
     public var warm_prompt = "\n\n\n"

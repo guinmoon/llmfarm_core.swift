@@ -119,7 +119,7 @@ public class LLaMa: LLMBase {
             model_params.use_mmap = false
         }
 
-        self.modelLoadProgressCallback?(0)
+        _ = self.modelLoadProgressCallback?(0)
         
         llama_backend_init()
         
@@ -136,21 +136,37 @@ public class LLaMa: LLMBase {
             return false
         }
         
-//        var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 4096)
-//        var tokens_count:Int = 0
-//        llama_state_load_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",tokens_tmp.mutPtr, 4096,&tokens_count)
-//        self.outputRepeatTokens.append(contentsOf: tokens_tmp[0..<tokens_count-1])
-//        self.nPast = tokens_tmp[tokens_count-1]
-
-        
         if !load_clip_model(){
             return false
         }
+        
+        self.load_state()
+        
         self.batch = llama_batch_init(sampleParams.n_batch, 0, 1)
         return true
     }
     
     
+    public override func load_state(){
+        if self.contextParams.save_load_state &&
+            self.contextParams.state_dump_path != "" &&
+            FileManager.default.fileExists(atPath: self.contextParams.state_dump_path)
+        {
+                var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 4096)
+                var tokens_count:Int = 0
+                llama_state_load_file(self.context,self.contextParams.state_dump_path,tokens_tmp.mutPtr, 4096,&tokens_count)
+                self.outputRepeatTokens.append(contentsOf: tokens_tmp[0..<tokens_count-1])
+                self.nPast = tokens_tmp[tokens_count-1]
+        }
+    }
+    
+    public override func save_state(){
+        if self.contextParams.save_load_state &&
+            self.contextParams.state_dump_path != "" {
+            self.outputRepeatTokens.append(self.nPast)
+            llama_state_save_file(self.context,self.contextParams.state_dump_path,self.outputRepeatTokens, self.outputRepeatTokens.count)
+        }
+    }
     
     private func retain_new_self_ptr(){
         LLaMa_obj = Unmanaged<LLaMa>.fromOpaque(Unmanaged.passRetained(self).toOpaque()).takeRetainedValue()
@@ -176,9 +192,7 @@ public class LLaMa: LLMBase {
     }
     
     deinit {
-        //        llama_save_state(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state_.bin")
-//        self.outputRepeatTokens.append(self.nPast)
-//        llama_state_save_file(self.context,"/Users/guinmoon/Library/Containers/com.guinmoon.LLMFarm/Data/Documents/models/dump_state.bin",self.outputRepeatTokens, self.outputRepeatTokens.count)
+        self.save_state()
         print("deinit LLaMa")
         self.destroy_objects()
         print("LLaMa deinited")
