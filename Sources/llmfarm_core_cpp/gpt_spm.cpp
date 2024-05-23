@@ -390,6 +390,85 @@ char * get_tensor_name(struct ggml_tensor * t){
     return  tensor_name_str;
 }
 
+int check_tensor_name(struct ggml_tensor * t){
+    if (t){
+        return strcmp(t->name,"asdas");        
+    }
+    return -1;
+}
+
+
+// typedef struct llama_sampling_params {
+//     int32_t     n_prev                = 64;                 // number of previous tokens to remember
+//     int32_t     n_probs               = 0;                  // if greater than 0, output the probabilities of top n_probs tokens.
+//     int32_t     min_keep              = 0;                  // 0 = disabled, otherwise samplers should return at least min_keep tokens
+//     int32_t     top_k                 = 40;                 // <= 0 to use vocab size
+//     float       top_p                 = 0.95f;              // 1.0 = disabled
+//     float       min_p                 = 0.05f;              // 0.0 = disabled
+//     float       tfs_z                 = 1.00f;              // 1.0 = disabled
+//     float       typical_p             = 1.00f;              // 1.0 = disabled
+//     float       temp                  = 0.80f;              // <= 0.0 to sample greedily, 0.0 to not output probabilities
+//     float       dynatemp_range        = 0.00f;              // 0.0 = disabled
+//     float       dynatemp_exponent     = 1.00f;              // controls how entropy maps to temperature in dynamic temperature sampler
+//     int32_t     penalty_last_n        = 64;                 // last n tokens to penalize (0 = disable penalty, -1 = context size)
+//     float       penalty_repeat        = 1.00f;              // 1.0 = disabled
+//     float       penalty_freq          = 0.00f;              // 0.0 = disabled
+//     float       penalty_present       = 0.00f;              // 0.0 = disabled
+//     int32_t     mirostat              = 0;                  // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+//     float       mirostat_tau          = 5.00f;              // target entropy
+//     float       mirostat_eta          = 0.10f;              // learning rate
+//     bool        penalize_nl           = false;              // consider newlines as a repeatable token
+//     uint32_t    seed                  = LLAMA_DEFAULT_SEED; // the seed used to initialize llama_sampling_context
+
+//     std::vector<llama_sampler_type> samplers_sequence = {
+//         llama_sampler_type::TOP_K,
+//         llama_sampler_type::TFS_Z,
+//         llama_sampler_type::TYPICAL_P,
+//         llama_sampler_type::TOP_P,
+//         llama_sampler_type::MIN_P,
+//         llama_sampler_type::TEMPERATURE
+//     };
+
+//     std::string grammar;  // optional BNF-like grammar to constrain sampling
+
+//     // Classifier-Free Guidance
+//     // https://arxiv.org/abs/2306.17806
+//     std::string cfg_negative_prompt; // string to help guidance
+//     float       cfg_scale     = 1.f; // how strong is guidance
+
+//     std::unordered_map<llama_token, float> logit_bias; // logit bias for specific tokens
+
+//     std::vector<llama_token> penalty_prompt_tokens;
+//     bool                     use_penalty_prompt_tokens = false;
+// } llama_sampling_params;
+
+// // general sampler context
+// // TODO: move to llama.h
+// struct llama_sampling_context {
+//     // parameters that will be used for sampling
+//     llama_sampling_params params;
+
+//     // mirostat sampler state
+//     float mirostat_mu;
+
+//     llama_grammar * grammar;
+
+//     // internal
+//     grammar_parser::parse_state parsed_grammar;
+
+//     // TODO: replace with ring-buffer
+//     std::vector<llama_token>      prev;
+//     std::vector<llama_token_data> cur;
+//     size_t n_valid; // Number of correct top tokens with correct probabilities.
+
+//     std::mt19937 rng;
+// };
+
+// struct llama_sampling_context * init_sampling(){
+//     // sparams
+//     struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
+//     return ctx_sampling;
+// }
 // static bool ggml_debug(struct ggml_tensor * t, bool ask, void * user_data) {
 //     auto * cb_data = (callback_data *) user_data;
 

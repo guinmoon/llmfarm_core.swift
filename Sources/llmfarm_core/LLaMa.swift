@@ -90,16 +90,16 @@ public class LLaMa: LLMBase {
             }
             return true
         }
-//        context_params.cb_eval = { t, ask, user_data in
-////            var  t:ggml_tensor? = a?.pointee
-//            let t_name = String(cString:get_tensor_name(t))
-//            if (LLaMa_obj?.evalCallback != nil){
-//                let res = LLaMa_obj?.evalCallback!(t_name)
-//                return true
-//            }
-////            print(t_name)
-//            return true
-//        };
+        context_params.cb_eval = { t, ask, user_data in
+    //            var  t:ggml_tensor? = a?.pointee
+            // let t_name = String(cString:get_tensor_name(t))            
+            if (LLaMa_obj?.evalCallback != nil){
+                let res = LLaMa_obj?.evalCallback!( Int(check_tensor_name(t)))
+                return false
+            }
+    //            print(t_name)
+            return false
+        };
         if contextParams.use_metal{
             model_params.n_gpu_layers = 100
         }else{
@@ -381,7 +381,7 @@ public class LLaMa: LLMBase {
     
     
     
-    public override func llm_tokenize(_ input: String) -> [ModelToken] {
+    public override func llm_tokenize(_ input: String, add_bos: Bool?, parse_special:Bool?) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
@@ -395,7 +395,9 @@ public class LLaMa: LLMBase {
         //                                bool   add_bos)
         let n_tokens = Int32(input.utf8.count) + (self.contextParams.add_bos_token == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
-        let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, self.contextParams.add_bos_token, self.contextParams.parse_special_tokens)
+        let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, 
+                               add_bos ?? self.contextParams.add_bos_token,
+                               parse_special ?? self.contextParams.parse_special_tokens)
         if n<=0{
             return []
         }

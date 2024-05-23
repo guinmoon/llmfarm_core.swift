@@ -260,6 +260,8 @@ public func get_system_prompt(_ prompt_format_in: String) -> (String,String){
     return (prompt_format,system_prompt)
 }
 
+
+
 public func get_model_context_param_by_config(_ model_config:Dictionary<String, AnyObject>) -> ModelAndContextParams{
     var tmp_param = ModelAndContextParams.default
     if (model_config["context"] != nil){
@@ -293,7 +295,7 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
         tmp_param.clip_model = get_path_by_short_name(model_config["clip_model"]! as? String,dest:"models")
     }
     if (model_config["reverse_prompt"] != nil){
-        let splited_revrse_prompt = String(model_config["reverse_prompt"]! as! String).components(separatedBy: [";"])
+        let splited_revrse_prompt = String(model_config["reverse_prompt"]! as! String).components(separatedBy: [","])
         for word in splited_revrse_prompt{
             let trimed_word = word.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimed_word==""{
@@ -310,6 +312,10 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
                 tmp_param.reverse_prompt.append(trimed_word)
             }
         }
+    }   
+    
+    if (model_config["skip_tokens"] != nil){
+        tmp_param.skip_tokens_str = model_config["skip_tokens"]! as! String
     }
 
     if (model_config["prompt_format"] != nil && model_config["prompt_format"]! as! String != "auto"
@@ -384,6 +390,8 @@ public struct ModelAndContextParams {
     public var n_threads: Int32 = 1
     public var lora_adapters: [(String,Float)] = []
     public var state_dump_path: String = ""
+    public var skip_tokens: [Int32] = []
+    public var skip_tokens_str: String = ""
 
     public var promptFormat: ModelPromptStyle = .None
     public var custom_prompt_format = ""

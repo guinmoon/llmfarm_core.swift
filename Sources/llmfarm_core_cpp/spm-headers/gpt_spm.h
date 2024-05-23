@@ -182,6 +182,7 @@ typedef struct llama_sampling_params_spm {
 } llama_sampling_params_spm;
 
 char * get_tensor_name(struct ggml_tensor * t);
+int check_tensor_name(struct ggml_tensor * t);
 
 #ifdef __cplusplus
 }

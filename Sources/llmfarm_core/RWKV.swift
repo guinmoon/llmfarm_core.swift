@@ -99,7 +99,7 @@ public class RWKV: LLMBase {
         return tokenizer_to_str.decode(tokens: [outputToken])
     }
     
-    public override func llm_tokenize(_ input: String) -> [ModelToken] {
+    public override func llm_tokenize(_ input: String, add_bos: Bool?, parse_special: Bool?) -> [ModelToken] {
         if input.count == 0 {
             return []
         }

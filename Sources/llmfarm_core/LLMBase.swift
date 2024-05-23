@@ -181,7 +181,7 @@ public class LLMBase {
     }
     
     // Simple topK, topP, temp sampling, with repeat penalty
-    func llm_sample(ctx: OpaquePointer!,
+    func llm_sample(/*ctx: OpaquePointer!,
                 last_n_tokens: inout [ModelToken],
                 temp: Float32,
                 top_k: Int32,
@@ -195,13 +195,29 @@ public class LLMBase {
                 mirostat: Int32,
                 mirostat_tau: Float32,
                 mirostat_eta: Float32,
-                penalize_nl: Bool) -> ModelToken {
+                penalize_nl: Bool*/) -> ModelToken {
         // Model input context size
+        let ctx = self.context
+        var last_n_tokens =  self.outputRepeatTokens
+        let temp = self.sampleParams.temp
+//        let top_k = self.sampleParams.top_k
+        let top_p = self.sampleParams.top_p
+        let tfs_z = self.sampleParams.tfs_z
+        let typical_p = self.sampleParams.typical_p
+//        let repeat_last_n = self.sampleParams.repeat_last_n
+        let repeat_penalty = self.sampleParams.repeat_penalty
+        let alpha_presence = self.sampleParams.presence_penalty
+        let alpha_frequency = self.sampleParams.frequence_penalty
+        let mirostat = self.sampleParams.mirostat
+        let mirostat_tau = self.sampleParams.mirostat_tau
+        let mirostat_eta = self.sampleParams.mirostat_eta
+        let penalize_nl = self.sampleParams.penalize_nl
+
         let n_ctx = llm_get_n_ctx(ctx: ctx)
         // Auto params
         
-        let top_k = top_k <= 0 ? llm_n_vocab(ctx) : top_k
-        let repeat_last_n = repeat_last_n < 0 ? n_ctx : repeat_last_n
+        let top_k = self.sampleParams.top_k <= 0 ? llm_n_vocab(ctx) : self.sampleParams.top_k
+        let repeat_last_n = self.sampleParams.repeat_last_n < 0 ? n_ctx : self.sampleParams.repeat_last_n
         
         //
         let vocabSize = llm_n_vocab(ctx)
@@ -373,6 +389,15 @@ public class LLMBase {
         print("Context Limit!")
     }
 
+    public func chekc_skip_tokens (_ token:Int32) ->Bool{
+        for skip in self.contextParams.skip_tokens{
+            if skip == token{
+                return false
+            }
+        }
+        return true
+    }
+
     public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
         let params = sampleParams
         
@@ -430,7 +455,7 @@ public class LLMBase {
                 // Pull a generation from context
                 var outputToken:Int32 = -1
                 try ExceptionCather.catchException {
-                    outputToken = self.llm_sample(
+                    outputToken = self.llm_sample(/*
                         ctx: self.context,
                         last_n_tokens: &outputRepeatTokens,
                         temp: params.temp,
@@ -445,7 +470,7 @@ public class LLMBase {
                         mirostat: params.mirostat,
                         mirostat_tau: params.mirostat_tau,
                         mirostat_eta: params.mirostat_eta,
-                        penalize_nl: params.penalize_nl
+                        penalize_nl: params.penalize_nl*/
                     )
                 }
                 // Add output token to array
@@ -464,8 +489,12 @@ public class LLMBase {
                 }
                 // Check for bos, skip callback if so, bos = eos for most gptneox so this should typically never occur
                 var skipCallback = false
-                if outputToken == llm_token_bos()  {
-                    print("[BOS]")
+                // if outputToken == llm_token_bos()  {
+                //     print("[BOS]")
+                //     skipCallback = true
+                // }
+                if !self.chekc_skip_tokens(outputToken){
+                    print("Skip token: \(outputToken)")
                     skipCallback = true
                 }
                 // Convert token to string and callback
@@ -531,7 +560,7 @@ public class LLMBase {
 //        return Array(UnsafeBufferPointer(start: embeddings, count: embeddingsCount))
 //    }
     
-    public func llm_tokenize(_ input: String) -> [ModelToken] {
+    public func llm_tokenize(_ input: String, add_bos: Bool? = nil, parse_special:Bool? = nil) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
@@ -562,6 +591,18 @@ public class LLMBase {
             formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
             return llm_tokenize(formated_input)
          }
+    }
+    
+    public func parse_skip_tokens(){
+        self.contextParams.skip_tokens.append(self.llm_token_bos())
+        let splited_skip_tokens = self.contextParams.skip_tokens_str.components(separatedBy: [","])
+        for word in splited_skip_tokens{
+            let tokenized_skip = self.llm_tokenize(word,add_bos: false,parse_special: true)
+            if tokenized_skip.count == 1{
+                self.contextParams.skip_tokens.append(tokenized_skip[0])
+            }
+        }
+        
     }
 }
 
