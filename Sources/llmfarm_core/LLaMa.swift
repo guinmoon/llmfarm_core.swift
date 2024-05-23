@@ -90,16 +90,17 @@ public class LLaMa: LLMBase {
             }
             return true
         }
-        context_params.cb_eval = { t, ask, user_data in
-    //            var  t:ggml_tensor? = a?.pointee
-            // let t_name = String(cString:get_tensor_name(t))            
-            if (LLaMa_obj?.evalCallback != nil){
-                let res = LLaMa_obj?.evalCallback!( Int(check_tensor_name(t)))
-                return false
-            }
-    //            print(t_name)
-            return false
-        };
+//        context_params.cb_eval = { t, ask, user_data in
+//    //            var  t:ggml_tensor? = a?.pointee
+//            // let t_name = String(cString:get_tensor_name(t))            
+//            if (LLaMa_obj?.evalCallback != nil){
+////                let res = LLaMa_obj?.evalCallback!( Int(check_tensor_name(t)))
+//                _ = LLaMa_obj?.evalCallback!( 0 )
+//                return false
+//            }
+//    //            print(t_name)
+//            return false
+//        };
         if contextParams.use_metal{
             model_params.n_gpu_layers = 100
         }else{

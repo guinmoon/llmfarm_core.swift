@@ -392,7 +392,8 @@ char * get_tensor_name(struct ggml_tensor * t){
 
 int check_tensor_name(struct ggml_tensor * t){
     if (t){
-        return strcmp(t->name,"asdas");        
+        printf("%s\n",t->name);
+        return strcmp(t->name,"result_output");
     }
     return -1;
 }
