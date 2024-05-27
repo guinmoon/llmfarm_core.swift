@@ -328,7 +328,7 @@ public class LLaMa: LLMBase {
             result.deallocate()
         }
 //        llama_token_to_piece(const struct llama_model * model, llama_token token, char * buf, int32_t length, bool special)
-        let nTokens = llama_token_to_piece(model, token, result, 8,self.contextParams.parse_special_tokens)
+        let nTokens = llama_token_to_piece(model, token, result, 8,/*true*/self.contextParams.parse_special_tokens)
         
         if nTokens < 0 {
             let newResult = UnsafeMutablePointer<Int8>.allocate(capacity: Int(-nTokens))
@@ -336,7 +336,7 @@ public class LLaMa: LLMBase {
             defer {
                 newResult.deallocate()
             }
-            let nNewTokens = llama_token_to_piece(model, token, newResult, -nTokens,self.contextParams.parse_special_tokens)
+            let nNewTokens = llama_token_to_piece(model, token, newResult, -nTokens,/*true*/self.contextParams.parse_special_tokens)
             let bufferPointer = UnsafeBufferPointer(start: newResult, count: Int(nNewTokens))
             return Array(bufferPointer)
         } else {
