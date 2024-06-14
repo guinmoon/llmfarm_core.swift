@@ -156,8 +156,10 @@ public class LLaMa: LLMBase {
                 var tokens_tmp: [llama_token] = [Int32](repeating: 0, count: 4096)
                 var tokens_count:Int = 0
                 llama_state_load_file(self.context,self.contextParams.state_dump_path,tokens_tmp.mutPtr, 4096,&tokens_count)
-                self.outputRepeatTokens.append(contentsOf: tokens_tmp[0..<tokens_count-1])
-                self.nPast = tokens_tmp[tokens_count-1]
+                if (tokens_count>0){
+                    self.outputRepeatTokens.append(contentsOf: tokens_tmp[0..<tokens_count-1])
+                    self.nPast = tokens_tmp[tokens_count-1]
+                }                
         }
     }
     

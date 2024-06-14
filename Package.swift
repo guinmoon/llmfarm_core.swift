@@ -51,11 +51,14 @@ let package = Package(
 //                .define("GGML_METAL_NDEBUG"),
                 .define("NDEBUG"),
                 //.define("GGML_QKK_64"), // Dont forget to comment this if you dont use QKK_64
-                .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp
+                // .unsafeFlags(["-Ofast"]), //comment this if you need to Debug llama_cpp
+                .unsafeFlags(["-O3"]), //comment this if you need to Debug llama_cpp
                 .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
                 .unsafeFlags(["-pthread"]),
                 .unsafeFlags(["-fno-objc-arc"]),
                 .unsafeFlags(["-Wno-shorten-64-to-32"]),
+                .unsafeFlags(["-fno-finite-math-only"]),                
+                // .unsafeFlags(["-Wno-shorten-64-to-32"]),
                 .unsafeFlags(["-w"]),    // ignore all warnings
 
                 
