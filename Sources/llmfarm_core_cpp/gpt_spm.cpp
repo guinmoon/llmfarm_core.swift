@@ -8,6 +8,7 @@
 #include "./spm-headers/rwkv.h"
 #include "ggml/grammar-parser.h"
 #include "ggml/ggml_dadbed9.h"
+#include "ggml/sampling.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -399,6 +400,30 @@ int check_tensor_name(struct ggml_tensor * t){
 }
 
 
+
+
+// // general sampler context
+// // TODO: move to llama.h
+// struct llama_sampling_context {
+//     // parameters that will be used for sampling
+//     llama_sampling_params params;
+
+//     // mirostat sampler state
+//     float mirostat_mu;
+
+//     llama_grammar * grammar;
+
+//     // internal
+//     grammar_parser::parse_state parsed_grammar;
+
+//     // TODO: replace with ring-buffer
+//     std::vector<llama_token>      prev;
+//     std::vector<llama_token_data> cur;
+//     size_t n_valid; // Number of correct top tokens with correct probabilities.
+
+//     std::mt19937 rng;
+// };
+
 // typedef struct llama_sampling_params {
 //     int32_t     n_prev                = 64;                 // number of previous tokens to remember
 //     int32_t     n_probs               = 0;                  // if greater than 0, output the probabilities of top n_probs tokens.
@@ -443,33 +468,78 @@ int check_tensor_name(struct ggml_tensor * t){
 //     bool                     use_penalty_prompt_tokens = false;
 // } llama_sampling_params;
 
-// // general sampler context
-// // TODO: move to llama.h
-// struct llama_sampling_context {
-//     // parameters that will be used for sampling
-//     llama_sampling_params params;
 
-//     // mirostat sampler state
-//     float mirostat_mu;
 
-//     llama_grammar * grammar;
+struct llama_sampling_context * init_sampling(  int32_t     n_prev                = 64,                 // number of previous tokens to remember
+                                                int32_t     top_k                 = 40,                 // <= 0 to use vocab size
+                                                float       top_p                 = 0.95f,              // 1.0 = disabled
+                                                float       min_p                 = 0.05f,              // 0.0 = disabled
+                                                float       tfs_z                 = 1.00f,              // 1.0 = disabled
+                                                float       typical_p             = 1.00f,              // 1.0 = disabled
+                                                float       temp                  = 0.80f,              // <= 0.0 to sample greedily, 0.0 to not output probabilities
+                                                float       dynatemp_range        = 0.00f,              // 0.0 = disabled
+                                                float       dynatemp_exponent     = 1.00f,              // controls how entropy maps to temperature in dynamic temperature sampler
+                                                int32_t     penalty_last_n        = 64,                 // last n tokens to penalize (0 = disable penalty, -1 = context size)
+                                                float       penalty_repeat        = 1.00f,              // 1.0 = disabled
+                                                float       penalty_freq          = 0.00f,              // 0.0 = disabled
+                                                float       penalty_present       = 0.00f,              // 0.0 = disabled
+                                                int32_t     mirostat              = 0,                 // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+                                                float       mirostat_tau          = 5.00f,              // target entropy
+                                                float       mirostat_eta          = 0.10f,              // learning rate
+                                                bool        penalize_nl           = false,              // consider newlines as a repeatable token
+                                                uint32_t    seed                  = LLAMA_DEFAULT_SEED,
+                                                const char * grammar_path = ""){
+    // sparams
+    struct llama_sampling_params  sparams;
+    sparams.n_prev = n_prev;
+    sparams.top_k = top_k;
+    sparams.top_p = top_p;              // 1.0 = disabled
+    sparams.min_p = min_p;             // 0.0 = disabled
+    sparams.tfs_z = tfs_z;              // 1.0 = disabled
+    sparams.typical_p = typical_p;             // 1.0 = disabled
+    sparams.temp = temp;             // <= 0.0 to sample greedily, 0.0 to not output probabilities
+    sparams.dynatemp_range  = dynatemp_range;             // 0.0 = disabled
+    sparams.dynatemp_exponent = dynatemp_exponent;            // controls how entropy maps to temperature in dynamic temperature sampler
+    sparams.penalty_last_n = penalty_last_n;                // last n tokens to penalize (0 = disable penalty, -1 = context size)
+    sparams.penalty_repeat = penalty_repeat;            // 1.0 = disabled
+    sparams.penalty_freq   = penalty_freq;             // 0.0 = disabled
+    sparams.penalty_present = penalty_present;            // 0.0 = disabled
+    sparams.mirostat    = mirostat;                 // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+    sparams.mirostat_tau   = mirostat_tau;           // target entropy
+    sparams.mirostat_eta   = mirostat_eta;
+    sparams.seed = seed;
+    if (sparams.seed == 0)
+        sparams.seed = LLAMA_DEFAULT_SEED;    
 
-//     // internal
-//     grammar_parser::parse_state parsed_grammar;
+    struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
+    if (grammar_path != nullptr &&  grammar_path != ""){
+        printf("Grammar: %s",grammar_path);
+        std::ifstream f(grammar_path);
+        if(f.good())
+            ctx_sampling->grammar = llama_load_grammar(grammar_path);
+    }
+    return ctx_sampling;
+}
 
-//     // TODO: replace with ring-buffer
-//     std::vector<llama_token>      prev;
-//     std::vector<llama_token_data> cur;
-//     size_t n_valid; // Number of correct top tokens with correct probabilities.
+llama_token spm_llama_sampling_sample(
+        llama_sampling_context * ctx_sampling,
+        struct llama_context * ctx_main,
+        struct llama_context * ctx_cfg,
+        int idx = -1)
+{
 
-//     std::mt19937 rng;
-// };
+       llama_sampling_sample(ctx_sampling,ctx_main,ctx_cfg,idx);
+}
 
-// struct llama_sampling_context * init_sampling(){
-//     // sparams
-//     struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
-//     return ctx_sampling;
-// }
+void spm_llama_sampling_accept(
+        struct llama_sampling_context * ctx_sampling,
+        struct llama_context * ctx_main,
+        llama_token id,
+        bool apply_grammar)
+{
+    llama_sampling_accept(ctx_sampling,ctx_main,id,apply_grammar);
+}
+
 // static bool ggml_debug(struct ggml_tensor * t, bool ask, void * user_data) {
 //     auto * cb_data = (callback_data *) user_data;
 

@@ -109,6 +109,7 @@ public class LLMBase {
     //        if exception != nil{
     //            throw ModelError.failedToEval
     //        }
+            
             print("Logits inited.")
         }catch {
             print(error)
@@ -181,21 +182,7 @@ public class LLMBase {
     }
     
     // Simple topK, topP, temp sampling, with repeat penalty
-    func llm_sample(/*ctx: OpaquePointer!,
-                last_n_tokens: inout [ModelToken],
-                temp: Float32,
-                top_k: Int32,
-                top_p: Float32,
-                tfs_z: Float32,
-                typical_p: Float32,
-                repeat_last_n: Int32,
-                repeat_penalty: Float32,
-                alpha_presence: Float32,
-                alpha_frequency: Float32,
-                mirostat: Int32,
-                mirostat_tau: Float32,
-                mirostat_eta: Float32,
-                penalize_nl: Bool*/) -> ModelToken {
+    func llm_sample() -> ModelToken {
         // Model input context size
         let ctx = self.context
         var last_n_tokens =  self.outputRepeatTokens
@@ -455,23 +442,7 @@ public class LLMBase {
                 // Pull a generation from context
                 var outputToken:Int32 = -1
                 try ExceptionCather.catchException {
-                    outputToken = self.llm_sample(/*
-                        ctx: self.context,
-                        last_n_tokens: &outputRepeatTokens,
-                        temp: params.temp,
-                        top_k: params.top_k,
-                        top_p: params.top_p,
-                        tfs_z: params.tfs_z,
-                        typical_p: params.typical_p,
-                        repeat_last_n: params.repeat_last_n,
-                        repeat_penalty: params.repeat_penalty,
-                        alpha_presence: params.presence_penalty,
-                        alpha_frequency: params.frequence_penalty,
-                        mirostat: params.mirostat,
-                        mirostat_tau: params.mirostat_tau,
-                        mirostat_eta: params.mirostat_eta,
-                        penalize_nl: params.penalize_nl*/
-                    )
+                    outputToken = self.llm_sample()
                 }
                 // Add output token to array
                 outputTokens.append(outputToken)
@@ -594,7 +565,10 @@ public class LLMBase {
     }
     
     public func parse_skip_tokens(){
+        // This function must be called after model loaded
+        // Add BOS token to skip 
         self.contextParams.skip_tokens.append(self.llm_token_bos())
+
         let splited_skip_tokens = self.contextParams.skip_tokens_str.components(separatedBy: [","])
         for word in splited_skip_tokens{
             let tokenized_skip = self.llm_tokenize(word,add_bos: false,parse_special: true)

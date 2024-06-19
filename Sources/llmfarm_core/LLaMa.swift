@@ -19,54 +19,55 @@ public class LLaMa: LLMBase {
     
 //    public var sparams: llama_sampling_params_spm
     
-    //  int32_t     n_prev                = 64;       // number of previous tokens to remember
-    // int32_t     n_probs               = 0;        // if greater than 0, output the probabilities of top n_probs tokens.
-    // int32_t     top_k                 = 40;       // <= 0 to use vocab size
-    // float       top_p                 = 0.95f;    // 1.0 = disabled
-    // float       min_p                 = 0.05f;    // 0.0 = disabled
-    // float       tfs_z                 = 1.00f;    // 1.0 = disabled
-    // float       typical_p             = 1.00f;    // 1.0 = disabled
-    // float       temp                  = 0.80f;    // <= 0.0 to sample greedily, 0.0 to not output probabilities
-    // float       dynatemp_range        = 0.00f;    // 0.0 = disabled
-    // float       dynatemp_exponent     = 1.00f;    // controls how entropy maps to temperature in dynamic temperature sampler
-    // int32_t     penalty_last_n        = 64;       // last n tokens to penalize (0 = disable penalty, -1 = context size)
-    // float       penalty_repeat        = 1.10f;    // 1.0 = disabled
-    // float       penalty_freq          = 0.00f;    // 0.0 = disabled
-    // float       penalty_present       = 0.00f;    // 0.0 = disabled
-    // int32_t     mirostat              = 0;        // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
-    // float       mirostat_tau          = 5.00f;    // target entropy
-    // float       mirostat_eta          = 0.10f;    // learning rate
-    // bool        penalize_nl           = true;  
+//    int32_t     n_prev,                 // number of previous tokens to remember
+//     int32_t     top_k,                 // <= 0 to use vocab size
+//     float       top_p,              // 1.0 = disabled
+//     float       min_p,              // 0.0 = disabled
+//     float       tfs_z,              // 1.0 = disabled
+//     float       typical_p,              // 1.0 = disabled
+//     float       temp,              // <= 0.0 to sample greedily, 0.0 to not output probabilities
+//     float       dynatemp_range,              // 0.0 = disabled
+//     float       dynatemp_exponent,              // controls how entropy maps to temperature in dynamic temperature sampler
+//     int32_t     penalty_last_n,                 // last n tokens to penalize (0 = disable penalty, -1 = context size)
+//     float       penalty_repeat,              // 1.0 = disabled
+//     float       penalty_freq,              // 0.0 = disabled
+//     float       penalty_present,              // 0.0 = disabled
+//     int32_t     mirostat,                 // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+//     float       mirostat_tau,              // target entropy
+//     float       mirostat_eta,              // learning rate
+//     bool        penalize_nl,              // consider newlines as a repeatable token
+//     uint32_t    seed;
 
-//    public func init_sampling_param(){
-//        sparams.n_prev = sampleParams.repeat_last_n
-//        sparams.n_probs = 0;
-//        sparams.top_k = sampleParams.top_k;
-//        sparams.top_p = sampleParams.top_p;
-//        sparams.min_p = sampleParams.min_p;
-//        sparams.tfs_z = sampleParams.tfs_z;
-//        sparams.typical_p = sampleParams.typical_p;
-//        sparams.temp = sampleParams.temp;
-//        sparams.dynatemp_range = 0;
-//        sparams.dynatemp_exponent = 1;
-//        sparams.penalty_last_n = sampleParams.repeat_last_n;
-//        sparams.penalty_repeat = sampleParams.repeat_penalty;
-//        sparams.penalty_freq = sampleParams.penalty_freq;
-//        sparams.penalty_present = sampleParams.penalty_present;
-//        sparams.mirostat = sampleParams.mirostat;
-//        sparams.mirostat_tau = sampleParams.mirostat_tau;
-//        sparams.mirostat_eta = sampleParams.mirostat_eta;
-//        sparams.penalize_nl = sampleParams.penalize_nl;
-//    }
+   public func init_sampling_param(){
+       self.ctx_sampling = init_sampling(sampleParams.repeat_last_n,
+                                            sampleParams.top_k,
+                                            sampleParams.top_p,
+                                            sampleParams.min_p,
+                                            sampleParams.tfs_z,
+                                            sampleParams.typical_p,
+                                            sampleParams.temp,
+                                            0.0,
+                                            1.0,
+                                            sampleParams.repeat_last_n,
+                                            sampleParams.repeat_penalty,
+                                            sampleParams.frequence_penalty,
+                                            sampleParams.presence_penalty,
+                                            sampleParams.mirostat,
+                                            sampleParams.mirostat_tau,
+                                            sampleParams.mirostat_eta,
+                                            sampleParams.penalize_nl,
+                                            0 /*SEED*/,
+                                            self.contextParams.grammar_path ?? "");
+   }
 
     public override func llm_load_model(path: String = "", 
                                         contextParams: ModelAndContextParams = .default,
                                         params:gpt_context_params) throws -> Bool {
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
-//        init_sampling_param()
+        init_sampling_param()
         
-//        self.ctx_sampling = llama_sampling_init(sparams);
+        // self.ctx_sampling = init_sampling();
         context_params.n_ctx = UInt32(contextParams.context)
         context_params.seed = UInt32(contextParams.seed)
         context_params.n_threads = UInt32(contextParams.n_threads)
@@ -74,10 +75,6 @@ public class LLaMa: LLMBase {
 //        context_params.flash_attn = contextParams.flash_attn        
         context_params.flash_attn = false
 
-        
-        // context_params.cb_eval_user_data = &cb_data;
-
-        //        context_params.n_batch = contextParams.
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap        
@@ -147,6 +144,12 @@ public class LLaMa: LLMBase {
         return true
     }
     
+
+    public override func llm_sample() -> ModelToken {
+        let id  = spm_llama_sampling_sample(self.ctx_sampling, self.context, nil,-1);
+        spm_llama_sampling_accept(self.ctx_sampling, self.context,  id, /* apply_grammar= */ true);
+        return id;
+    }
     
     public override func load_state(){
         if self.contextParams.save_load_state &&
