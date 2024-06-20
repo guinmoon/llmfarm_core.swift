@@ -58,8 +58,8 @@ public class RWKV: LLMBase {
             self.pointerToStateIn = UnsafeMutablePointer<Float>.allocate(capacity: n_state)
             self.pointerToStateOut = UnsafeMutablePointer<Float>.allocate(capacity: n_state)
             rwkv_init_state(self.context, pointerToStateIn);
-            let inputs = [llm_token_bos(),llm_token_eos()]
-            if try llm_eval(inputBatch: inputs) == false {
+            var inputs = [llm_token_bos(),llm_token_eos()]
+            if try llm_eval(inputBatch: &inputs) == false {
                 throw ModelError.failedToEval
             }
             return true
@@ -70,7 +70,7 @@ public class RWKV: LLMBase {
         return false
     }
     
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
 //        for token in inputBatch{
 //            rwkv_eval(self.context, UInt32(token), self.pointerToStateIn,self.pointerToStateIn, self.pointerToLogits)
 //        }

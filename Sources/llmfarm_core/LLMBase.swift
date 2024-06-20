@@ -291,7 +291,7 @@ public class LLMBase {
     public func save_state(){}
     
     
-    public func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
         return false
     }
 
@@ -301,9 +301,9 @@ public class LLMBase {
     
     func llm_init_logits() throws -> Bool {
         do{
-            let inputs = [llm_token_bos(),llm_token_eos()]
+            var inputs = [llm_token_bos(),llm_token_eos()]
             try ExceptionCather.catchException {
-                _ = try? llm_eval(inputBatch: inputs)
+                _ = try? llm_eval(inputBatch: &inputs)
             }
             return true
         }
@@ -313,22 +313,6 @@ public class LLMBase {
         }
     }
     
-//    public func llm_init_logits() throws -> Bool {
-//        do{
-//            if self.contextParams.warm_prompt.count<1{
-//                self.contextParams.warm_prompt = "\n\n\n"
-//            }
-//            let inputs = llm_tokenize(self.contextParams.warm_prompt)
-//            if try llm_eval(inputBatch: inputs) == false {
-//                throw ModelError.failedToEval
-//            }
-//            return true
-//        }
-//        catch{
-//            print(error)
-//        }
-//        return false
-//    }
     
     public func llm_token_to_str(outputToken:Int32) -> String? {
         if let cStr = gpt_base_token_to_str(context, outputToken){
@@ -343,7 +327,7 @@ public class LLMBase {
             var system_pormpt_Tokens = tokenizePrompt(system_prompt ?? "", .None)            
             var eval_res:Bool? = nil
             try ExceptionCather.catchException {
-                eval_res = try? self.llm_eval(inputBatch: system_pormpt_Tokens)
+                eval_res = try? self.llm_eval(inputBatch: &system_pormpt_Tokens)
             }
             if eval_res == false{
                 throw ModelError.failedToEval
@@ -371,7 +355,8 @@ public class LLMBase {
     public func kv_shift() throws{
         self.nPast = self.nPast / 2
         try ExceptionCather.catchException {
-            _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
+            var in_batch = [self.llm_token_eos()]
+            _ = try? self.llm_eval(inputBatch: &in_batch)
         }
         print("Context Limit!")
     }
@@ -385,9 +370,33 @@ public class LLMBase {
         return true
     }
 
+    public func eval_input_tokens_batched(inputTokens: inout [ModelToken],callback: ((String, Double) -> Bool)) throws -> Void {
+        var inputBatch: [ModelToken] = []
+        while inputTokens.count > 0 {
+            inputBatch.removeAll()
+            // See how many to eval (up to batch size??? or can we feed the entire input)
+            // Move tokens to batch
+            let evalCount = min(inputTokens.count, Int(sampleParams.n_batch))
+            inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
+            inputTokens.removeFirst(evalCount)
+
+            if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
+                try self.kv_shift()
+                callback("**C_LIMIT**",0)
+            }
+            var eval_res:Bool? = nil
+            try ExceptionCather.catchException {
+                eval_res = try? self.llm_eval(inputBatch: &inputBatch)
+            }
+            if eval_res == false{
+                throw ModelError.failedToEval
+            }
+            self.nPast += Int32(evalCount)
+        }
+    }
+
     public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
-        let params = sampleParams
-        
+        //Eval system prompt then image if it's not nil
         try _eval_system_prompt(system_prompt:system_prompt)
         try _eval_img(img_path:img_path)
         
@@ -395,81 +404,50 @@ public class LLMBase {
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
         var inputTokens = tokenizePrompt(input, self.contextParams.promptFormat)
-        if inputTokens.count == 0{
+        if inputTokens.count == 0 && img_path == nil{
             return "Empty input."
         }
-        // self.session_tokens.append(contentsOf: inputTokens)
         let inputTokensCount = inputTokens.count
         print("Input tokens: \(inputTokens)")
-        // Add new input tokens to past array
-        past.append(inputTokens)
-        // Create space in context if needed
+
         if inputTokensCount > contextLength {
             throw ModelError.inputTooLong
         }
-//        var totalLength = nPast + Int32(inputTokensCount)
-        // Input
+
         var inputBatch: [ModelToken] = []
         do {
-            while inputTokens.count > 0 {
-                inputBatch.removeAll()
-                // See how many to eval (up to batch size??? or can we feed the entire input)
-                // Move tokens to batch
-                let evalCount = min(inputTokens.count, Int(params.n_batch))
-                inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
-                inputTokens.removeFirst(evalCount)
-
-                if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
-                    try self.kv_shift()
-                    callback("**C_LIMIT**",0)
-                }
-                var eval_res:Bool? = nil
-                try ExceptionCather.catchException {
-                    eval_res = try? self.llm_eval(inputBatch: inputBatch)
-                }
-                if eval_res == false{
-                    throw ModelError.failedToEval
-                }
-                nPast += Int32(evalCount)
-            }
+            //Batched Eval all input tokens 
+            try eval_input_tokens_batched(inputTokens: &inputTokens,callback:callback)
             // Output
             outputRepeatTokens = []
-            var outputTokens: [ModelToken] = []
             var output = [String]()
             // Loop until target count is reached
             var completion_loop = true
+            let eos_token = llm_token_eos()
             while completion_loop {
                 // Pull a generation from context
                 var outputToken:Int32 = -1
                 try ExceptionCather.catchException {
                     outputToken = self.llm_sample()
                 }
-                // Add output token to array
-                outputTokens.append(outputToken)
-                past.append([outputToken])
                 // Repeat tokens update
                 outputRepeatTokens.append(outputToken)
-                if outputRepeatTokens.count > params.repeat_last_n {
+                if outputRepeatTokens.count > sampleParams.repeat_last_n {
                     outputRepeatTokens.removeFirst()
                 }
                 // Check for eos - end early - check eos before bos in case they are the same
-                if outputToken == llm_token_eos() {
+                if outputToken == eos_token {
                     completion_loop = false
                     print("[EOS]")
                     break
                 }
-                // Check for bos, skip callback if so, bos = eos for most gptneox so this should typically never occur
+                // Check for BOS and tokens in skip list
                 var skipCallback = false
-                // if outputToken == llm_token_bos()  {
-                //     print("[BOS]")
-                //     skipCallback = true
-                // }
                 if !self.chekc_skip_tokens(outputToken){
                     print("Skip token: \(outputToken)")
                     skipCallback = true
                 }
-                // Convert token to string and callback
-                // self.session_tokens.append(outputToken)                
+                // Convert token to string and callback             
                 if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
                     output.append(str)
                     // Per token callback
@@ -479,9 +457,15 @@ public class LLMBase {
                      if callback(output, time) {
                         // Early exit if requested by callback
                         print(" * exit requested by callback *")
-                        completion_loop = false //outputRemaining = 0
+                        completion_loop = false 
                         break
                     }
+                }
+                // Max output tokens count reached                
+                if (self.contextParams.n_predict != 0 && output.count>self.contextParams.n_predict){
+                    print(" * n_predict reached *")
+                    completion_loop = false 
+                    break
                 }
                 // Check if we need to run another response eval
                 if completion_loop {
@@ -492,20 +476,18 @@ public class LLMBase {
                         callback("**C_LIMIT**",0)
                     }
                     try ExceptionCather.catchException {
-                        eval_res = try? self.llm_eval(inputBatch: [outputToken])
+                        inputBatch = [outputToken]
+                        eval_res = try? self.llm_eval(inputBatch: &inputBatch)
                     }
                     if eval_res == false{
                         print("Eval res false")
                         throw ModelError.failedToEval
                     }
-                    // Increment past count
                     nPast += 1
                 }
             }
-            // Update past with most recent response
-            past.append(outputTokens)
-            print("Total tokens: \(inputTokensCount + outputTokens.count) (\(inputTokensCount) -> \(outputTokens.count))")
-            print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
+            print("Total tokens: \(inputTokensCount + output.count) (\(inputTokensCount) -> \(output.count))")
+            // print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
             // Return full string for case without callback
             return output.joined()
         }catch{
@@ -513,6 +495,136 @@ public class LLMBase {
             throw error
         }
     }
+
+//     public func predict_ex(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
+//         let params = sampleParams
+        
+//         try _eval_system_prompt(system_prompt:system_prompt)
+//         try _eval_img(img_path:img_path)
+        
+//         let contextLength = Int32(contextParams.context)
+//         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
+//         // Tokenize with prompt format
+//         var inputTokens = tokenizePrompt(input, self.contextParams.promptFormat)
+//         if inputTokens.count == 0{
+//             return "Empty input."
+//         }
+//         // self.session_tokens.append(contentsOf: inputTokens)
+//         let inputTokensCount = inputTokens.count
+//         print("Input tokens: \(inputTokens)")
+//         // Add new input tokens to past array
+//         past.append(inputTokens)
+//         // Create space in context if needed
+//         if inputTokensCount > contextLength {
+//             throw ModelError.inputTooLong
+//         }
+// //        var totalLength = nPast + Int32(inputTokensCount)
+//         // Input
+//         var inputBatch: [ModelToken] = []
+//         do {
+//             while inputTokens.count > 0 {
+//                 inputBatch.removeAll()
+//                 // See how many to eval (up to batch size??? or can we feed the entire input)
+//                 // Move tokens to batch
+//                 let evalCount = min(inputTokens.count, Int(params.n_batch))
+//                 inputBatch.append(contentsOf: inputTokens[0 ..< evalCount])
+//                 inputTokens.removeFirst(evalCount)
+
+//                 if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
+//                     try self.kv_shift()
+//                     callback("**C_LIMIT**",0)
+//                 }
+//                 var eval_res:Bool? = nil
+//                 try ExceptionCather.catchException {
+//                     eval_res = try? self.llm_eval(inputBatch: &inputBatch)
+//                 }
+//                 if eval_res == false{
+//                     throw ModelError.failedToEval
+//                 }
+//                 nPast += Int32(evalCount)
+//             }
+//             // Output
+//             outputRepeatTokens = []
+//             var outputTokens: [ModelToken] = []
+//             var output = [String]()
+//             // Loop until target count is reached
+//             var completion_loop = true
+//             while completion_loop {
+//                 // Pull a generation from context
+//                 var outputToken:Int32 = -1
+//                 try ExceptionCather.catchException {
+//                     outputToken = self.llm_sample()
+//                 }
+//                 // Add output token to array
+//                 outputTokens.append(outputToken)
+//                 past.append([outputToken])
+//                 // Repeat tokens update
+//                 outputRepeatTokens.append(outputToken)
+//                 if outputRepeatTokens.count > params.repeat_last_n {
+//                     outputRepeatTokens.removeFirst()
+//                 }
+//                 // Check for eos - end early - check eos before bos in case they are the same
+//                 if outputToken == llm_token_eos() {
+//                     completion_loop = false
+//                     print("[EOS]")
+//                     break
+//                 }
+//                 // Check for bos, skip callback if so, bos = eos for most gptneox so this should typically never occur
+//                 var skipCallback = false
+//                 // if outputToken == llm_token_bos()  {
+//                 //     print("[BOS]")
+//                 //     skipCallback = true
+//                 // }
+//                 if !self.chekc_skip_tokens(outputToken){
+//                     print("Skip token: \(outputToken)")
+//                     skipCallback = true
+//                 }
+//                 // Convert token to string and callback
+//                 // self.session_tokens.append(outputToken)                
+//                 if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
+//                     output.append(str)
+//                     // Per token callback
+//                      let (output, time) = Utils.time {
+//                          return str
+//                      }
+//                      if callback(output, time) {
+//                         // Early exit if requested by callback
+//                         print(" * exit requested by callback *")
+//                         completion_loop = false //outputRemaining = 0
+//                         break
+//                     }
+//                 }
+//                 // Check if we need to run another response eval
+//                 if completion_loop {
+//                     // Send generated token back into model for next generation
+//                     var eval_res:Bool? = nil
+//                     if self.nPast >= self.contextParams.context - 2{
+//                         try self.kv_shift()
+//                         callback("**C_LIMIT**",0)
+//                     }
+//                     try ExceptionCather.catchException {
+//                         var in_batch = [outputToken]
+//                         eval_res = try? self.llm_eval(inputBatch: &in_batch)
+//                     }
+//                     if eval_res == false{
+//                         print("Eval res false")
+//                         throw ModelError.failedToEval
+//                     }
+//                     // Increment past count
+//                     nPast += 1
+//                 }
+//             }
+//             // Update past with most recent response
+//             past.append(outputTokens)
+//             print("Total tokens: \(inputTokensCount + outputTokens.count) (\(inputTokensCount) -> \(outputTokens.count))")
+//             print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
+//             // Return full string for case without callback
+//             return output.joined()
+//         }catch{
+//             print(error)
+//             throw error
+//         }
+//     }
     
 //    public func embeddings(_ input: String) throws -> [Float] {
 //        // Tokenize the prompt
@@ -572,6 +684,7 @@ public class LLMBase {
         let splited_skip_tokens = self.contextParams.skip_tokens_str.components(separatedBy: [","])
         for word in splited_skip_tokens{
             let tokenized_skip = self.llm_tokenize(word,add_bos: false,parse_special: true)
+            // Add only if tokenized text is one token
             if tokenized_skip.count == 1{
                 self.contextParams.skip_tokens.append(tokenized_skip[0])
             }

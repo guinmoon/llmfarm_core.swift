@@ -44,7 +44,7 @@ public class GPT2: LLMBase {
         gpt2_free(context)
     }
     
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
         let res = gpt2_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads)
         if res != 0 {
             return false
@@ -106,7 +106,7 @@ public class LLaMa_dadbed9: LLMBase {
         return llama_dadbed9_get_logits(ctx);
     }
 
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
         if llama_dadbed9_eval(context, inputBatch, Int32(inputBatch.count), min(self.contextParams.context, self.nPast), contextParams.n_threads) != 0 {
             throw ModelError.failedToEval
         }
@@ -179,7 +179,7 @@ public class GPTNeoX: LLMBase {
         gpt_neox_free(context)
     }
     
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
         if gpt_neox_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads) != 0 {
             throw ModelError.failedToEval
         }
@@ -204,7 +204,7 @@ public class Replit: LLMBase {
         replit_free(context)
     }
     
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
         if replit_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads) != 0 {
             throw ModelError.failedToEval
         }
@@ -256,7 +256,7 @@ public class Starcoder: LLMBase {
         starcoder_free(context)
     }
     
-    public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool{
         if starcoder_eval(context, inputBatch, Int32(inputBatch.count), nPast, contextParams.n_threads) != 0 {
             throw ModelError.failedToEval
         }

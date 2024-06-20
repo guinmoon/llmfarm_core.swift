@@ -270,6 +270,10 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     if (model_config["numberOfThreads"] != nil && model_config["numberOfThreads"] as! Int32 != 0){
         tmp_param.n_threads = model_config["numberOfThreads"] as! Int32
     }
+    if (model_config["n_predict"] != nil && model_config["n_predict"] as! Int32 != 0){
+        tmp_param.n_predict = model_config["n_predict"] as! Int32
+    }
+    
     if model_config["lora_adapters"] != nil{
         let tmp_adapters = model_config["lora_adapters"]! as? [Dictionary<String, Any>]
         if tmp_adapters != nil{
@@ -388,6 +392,7 @@ public struct ModelAndContextParams {
     public var parts: Int32 = -1   // -1 for default
     public var seed: UInt32 = 0xFFFFFFFF      // RNG seed, 0 for random
     public var n_threads: Int32 = 1
+    public var n_predict: Int32 = 0
     public var lora_adapters: [(String,Float)] = []
     public var state_dump_path: String = ""
     public var skip_tokens: [Int32] = []

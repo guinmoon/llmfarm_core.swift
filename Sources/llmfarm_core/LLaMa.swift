@@ -16,30 +16,9 @@ public class LLaMa: LLMBase {
     public var batch: llama_batch?
     public var hardware_arch: String=""
     public var temporary_invalid_cchars: [CChar]  = []    
-    
-//    public var sparams: llama_sampling_params_spm
-    
-//    int32_t     n_prev,                 // number of previous tokens to remember
-//     int32_t     top_k,                 // <= 0 to use vocab size
-//     float       top_p,              // 1.0 = disabled
-//     float       min_p,              // 0.0 = disabled
-//     float       tfs_z,              // 1.0 = disabled
-//     float       typical_p,              // 1.0 = disabled
-//     float       temp,              // <= 0.0 to sample greedily, 0.0 to not output probabilities
-//     float       dynatemp_range,              // 0.0 = disabled
-//     float       dynatemp_exponent,              // controls how entropy maps to temperature in dynamic temperature sampler
-//     int32_t     penalty_last_n,                 // last n tokens to penalize (0 = disable penalty, -1 = context size)
-//     float       penalty_repeat,              // 1.0 = disabled
-//     float       penalty_freq,              // 0.0 = disabled
-//     float       penalty_present,              // 0.0 = disabled
-//     int32_t     mirostat,                 // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
-//     float       mirostat_tau,              // target entropy
-//     float       mirostat_eta,              // learning rate
-//     bool        penalize_nl,              // consider newlines as a repeatable token
-//     uint32_t    seed;
 
-   public func init_sampling_param(){
-       self.ctx_sampling = init_sampling(sampleParams.repeat_last_n,
+    public func init_sampling_param(){
+        self.ctx_sampling = init_sampling(sampleParams.repeat_last_n,
                                             sampleParams.top_k,
                                             sampleParams.top_p,
                                             sampleParams.min_p,
@@ -58,7 +37,7 @@ public class LLaMa: LLMBase {
                                             sampleParams.penalize_nl,
                                             0 /*SEED*/,
                                             self.contextParams.grammar_path ?? "");
-   }
+    }
 
     public override func llm_load_model(path: String = "", 
                                         contextParams: ModelAndContextParams = .default,
@@ -66,8 +45,7 @@ public class LLaMa: LLMBase {
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()
         init_sampling_param()
-        
-        // self.ctx_sampling = init_sampling();
+                
         context_params.n_ctx = UInt32(contextParams.context)
         context_params.seed = UInt32(contextParams.seed)
         context_params.n_threads = UInt32(contextParams.n_threads)
@@ -78,7 +56,7 @@ public class LLaMa: LLMBase {
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap        
-        // self.modelLoadProgressCallback = model_load_progress_callback
+
         self.retain_new_self_ptr()
         model_params.progress_callback = { progress,b in
             if (LLaMa_obj?.modelLoadProgressCallback != nil){
@@ -87,17 +65,18 @@ public class LLaMa: LLMBase {
             }
             return true
         }
-//        context_params.cb_eval = { t, ask, user_data in
-//    //            var  t:ggml_tensor? = a?.pointee
-//            // let t_name = String(cString:get_tensor_name(t))            
-//            if (LLaMa_obj?.evalCallback != nil){
-////                let res = LLaMa_obj?.evalCallback!( Int(check_tensor_name(t)))
-//                _ = LLaMa_obj?.evalCallback!( 0 )
-//                return false
-//            }
-//    //            print(t_name)
-//            return false
-//        };
+
+        // context_params.cb_eval = { t, ask, user_data in
+        //     //    var  t:ggml_tensor? = a?.pointee
+        //     //    let t_name = String(cString:get_tensor_name(t))            
+        //     if (LLaMa_obj?.evalCallback != nil){
+        //         //    let res = LLaMa_obj?.evalCallback!( Int(check_tensor_name(t)))
+        //         _ = LLaMa_obj?.evalCallback!( 0 )
+        //         return false
+        //     }
+        //     return false
+        // };
+       
         if contextParams.use_metal{
             model_params.n_gpu_layers = 100
         }else{
@@ -107,7 +86,6 @@ public class LLaMa: LLMBase {
         if self.hardware_arch=="x86_64"{
             model_params.n_gpu_layers = 0
         }
-        
 #if targetEnvironment(simulator)
         model_params.n_gpu_layers = 0
         print("Running on simulator, force use n_gpu_layers = 0")
@@ -116,19 +94,16 @@ public class LLaMa: LLMBase {
         if contextParams.lora_adapters.count>0{
             model_params.use_mmap = false
         }
-
-        _ = self.modelLoadProgressCallback?(0)
-        
+        _ = self.modelLoadProgressCallback?(0)        
         llama_backend_init()
-        
         self.model = llama_load_model_from_file(path, model_params)
         if self.model == nil{
             return false
-        }        
+        }
+
         for lora in contextParams.lora_adapters{
             llama_model_apply_lora_from_file(model,lora.0,lora.1,nil,6);
         }
-        
         self.context = llama_new_context_with_model(self.model, context_params)
         if self.context == nil {
             return false
@@ -216,36 +191,45 @@ public class LLaMa: LLMBase {
         return llama_get_logits(self.context);
     }
     
-//    public func llm_eval_old(inputBatch:[ModelToken]) throws -> Bool{
-//        var mutable_inputBatch = inputBatch
-//        if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
-//            return false
-//        }
-//        return true
-//    }
+    public override func load_grammar(_ path:String) throws -> Void{ }
     
-     public override func llm_eval(inputBatch:[ModelToken]) throws -> Bool{
-//       var mutable_inputBatch = inputBatch
-//       if llama_eval(self.context, mutable_inputBatch.mutPtr, Int32(inputBatch.count), min(self.contextParams.context, self.nPast)) != 0 {
-//           return false
-//       }
-        if self.nPast==0{
-        // if self.nPast==0 || inputBatch.count>1{
-             completion_init(tokens_list:inputBatch)
-         }else{
-             llama_batch_clear(&batch!)
-             for i1 in 0..<inputBatch.count {
-                 let i = Int(i1)
-                 llama_batch_add(&batch!, inputBatch[i], Int32(i)+self.nPast, [0], true)
-             }
- //            batch!.logits[Int(batch!.n_tokens) - 1] = 1
-             if llama_decode(context, batch!) != 0 {
-                 print("failed to evaluate llama!")
-                 return false
-             }
-         }
+    public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool {
+        if llama_decode(context,llama_batch_get_one(&inputBatch, Int32(inputBatch.count), self.nPast, 0)) != 0 {
+            print("failed to evaluate llama!")
+            return false
+        }
         return true
     }
+
+    // func llm_eval_ex(inputBatch: inout [ModelToken]) throws -> Bool {
+    //         if self.nPast==0{
+    //         completion_init(tokens_list:inputBatch)
+    //     }else{
+    //         llama_batch_clear(&batch!)
+    //         for i1 in 0..<inputBatch.count {
+    //             let i = Int(i1)
+    //             llama_batch_add(&batch!, inputBatch[i], Int32(i)+self.nPast, [0], true)
+    //         }
+    //         if llama_decode(context, batch!) != 0 {
+    //             print("failed to evaluate llama!")
+    //             return false
+    //         }
+    //     }   
+    //     return true
+    // } 
+
+    // func completion_init(tokens_list: [ModelToken]) {
+    //     temporary_invalid_cchars = []
+    //     llama_batch_clear(&batch!)
+    //     for i1 in 0..<tokens_list.count {
+    //         let i = Int(i1)
+    //         llama_batch_add(&batch!, tokens_list[i], Int32(i), [0], false)
+    //     }
+    //     batch!.logits[Int(batch!.n_tokens) - 1] = 1
+    //     if llama_decode(context, batch!) != 0 {
+    //         print("llama_decode() failed")
+    //     }
+    // }
 
     public override func kv_shift() throws{
         let n_discard = self.nPast/2
@@ -253,43 +237,21 @@ public class LLaMa: LLMBase {
         llama_kv_cache_seq_add(context, 0, n_discard, self.nPast, -n_discard);      
         self.nPast -= n_discard;
         try ExceptionCather.catchException {
-            _ = try? self.llm_eval(inputBatch: [self.llm_token_eos()])
+            var in_batch = [self.llm_token_eos()]
+            _ = try? self.llm_eval(inputBatch: &in_batch)
         }
         self.nPast+=1
         self.outputRepeatTokens = []
         print("Context Limit!")
     }
     
-    func completion_init(tokens_list: [ModelToken]) {
-        temporary_invalid_cchars = []
-
-        llama_batch_clear(&batch!)
-
-        for i1 in 0..<tokens_list.count {
-            let i = Int(i1)
-            llama_batch_add(&batch!, tokens_list[i], Int32(i), [0], false)
-        }
-        batch!.logits[Int(batch!.n_tokens) - 1] = 1
-
-        if llama_decode(context, batch!) != 0 {
-            print("llama_decode() failed")
-        }
-
-    }
-        
-
-    func sample_wip(){
-        var new_token_id: llama_token = 0
-
-       
-    }
 
     override func llm_init_logits() throws -> Bool {
         return true
     }
     
     func llama_batch_clear(_ batch: inout llama_batch) {
-     batch.n_tokens = 0
+        batch.n_tokens = 0
     }
 
     func llama_batch_add(_ batch: inout llama_batch, _ id: llama_token, _ pos: llama_pos, _ seq_ids: [llama_seq_id], _ logits: Bool) {
@@ -383,22 +345,11 @@ public class LLaMa: LLMBase {
     public override func llm_token_eos() -> ModelToken{
         return llama_token_eos(self.model)
     }
-    
-    
-    
-    
+
     public override func llm_tokenize(_ input: String, add_bos: Bool?, parse_special:Bool?) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
-        
-        //        llama_tokenize(
-        //                struct llama_context * ctx,
-        //                          const char * text,
-        //                                 int   text_len,
-        //                         llama_token * tokens,
-        //                                 int   n_max_tokens,
-        //                                bool   add_bos)
         let n_tokens = Int32(input.utf8.count) + (self.contextParams.add_bos_token == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
         let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, 
