@@ -735,6 +735,12 @@ static id<MTLBuffer> ggml_metal_get_buffer(struct ggml_tensor * t, size_t * offs
 }
 
 static bool ggml_metal_supports_op(const struct ggml_metal_context * ctx, const struct ggml_tensor * op) {
+    for (size_t i = 0, n = 3; i < n; ++i) {
+        if (op->src[i] != NULL && op->src[i]->type == GGML_TYPE_BF16) {
+            return false;
+        }
+    }
+
     switch (op->op) {
         case GGML_OP_UNARY:
             switch (ggml_get_unary_op(op)) {
@@ -1862,9 +1868,10 @@ static enum ggml_status ggml_metal_graph_compute(
                         // ne21 = n_rows
                         const int dst_rows = ne20*ne21;
                         const int dst_rows_min = n_as;
+                        const int dst_rows_max = (ctx->device.maxThreadgroupMemoryLength - 32 - 8192)/4;
 
                         // max size of the rowids array in the kernel shared buffer
-                        GGML_ASSERT(dst_rows <= 2048);
+                        GGML_ASSERT(dst_rows <= dst_rows_max);
 
                         // for now the matrix-matrix multiplication kernel only works on A14+/M1+ SoCs
                         // AMD GPU and older A-chips will reuse matrix-vector multiplication kernel
