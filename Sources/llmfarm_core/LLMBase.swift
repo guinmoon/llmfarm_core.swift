@@ -473,7 +473,7 @@ public class LLMBase {
                     var eval_res:Bool? = nil
                     if self.nPast >= self.contextParams.context - 2{
                         try self.kv_shift()
-                        callback("**C_LIMIT**",0)
+                        _ = callback("**C_LIMIT**",0)
                     }
                     try ExceptionCather.catchException {
                         inputBatch = [outputToken]
