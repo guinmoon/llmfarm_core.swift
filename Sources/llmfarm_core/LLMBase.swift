@@ -416,8 +416,8 @@ public class LLMBase {
 
         var inputBatch: [ModelToken] = []
         do {
-            //Batched Eval all input tokens 
-            try eval_input_tokens_batched(inputTokens: &inputTokens,callback:callback)
+            //Batched Eval all input tokens             
+            try eval_input_tokens_batched(inputTokens: &inputTokens,callback:callback)            
             // Output
             outputRepeatTokens = []
             var output = [String]()

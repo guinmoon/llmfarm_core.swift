@@ -295,7 +295,8 @@ public class LLaMa: LLMBase {
             result.deallocate()
         }
 //        llama_token_to_piece(const struct llama_model * model, llama_token token, char * buf, int32_t length, bool special)
-        let nTokens = llama_token_to_piece(model, token, result, 8,/*true*/self.contextParams.parse_special_tokens)
+//        llama_token_to_piece(const struct llama_model * model,llama_token   token,char * buf,int32_t   length,int32_t   lstrip,bool   special);
+        let nTokens = llama_token_to_piece(model, token, result, 8,0,/*true*/self.contextParams.parse_special_tokens)
         
         if nTokens < 0 {
             let newResult = UnsafeMutablePointer<Int8>.allocate(capacity: Int(-nTokens))
@@ -303,7 +304,7 @@ public class LLaMa: LLMBase {
             defer {
                 newResult.deallocate()
             }
-            let nNewTokens = llama_token_to_piece(model, token, newResult, -nTokens,/*true*/self.contextParams.parse_special_tokens)
+            let nNewTokens = llama_token_to_piece(model, token, newResult, -nTokens,0,/*true*/self.contextParams.parse_special_tokens)
             let bufferPointer = UnsafeBufferPointer(start: newResult, count: Int(nNewTokens))
             return Array(bufferPointer)
         } else {
@@ -350,11 +351,12 @@ public class LLaMa: LLMBase {
         if input.count == 0 {
             return []
         }
+        print("input \(input)")
         let n_tokens = Int32(input.utf8.count) + (self.contextParams.add_bos_token == true ? 1 : 0)
-        var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
-        let n = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, 
+        var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)        
+        let n:Int32 = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens, 
                                add_bos ?? self.contextParams.add_bos_token,
-                               parse_special ?? self.contextParams.parse_special_tokens)
+                               parse_special ?? self.contextParams.parse_special_tokens)                               
         if n<=0{
             return []
         }
