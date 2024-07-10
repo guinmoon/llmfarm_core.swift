@@ -11,10 +11,10 @@ let package = Package(
             name: "llmfarm_core",
 //            type: .dynamic,
             targets: ["llmfarm_core"]),
-        .library(
-            name: "llmfarm_core_cpp",
-//            type: .dynamic,
-            targets: ["llmfarm_core_cpp"]),
+//        .library(
+//            name: "llmfarm_core_cpp",
+////            type: .dynamic,
+//            targets: ["llmfarm_core_cpp"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -48,30 +48,31 @@ let package = Package(
                 .define("ACCELERATE_LAPACK_ILP64"),
                 .define("GGML_USE_METAL"),
                 .define("GGML_USE_BLAS"),
-                .define("_DARWIN_C_SOURCE"),
+//                .define("_DARWIN_C_SOURCE"),
                 .define("GGML_USE_LLAMAFILE"),
                 .define("GGML_METAL_NDEBUG", .when(configuration: .release)),
                 .define("NDEBUG", .when(configuration: .release)),
-                .unsafeFlags(["-Ofast"], .when(configuration: .release)), 
+//                .unsafeFlags(["-Ofast"], .when(configuration: .release)), 
+//                .unsafeFlags(["-O3"]),
                 .unsafeFlags(["-O3"], .when(configuration: .debug)),
                 // .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
                 .unsafeFlags(["-march=native","-mtune=native"],.when(platforms: [.macOS])),
 //                .unsafeFlags(["-mcpu=apple-a14"],.when(platforms: [.iOS])),// use at your own risk, I've noticed more responsive work on 12 pro max
                 .unsafeFlags(["-pthread"]),
                 .unsafeFlags(["-fno-objc-arc"]),
-                .unsafeFlags(["-fPIC"]),
+//                .unsafeFlags(["-fPIC"]),
                 .unsafeFlags(["-Wno-shorten-64-to-32"]),
-                .unsafeFlags(["-fno-finite-math-only"], .when(configuration: .release)),
+//                .unsafeFlags(["-fno-finite-math-only"], .when(configuration: .release)),
                 .unsafeFlags(["-w"]),    // ignore all warnings
 
                 
             ],
             linkerSettings: [
-//                .linkedFramework("Foundation"),
+                .linkedFramework("Foundation"),
                 .linkedFramework("Accelerate"),
-//                .linkedFramework("Metal"),
-//                .linkedFramework("MetalKit"),
-//                .linkedFramework("MetalPerformanceShaders"),
+                .linkedFramework("Metal"),
+                .linkedFramework("MetalKit"),
+                .linkedFramework("MetalPerformanceShaders"),
             ]
         ),
         
