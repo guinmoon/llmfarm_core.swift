@@ -55,7 +55,7 @@ public class LLMBase {
     // Used to keep old context until it needs to be rotated or purge out for new tokens
     var past: [[ModelToken]] = [] // Will house both queries and responses in order
     //var n_history: Int32 = 0
-    var nPast: Int32 = 0
+    public var nPast: Int32 = 0
     
     
     
@@ -397,7 +397,9 @@ public class LLMBase {
 
     public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
         //Eval system prompt then image if it's not nil
-        try _eval_system_prompt(system_prompt:system_prompt)
+        if self.nPast == 0{
+            try _eval_system_prompt(system_prompt:system_prompt)
+        }
         try _eval_img(img_path:img_path)
         
         let contextLength = Int32(contextParams.context)

@@ -50,11 +50,13 @@ let package = Package(
                 .define("GGML_USE_BLAS"),
 //                .define("_DARWIN_C_SOURCE"),
                 .define("GGML_USE_LLAMAFILE"),
-                .define("GGML_METAL_NDEBUG", .when(configuration: .release)),
-                .define("NDEBUG", .when(configuration: .release)),
+                .define("GGML_METAL_NDEBUG"),
+                .define("NDEBUG"),
+//                .define("GGML_METAL_NDEBUG", .when(configuration: .release)),
+//                .define("NDEBUG", .when(configuration: .release)),
 //                .unsafeFlags(["-Ofast"], .when(configuration: .release)), 
-//                .unsafeFlags(["-O3"]),
-                .unsafeFlags(["-O3"], .when(configuration: .debug)),
+                .unsafeFlags(["-O3"]),
+//                .unsafeFlags(["-O3"], .when(configuration: .release)),
                 // .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
                 .unsafeFlags(["-march=native","-mtune=native"],.when(platforms: [.macOS])),
 //                .unsafeFlags(["-mcpu=apple-a14"],.when(platforms: [.iOS])),// use at your own risk, I've noticed more responsive work on 12 pro max
