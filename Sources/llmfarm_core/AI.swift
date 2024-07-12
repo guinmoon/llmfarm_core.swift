@@ -332,6 +332,9 @@ public func get_model_context_param_by_config(_ model_config:Dictionary<String, 
     if (model_config["use_metal"] != nil){
         tmp_param.use_metal = model_config["use_metal"] as! Bool
     }
+    if (model_config["use_clip_metal"] != nil){
+        tmp_param.use_clip_metal = model_config["use_clip_metal"] as! Bool
+    }
     if (model_config["mlock"] != nil){
         tmp_param.useMlock = model_config["mlock"] as! Bool
     }
@@ -410,6 +413,7 @@ public struct ModelAndContextParams {
     public var embedding = false    // embedding mode only
     public var processorsConunt  = Int32(ProcessInfo.processInfo.processorCount)
     public var use_metal = false
+    public var use_clip_metal = false
     public var grammar_path:String? = nil
     public var add_bos_token = true
     public var add_eos_token = false

@@ -20,12 +20,12 @@ public class LLaMa_MModal: LLaMa {
         if contextParams.clip_model == nil {
             return false
         }
-        #if os(iOS)
-        self.clip_ctx = clip_model_load(contextParams.clip_model, 1, 0 );
-//        self.clip_ctx = clip_model_load(contextParams.clip_model, 1,contextParams.use_metal ? 1: 0);
-        #else
-        self.clip_ctx = clip_model_load(contextParams.clip_model, 1,contextParams.use_metal ? 1: 0);
-        #endif
+        self.clip_ctx = clip_model_load(contextParams.clip_model, 1, contextParams.use_clip_metal ? 1: 0 )
+        // #if os(iOS)
+        // self.clip_ctx = clip_model_load(contextParams.clip_model, 1, 0 );      
+        // #else
+        // self.clip_ctx = clip_model_load(contextParams.clip_model, 1,contextParams.use_metal ? 1: 0);
+        // #endif
         return true
     }
     
