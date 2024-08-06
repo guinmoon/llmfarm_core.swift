@@ -101,9 +101,22 @@ public class LLaMa: LLMBase {
             return false
         }
         
-        for lora in contextParams.lora_adapters{
-            llama_model_apply_lora_from_file(model,lora.0,lora.1,nil,6);
-        }
+//         for lora in contextParams.lora_adapters{
+//             let adapter =  llama_lora_adapter_init(model, lora.0);
+//             if adapter != nil {
+//                 llama_lora_adapter_set(context, adapter, lora.1);
+//             }
+////             llama_model_apply_lora_from_file(model,lora.0,lora.1,nil,6);
+//         }
+        // float lora_scale = std::get<1>(params.lora_adapter[i]);
+        // auto adapter = llama_lora_adapter_init(model, lora_adapter.c_str());
+        // if (adapter == nullptr) {
+        //     fprintf(stderr, "%s: error: failed to apply lora adapter\n", __func__);
+        //     llama_free(lctx);
+        //     llama_free_model(model);
+        //     return std::make_tuple(nullptr, nullptr);
+        // }
+        // llama_lora_adapter_set(lctx, adapter, lora_scale);
         self.context = llama_new_context_with_model(self.model, context_params)
         if self.context == nil {
             return false

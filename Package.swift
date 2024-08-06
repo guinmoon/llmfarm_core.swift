@@ -27,7 +27,7 @@ let package = Package(
         .target(
             name: "llmfarm_core_cpp",
             sources: ["ggml/ggml.c","exception_helper.cpp","ggml/ggml-quants.c","ggml/ggml-alloc.c","ggml/ggml-backend.c","ggml/ggml-metal.m",
-                      "ggml/common.cpp","ggml/sampling.cpp","ggml/train.cpp","ggml/ggml-blas.cpp","ggml/build-info.cpp",
+                      "ggml/common.cpp","ggml/sampling.cpp","ggml/train.cpp","ggml/ggml-blas.cpp","ggml/build-info.cpp","ggml/ggml-aarch64.c",
                       "llava/llava.cpp","llava/clip.cpp","llava/llava-cli.cpp","llama/unicode.cpp","llama/unicode-data.cpp","ggml/sgemm.cpp",
                       "gpt_helpers.cpp","gpt_spm.cpp","package_helper.m","ggml/grammar-parser.cpp","exception_helper_objc.mm","ggml/common_old.cpp",
                       "ggml/json-schema-to-grammar.cpp","finetune/finetune.cpp","finetune/export-lora.cpp","llama/llama.cpp",
