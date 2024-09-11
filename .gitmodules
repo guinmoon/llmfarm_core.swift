@@ -1,0 +1,3 @@
+[submodule "Sources/llmfarm_core_cpp/llama.cpp"]
+	path = Sources/llmfarm_core_cpp/llama.cpp
+	url = https://github.com/guinmoon/llama.cpp/
