@@ -1,7 +1,7 @@
 #ifndef LLAVA_H
 #define LLAVA_H
 
-#include "../llama.cpp/ggml/include/ggml.h"
+#include "../ggml/ggml.h"
 
 #ifdef LLAMA_SHARED
 #    if defined(_WIN32) && !defined(__MINGW32__)

@@ -1,8 +1,8 @@
 #include "../spm-headers/finetune.h"
-#include "../ggml/ggml.h"
-#include "../ggml/ggml-alloc.h"
+#include "ggml.h"
+#include "ggml-alloc.h"
 #include "llama.h"
-#include "../ggml/common.h"
+#include "common.h"
 #include "../ggml/train.h"
 #include <vector>
 #include <cstring>
