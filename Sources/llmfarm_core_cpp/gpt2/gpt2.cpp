@@ -15,8 +15,8 @@
 #include "ggml-metal.h"
 #endif
 
-#include "../ggml/common.h"
-#include "../ggml/common-ggml.h"
+#include "common.h"
+#include "../ggml_legacy/common-ggml.h"
 
 #include <cassert>
 #include <cmath>

@@ -9,7 +9,7 @@
 #include "llama-util_dadbed9.h"
 #include "llama_dadbed9.h"
 
-#include "../ggml/ggml_dadbed9.h"
+#include "../ggml_legacy/ggml_dadbed9.h"
 #ifdef GGML_USE_CUBLAS
 #include "ggml-cuda.h"
 #elif defined(GGML_USE_CLBLAST)
@@ -17,7 +17,7 @@
 #endif
 
 #ifdef GGML_USE_METAL
-#include "../ggml/ggml-metal_dadbed9.h"
+#include "../ggml_legacy/ggml-metal_dadbed9.h"
 #endif
 #ifdef GGML_USE_MPI
 #include "ggml-mpi.h"
@@ -64,7 +64,7 @@ static void llama_dadbed9_log_callback_default(llama_dadbed9_log_level level, co
 
 
 #if !defined(GGML_USE_CUBLAS)
-#include "../ggml/ggml-alloc_dadbed9.h"
+#include "../ggml_legacy/ggml-alloc_dadbed9.h"
 #define LLAMA_dadbed9_USE_ALLOCATOR
 #else
 #define LLAMA_dadbed9_USE_SCRATCH

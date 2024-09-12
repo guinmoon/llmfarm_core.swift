@@ -2,13 +2,14 @@
 #include "gpt_helpers.h"
 //#include "./spm-headers/llama_dadbed9.h"
 //#include "./spm-headers/llama.h"
-#include "ggml/common.h"
-#include "ggml/common_old.h"
-#include "ggml/common-ggml.h"
+#include "common.h"
+#include "ggml_legacy/common_old.h"
+#include "ggml_legacy/common-ggml.h"
 #include "./spm-headers/rwkv.h"
-#include "ggml/grammar-parser.h"
-#include "ggml/ggml_dadbed9.h"
-#include "ggml/sampling.h"
+// #include "ggml/grammar-parser.h"
+//#include "../llama.cpp/src/llama-grammar.h"
+#include "ggml_legacy/ggml_dadbed9.h"
+#include "sampling.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -297,47 +298,47 @@ char* llama_token_to_str_res = new char[3];
 //}
 
 
-struct llama_grammar* llama_load_grammar(const char* grammar_path){
-    struct llama_grammar * grammar = NULL;
-    grammar_parser::parse_state parsed_grammar;
-    
-    std::ifstream infile;
-    infile.open(grammar_path, std::ios::binary);
-    infile.seekg(0, std::ios::end);
-    size_t file_size_in_byte = infile.tellg();
-    std::vector<char> grammar_context; // used to store text data
-    grammar_context.resize(file_size_in_byte);
-    infile.seekg(0, std::ios::beg);
-    infile.read(&grammar_context[0], file_size_in_byte);
-    
-    parsed_grammar = grammar_parser::parse(grammar_context.data());
-    // will be empty (default) if there are parse errors
-    if (parsed_grammar.rules.empty()) {
-        return NULL;
-    }
-    grammar_parser::print_grammar(stderr, parsed_grammar);
-    std::vector<const llama_grammar_element *> grammar_rules(parsed_grammar.c_rules());
-    grammar = llama_grammar_init(grammar_rules.data(), grammar_rules.size(), parsed_grammar.symbol_ids.at("root"));
-    return grammar;
-}
+//struct llama_grammar* llama_load_grammar(const char* grammar_path){
+//    struct llama_grammar * grammar = NULL;
+//    llama_grammar_parser::parse_state parsed_grammar;
+//    
+//    std::ifstream infile;
+//    infile.open(grammar_path, std::ios::binary);
+//    infile.seekg(0, std::ios::end);
+//    size_t file_size_in_byte = infile.tellg();
+//    std::vector<char> grammar_context; // used to store text data
+//    grammar_context.resize(file_size_in_byte);
+//    infile.seekg(0, std::ios::beg);
+//    infile.read(&grammar_context[0], file_size_in_byte);
+//    
+//    parsed_grammar = grammar_parser::parse(grammar_context.data());
+//    // will be empty (default) if there are parse errors
+//    if (parsed_grammar.rules.empty()) {
+//        return NULL;
+//    }
+//    grammar_parser::print_grammar(stderr, parsed_grammar);
+//    std::vector<const llama_grammar_element *> grammar_rules(parsed_grammar.c_rules());
+//    grammar = llama_grammar_init(grammar_rules.data(), grammar_rules.size(), parsed_grammar.symbol_ids.at("root"));
+//    return grammar;
+//}
 
-void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar ) {
-    llama_sample_grammar(ctx, (llama_token_data_array *)candidates, grammar );
-}
-
-
-llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates ) {
-    return llama_sample_token(ctx, (llama_token_data_array *)candidates );
-}
+// void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar ) {
+//     llama_sample_grammar(ctx, (llama_token_data_array *)candidates, grammar );
+// }
 
 
-llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu) {
-    return llama_sample_token_mirostat(ctx, (llama_token_data_array *)candidates,tau,eta,m,mu );
-}
+// llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates ) {
+//     return llama_sample_token(ctx, (llama_token_data_array *)candidates );
+// }
 
-llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) {
-    return llama_sample_token_mirostat_v2(ctx, (llama_token_data_array *)candidates,tau,eta,mu );
-}
+
+// llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu) {
+//     return llama_sample_token_mirostat(ctx, (llama_token_data_array *)candidates,tau,eta,m,mu );
+// }
+
+// llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) {
+//     return llama_sample_token_mirostat_v2(ctx, (llama_token_data_array *)candidates,tau,eta,mu );
+// }
 
 
 struct callback_data {
@@ -380,8 +381,9 @@ int check_tensor_name(struct ggml_tensor * t){
 }
 
 
-
-struct llama_sampling_context * init_sampling(  int32_t     n_prev                = 64,                 // number of previous tokens to remember
+/*struct llama_sampling_context*/ 
+ struct gpt_sampler*  init_sampling(llama_model* model,
+                                                int32_t     n_prev                = 64,                 // number of previous tokens to remember
                                                 int32_t     top_k                 = 40,                 // <= 0 to use vocab size
                                                 float       top_p                 = 0.95f,              // 1.0 = disabled
                                                 float       min_p                 = 0.05f,              // 0.0 = disabled
@@ -401,13 +403,13 @@ struct llama_sampling_context * init_sampling(  int32_t     n_prev              
                                                 uint32_t    seed                  = LLAMA_DEFAULT_SEED,
                                                 const char * grammar_path = ""){
     // sparams
-    struct llama_sampling_params  sparams;
+    struct gpt_sampler_params  sparams;
     sparams.n_prev = n_prev;
     sparams.top_k = top_k;
     sparams.top_p = top_p;              // 1.0 = disabled
     sparams.min_p = min_p;             // 0.0 = disabled
     sparams.tfs_z = tfs_z;              // 1.0 = disabled
-    sparams.typical_p = typical_p;             // 1.0 = disabled
+    sparams.typ_p = typical_p;             // 1.0 = disabled
     sparams.temp = temp;             // <= 0.0 to sample greedily, 0.0 to not output probabilities
     sparams.dynatemp_range  = dynatemp_range;             // 0.0 = disabled
     sparams.dynatemp_exponent = dynatemp_exponent;            // controls how entropy maps to temperature in dynamic temperature sampler
@@ -422,33 +424,38 @@ struct llama_sampling_context * init_sampling(  int32_t     n_prev              
     if (sparams.seed == 0)
         sparams.seed = LLAMA_DEFAULT_SEED;    
 
-    struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
-    if (grammar_path != nullptr &&  grammar_path != ""){
-        printf("Grammar: %s",grammar_path);
-        std::ifstream f(grammar_path);
-        if(f.good())
-            ctx_sampling->grammar = llama_load_grammar(grammar_path);
-    }
+    struct gpt_sampler * ctx_sampling = gpt_sampler_init(model, sparams);
+
+    // struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
+    // if (grammar_path != nullptr &&  grammar_path != ""){
+    //     printf("Grammar: %s",grammar_path);
+    //     std::ifstream f(grammar_path);
+    //     if(f.good())
+    //         ctx_sampling->grammar = llama_load_grammar(grammar_path);
+    // }
     return ctx_sampling;
 }
 
 llama_token spm_llama_sampling_sample(
-        llama_sampling_context * ctx_sampling,
+        /*llama_sampling_context*/gpt_sampler * ctx_sampling,
         struct llama_context * ctx_main,
-        struct llama_context * ctx_cfg,
-        int idx = -1)
+        // struct llama_context * ctx_cfg,
+        int idx = -1,
+        bool grammar_first = false)
 {
 
-       llama_sampling_sample(ctx_sampling,ctx_main,ctx_cfg,idx);
+    //    llama_sampling_sample(ctx_sampling,ctx_main,ctx_cfg,idx);
+    gpt_sampler_sample(ctx_sampling, ctx_main, idx, grammar_first);
 }
 
 void spm_llama_sampling_accept(
-        struct llama_sampling_context * ctx_sampling,
+        struct /*llama_sampling_context*/gpt_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         llama_token id,
         bool apply_grammar)
 {
-    llama_sampling_accept(ctx_sampling,ctx_main,id,apply_grammar);
+    // llama_sampling_accept(ctx_sampling,ctx_main,id,apply_grammar);
+    gpt_sampler_accept(ctx_sampling, id, apply_grammar);
 }
 
 // static bool ggml_debug(struct ggml_tensor * t, bool ask, void * user_data) {

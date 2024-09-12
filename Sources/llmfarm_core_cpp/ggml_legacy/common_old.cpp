@@ -1,6 +1,6 @@
 #define _USE_MATH_DEFINES // for M_PI
 
-#include "common.h"
+#include "common_old.h"
 
 // third-party utilities
 // use your favorite implementations
@@ -18,6 +18,8 @@
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
+
+
 
 // Function to check if the next argument exists
 //std::string get_next_arg(int& i, int argc, char** argv, const std::string& flag, gpt_params& params) {

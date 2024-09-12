@@ -18,6 +18,17 @@
     fprintf(stderr, "%s: built with %s for %s\n", __func__, BUILD_COMPILER, BUILD_TARGET);  \
 } while(0)
 
+struct gpt_vocab {
+    using id    = int32_t;
+    using token = std::string;
+
+    std::map<token, id> token_to_id;
+    std::map<id, token> id_to_token;
+    std::vector<std::string> special_tokens;
+
+    void add_special_token(const std::string & token);
+};
+
 //
 // GPT CLI argument parsing
 //

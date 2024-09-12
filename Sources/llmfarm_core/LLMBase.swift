@@ -135,9 +135,9 @@ public class LLMBase {
     
     public func load_grammar(_ path:String) throws -> Void{
         do{
-            try ExceptionCather.catchException {
-                self.grammar = llama_load_grammar(path)
-            }
+            // try ExceptionCather.catchException {
+            //     self.grammar = llama_load_grammar(path)
+            // }
         }
         catch {
             print(error)
@@ -233,10 +233,10 @@ public class LLMBase {
             logits[nl_token] = nl_logit
         }
         
-        if (self.grammar != nil ) {
-//            llama_sample_grammar(ctx,&candidates_p, self.grammar)
-             llama_sample_grammar_for_dadbed9(ctx,&candidates_p, self.grammar)
-        }
+//         if (self.grammar != nil ) {
+// //            llama_sample_grammar(ctx,&candidates_p, self.grammar)
+//              llama_sample_grammar_for_dadbed9(ctx,&candidates_p, self.grammar)
+//         }
         
         var res_token:Int32 = 0
         
@@ -249,20 +249,11 @@ public class LLMBase {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 let mirostat_m = 100
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMa_MModal"{
-                    res_token =  llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
-                }else{
-                    res_token =  llama_sample_token_mirostat_for_dadbed9(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu);
-                }
+                res_token =  llama_dadbed9_sample_token_mirostat(ctx, &candidates_p, mirostat_tau, mirostat_eta, Int32(mirostat_m), &mirostat_mu, vocabSize);
             } else if(mirostat == 2) {
                 var mirostat_mu: Float = 2.0 * mirostat_tau
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMa_MModal"{
-                    res_token =  llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
-                }
-                else{
-                    res_token =  llama_sample_token_mirostat_v2_for_dadbed9(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
-                }
+                res_token =  llama_dadbed9_sample_token_mirostat_v2(ctx, &candidates_p, mirostat_tau, mirostat_eta, &mirostat_mu)
             } else {
                 // Temperature sampling
                 llama_dadbed9_sample_top_k(ctx, &candidates_p, top_k, 1)
@@ -270,17 +261,13 @@ public class LLMBase {
                 llama_dadbed9_sample_typical(ctx, &candidates_p, typical_p, 1)
                 llama_dadbed9_sample_top_p(ctx, &candidates_p, top_p, 1)
                 llama_dadbed9_sample_temperature(ctx, &candidates_p, temp)
-                if class_name != "llmfarm_core.LLaMa" && class_name != "llmfarm_core.LLaMa_MModal"{
-                    res_token = llama_dadbed9_sample_token(ctx, &candidates_p)
-                }else{
-                    res_token = llama_sample_token_for_dadbed9(ctx, &candidates_p)
-                }
+                res_token = llama_dadbed9_sample_token(ctx, &candidates_p)
             }
         }
         
-        if (self.grammar != nil) {
-            llama_grammar_accept_token(ctx, self.grammar, res_token);
-        }
+//        if (self.grammar != nil) {
+//            llama_dadbed9_grammar_accept_token(ctx, self.grammar, res_token);
+//        }
         return res_token
 
     }

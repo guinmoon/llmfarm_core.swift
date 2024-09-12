@@ -7,7 +7,7 @@
 #include "llama_dadbed9.h"
 #include "llama.h"
 
-#include "../ggml/ggml_dadbed9.h"
+#include "../ggml_legacy/ggml_dadbed9.h"
 
 
 
@@ -149,14 +149,14 @@ int32_t rwkv_sample_repeat(int n_logits, float * logits,
 bool llama_save_state(struct llama_context * ctx, const char * fname);
 bool llama_load_state(struct llama_context * ctx, const char * fname);
 
-struct llama_grammar* llama_load_grammar(const char* grammar_path);
+//struct llama_grammar* llama_load_grammar(const char* grammar_path);
 
 //struct llama_dadbed9_token_data_array;
 
-void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar );
-llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates );
-llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu );
-llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) ;
+// void llama_sample_grammar_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates, const struct llama_grammar * grammar );
+// llama_token llama_sample_token_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates );
+// llama_token llama_sample_token_mirostat_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta,int   m,float * mu );
+// llama_token llama_sample_token_mirostat_v2_for_dadbed9(struct llama_context * ctx, llama_dadbed9_token_data_array * candidates,float tau,float   eta, float * mu ) ;
 
 
 typedef struct llama_sampling_params_spm {
@@ -184,7 +184,9 @@ typedef struct llama_sampling_params_spm {
 char * get_tensor_name(struct ggml_tensor * t);
 int check_tensor_name(struct ggml_tensor * t);
 
-struct llama_sampling_context * init_sampling(  int32_t     n_prev,                 // number of previous tokens to remember
+// struct llama_sampling_context *
+struct gpt_sampler* init_sampling(struct llama_model* model,
+                                                int32_t     n_prev,                 // number of previous tokens to remember
                                                 int32_t     top_k,                 // <= 0 to use vocab size
                                                 float       top_p,              // 1.0 = disabled
                                                 float       min_p,              // 0.0 = disabled
@@ -206,13 +208,16 @@ struct llama_sampling_context * init_sampling(  int32_t     n_prev,             
 
 
 llama_token spm_llama_sampling_sample(
-        struct llama_sampling_context * ctx_sampling,
+        // struct llama_sampling_context * ctx_sampling,
+        struct gpt_sampler * ctx_sampling,
         struct llama_context * ctx_main,
-        struct llama_context * ctx_cfg,
-        int idx);
+        // struct llama_context * ctx_cfg,
+        int idx,        
+        bool grammar_first);
 
 void spm_llama_sampling_accept(
-        struct llama_sampling_context * ctx_sampling,
+        // struct llama_sampling_context * ctx_sampling,
+        struct gpt_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         llama_token id,
         bool apply_grammar);

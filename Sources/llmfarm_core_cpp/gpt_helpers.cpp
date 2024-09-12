@@ -1,8 +1,8 @@
 #include "gpt_helpers.h"
-#include "ggml/ggml_dadbed9.h"
+#include "ggml_legacy/ggml_dadbed9.h"
 
-#include "ggml/common.h"
-#include "ggml/common-ggml.h"
+#include "common.h"
+#include "ggml_legacy/common-ggml.h"
 
 #include <cassert>
 #include <cmath>

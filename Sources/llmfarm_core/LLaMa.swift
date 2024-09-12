@@ -18,7 +18,8 @@ public class LLaMa: LLMBase {
     public var temporary_invalid_cchars: [CChar]  = []
     
     public func init_sampling_param(){
-        self.ctx_sampling = init_sampling(sampleParams.repeat_last_n,
+        self.ctx_sampling = init_sampling(model,
+                                          sampleParams.repeat_last_n,
                                           sampleParams.top_k,
                                           sampleParams.top_p,
                                           sampleParams.min_p,
@@ -43,12 +44,11 @@ public class LLaMa: LLMBase {
                                         contextParams: ModelAndContextParams = .default,
                                         params:gpt_context_params) throws -> Bool {
         var context_params = llama_context_default_params()
-        var model_params = llama_model_default_params()
-        init_sampling_param()
+        var model_params = llama_model_default_params()        
         
         context_params.n_ctx = UInt32(contextParams.context)
-        context_params.seed = UInt32(contextParams.seed)
-        context_params.n_threads = UInt32(contextParams.n_threads)
+//        context_params.seed = UInt32(contextParams.seed)
+        context_params.n_threads = contextParams.n_threads
         context_params.logits_all = contextParams.logitsAll
         context_params.flash_attn = contextParams.flash_attn
         // context_params.flash_attn = false
@@ -100,7 +100,7 @@ public class LLaMa: LLMBase {
         if self.model == nil{
             return false
         }
-        
+        init_sampling_param()
 //         for lora in contextParams.lora_adapters{
 //             let adapter =  llama_lora_adapter_init(model, lora.0);
 //             if adapter != nil {
@@ -134,7 +134,7 @@ public class LLaMa: LLMBase {
     
     
     public override func llm_sample() -> ModelToken {
-        let id  = spm_llama_sampling_sample(self.ctx_sampling, self.context, nil,-1);
+        let id  = spm_llama_sampling_sample(self.ctx_sampling, self.context, /*nil,*/-1,false);
         spm_llama_sampling_accept(self.ctx_sampling, self.context,  id, /* apply_grammar= */ true);
         return id;
     }

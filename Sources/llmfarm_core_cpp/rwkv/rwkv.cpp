@@ -1,8 +1,8 @@
 #include "rwkv.h"
 #include "../gpt_helpers.h"
 #include "../spm-headers/gpt_spm.h"
-#include "../ggml/ggml_d925ed.h"
-#include "../ggml/ggml_d925ed-alloc.h"
+#include "../ggml_legacy/ggml_d925ed.h"
+#include "../ggml_legacy/ggml_d925ed-alloc.h"
 
 #ifdef GGML_d925ed_USE_CUBLAS
 #include "ggml_d925ed/src/ggml_d925ed-cuda.h"
@@ -10,7 +10,7 @@
 #include "ggml_d925ed/src/ggml_d925ed-opencl.h"
 #endif
 #ifdef GGML_USE_META
-#  include "../ggml/ggml_d925ed-metal.h"
+#  include "../ggml_legacy/ggml_d925ed-metal.h"
 #endif
 
 

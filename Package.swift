@@ -18,25 +18,29 @@ var sources = [ "llama.cpp/ggml/src/ggml.c",
                 "llama.cpp/src/llama-vocab.cpp",
                 "llama.cpp/src/llama-sampling.cpp",
                 "llama.cpp/common/common.cpp",
-                "llama.cpp/common/grammar-parser.cpp",
+                // "llama.cpp/common/grammar-parser.cpp",
                 "llama.cpp/common/json-schema-to-grammar.cpp",
                 "llama.cpp/common/sampling.cpp",
-                "llama.cpp/common/train.cpp",
+                // "llama.cpp/common/train.cpp",
                 "llama.cpp/examples/llava/llava.cpp",
                 "llama.cpp/examples/llava/clip.cpp",
                 "llama.cpp/examples/llava/llava-cli.cpp",
-                "llama.cpp/examples/export-lora/export-lora.cpp",
+                // "llama.cpp/examples/export-lora/export-lora.cpp",
                 "gpt_helpers.cpp",
                 "gpt_spm.cpp",
                 "package_helper.m",
                 "exception_helper_objc.mm",
                 "exception_helper.cpp",                      
-                "ggml/ggml_d925ed.c","ggml/ggml_d925ed-alloc.c","ggml/ggml_d925ed-metal.m","rwkv/rwkv.cpp",
-                "ggml/ggml_dadbed9.c","ggml/k_quants_dadbed9.c","ggml/ggml-alloc_dadbed9.c","ggml/ggml-metal_dadbed9.m",
+                "ggml_legacy/ggml_d925ed.c","ggml_legacy/ggml_d925ed-alloc.c","ggml_legacy/ggml_d925ed-metal.m","rwkv/rwkv.cpp",
+                "ggml_legacy/ggml_dadbed9.c","ggml_legacy/k_quants_dadbed9.c","ggml_legacy/ggml-alloc_dadbed9.c","ggml_legacy/ggml-metal_dadbed9.m",
                 "gptneox/gptneox.cpp","gpt2/gpt2.cpp","replit/replit.cpp","starcoder/starcoder.cpp","llama_legacy/llama_dadbed9.cpp",
-                "ggml/common_old.cpp",      
-                "ggml/build-info.cpp",          
+                "ggml_legacy/common_old.cpp",      
+                "ggml_legacy/build-info.cpp",          
                 // "finetune/finetune.cpp",                        
+                ]
+
+var sources_legacy = [ 
+                "ggml/ggml_d925ed.c",                                               
                 ]
 
 var cSettings: [CSetting] =  [
@@ -45,9 +49,9 @@ var cSettings: [CSetting] =  [
                 .define("ACCELERATE_NEW_LAPACK"),
                 .define("ACCELERATE_LAPACK_ILP64"),
                 .define("GGML_USE_METAL"),
-                // .define("GGML_USE_BLAS"),
+                .define("GGML_USE_BLAS"),
 //                .define("_DARWIN_C_SOURCE"),
-                // .define("GGML_USE_LLAMAFILE"),
+                .define("GGML_USE_LLAMAFILE"),
                 .define("GGML_METAL_NDEBUG"),
                 .define("NDEBUG"),
 //                .define("GGML_METAL_NDEBUG", .when(configuration: .release)),
@@ -65,7 +69,7 @@ var cSettings: [CSetting] =  [
 //                .unsafeFlags(["-fno-finite-math-only"], .when(configuration: .release)),
                 .unsafeFlags(["-w"]),    // ignore all warnings
                 .headerSearchPath("llama.cpp/common"),
-                .headerSearchPath("llama.cpp/ggml/include"),   
+                .headerSearchPath("llama.cpp/ggml/include"),                
             ]
 
 
@@ -89,12 +93,16 @@ let package = Package(
     products: [
         .library(
             name: "llmfarm_core",
-//            type: .dynamic,
+//           type: .dynamic,
             targets: ["llmfarm_core"]),
-//        .library(
-//            name: "llmfarm_core_cpp",
-////            type: .dynamic,
-//            targets: ["llmfarm_core_cpp"]),
+       .library(
+           name: "llmfarm_core_cpp",
+//           type: .dynamic,
+           targets: ["llmfarm_core_cpp"]),
+    //    .library(
+    //        name: "llmfarm_core_cpp_legacy",
+    //        type: .dynamic,
+    //        targets: ["llmfarm_core_cpp_legacy"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -102,7 +110,7 @@ let package = Package(
     targets: [
         .target(
               name: "llmfarm_core",
-              dependencies: ["llmfarm_core_cpp"],
+              dependencies: ["llmfarm_core_cpp"/*,"llmfarm_core_cpp_legacy"*/],
               path: "Sources/llmfarm_core"),
         .target(
             name: "llmfarm_core_cpp",
@@ -112,6 +120,14 @@ let package = Package(
             cSettings:cSettings,
             linkerSettings: linkerSettings
         ),
+        // .target(
+        //     name: "llmfarm_core_cpp_legacy",
+        //     sources: sources_legacy,
+        //     resources: resources,
+        //     publicHeadersPath: "spm-headers",
+        //     cSettings:cSettings,
+        //     linkerSettings: linkerSettings
+        // ),
         
     ],
     // cLanguageStandard: .c99,

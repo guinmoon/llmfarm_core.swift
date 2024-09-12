@@ -92,3 +92,4 @@ iOSInjectionProject/
 .swiftpm
 Sources/llmfarm_core_cpp/patches/*
 patches/*
+Sources/llmfarm_core_cpp_legacy/

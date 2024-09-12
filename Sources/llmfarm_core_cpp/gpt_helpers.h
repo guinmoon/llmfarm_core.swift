@@ -3,8 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "ggml/ggml_dadbed9.h"
-#include "ggml/common.h"
+#include "ggml_legacy/ggml_dadbed9.h"
+#include "common.h"
+#include "ggml_legacy/common_old.h"
 
 #include <cassert>
 #include <random>
