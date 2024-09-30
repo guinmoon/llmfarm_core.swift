@@ -18,6 +18,8 @@ var sources = [ "llama.cpp/ggml/src/ggml.c",
                 "llama.cpp/src/llama-vocab.cpp",
                 "llama.cpp/src/llama-sampling.cpp",
                 "llama.cpp/common/common.cpp",
+                "llama.cpp/common/log.cpp",
+                "llama.cpp/common/arg.cpp",
                 // "llama.cpp/common/grammar-parser.cpp",
                 "llama.cpp/common/json-schema-to-grammar.cpp",
                 "llama.cpp/common/sampling.cpp",
@@ -68,6 +70,7 @@ var cSettings: [CSetting] =  [
                 .unsafeFlags(["-Wno-shorten-64-to-32"]),
 //                .unsafeFlags(["-fno-finite-math-only"], .when(configuration: .release)),
                 .unsafeFlags(["-w"]),    // ignore all warnings
+                
                 .headerSearchPath("llama.cpp/common"),
                 .headerSearchPath("llama.cpp/ggml/include"),                
             ]
@@ -95,10 +98,10 @@ let package = Package(
             name: "llmfarm_core",
 //           type: .dynamic,
             targets: ["llmfarm_core"]),
-       .library(
-           name: "llmfarm_core_cpp",
-//           type: .dynamic,
-           targets: ["llmfarm_core_cpp"]),
+//       .library(
+//           name: "llmfarm_core_cpp",
+////           type: .dynamic,
+//           targets: ["llmfarm_core_cpp"]),
     //    .library(
     //        name: "llmfarm_core_cpp_legacy",
     //        type: .dynamic,

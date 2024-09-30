@@ -230,14 +230,7 @@ public func get_model_sample_param_by_config(_ model_config:Dictionary<String, A
     return tmp_param
 }
 
-extension String {
-    func removingLeadingSpaces() -> String {
-        guard let index = firstIndex(where: { !CharacterSet(charactersIn: String($0)).isSubset(of: .whitespaces) }) else {
-            return self
-        }
-        return String(self[index...])
-    }
-}
+
 
 public func get_system_prompt(_ prompt_format_in: String) -> (String,String){
     var prompt_format = prompt_format_in
@@ -534,13 +527,6 @@ public enum ModelError: Error {
 public enum ModelPromptStyle {
     case None
     case Custom
-    // case ChatBase
-    // case OpenAssistant
-    // case StableLM_Tuned
-    // case LLaMa
-    // case LLaMa_QA
-    // case Dolly_b3
-    // case RedPajama_chat
 }
 
 public typealias ModelToken = Int32

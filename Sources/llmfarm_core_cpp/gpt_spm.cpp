@@ -422,7 +422,17 @@ int check_tensor_name(struct ggml_tensor * t){
     sparams.mirostat_eta   = mirostat_eta;
     sparams.seed = seed;
     if (sparams.seed == 0)
-        sparams.seed = LLAMA_DEFAULT_SEED;    
+        sparams.seed = LLAMA_DEFAULT_SEED;        
+
+    if (grammar_path != nullptr &&  grammar_path != ""){
+        printf("Grammar: %s",grammar_path);
+        std::ifstream file(grammar_path);
+        std::copy(
+                std::istreambuf_iterator<char>(file),
+                std::istreambuf_iterator<char>(),
+                std::back_inserter(sparams.grammar)
+            );
+    }
 
     struct gpt_sampler * ctx_sampling = gpt_sampler_init(model, sparams);
 
