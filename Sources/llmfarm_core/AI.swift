@@ -150,7 +150,7 @@ public class AI {
             }
             DispatchQueue.main.async {
                 self.flagResponding = false
-                completion(output ?? "[Error]")
+                completion(output ?? "")
             }
             
         }
