@@ -35,7 +35,7 @@ public class AI {
     
     public init(_modelPath: String,_chatName: String) {
         self.modelPath = _modelPath
-        self.modelName = NSURL(fileURLWithPath: _modelPath).lastPathComponent!
+        self.modelName = NSURL(fileURLWithPath: _modelPath).lastPathComponent ?? ""
         self.chatName = _chatName
     }
     
@@ -47,27 +47,29 @@ public class AI {
     
     public func initModel(_ inference: ModelInference,contextParams: ModelAndContextParams = .default) {
         self.model = nil
-        switch inference {
-        case .LLama_bin:
-            self.model = try? LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
+        switch inference {        
         case .LLama_gguf:
             self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
         case .LLama_mm:
             self.model = try? LLaMa_MModal(path: self.modelPath, contextParams: contextParams)
-        case .GPTNeox:
-            self.model = try? GPTNeoX(path: self.modelPath, contextParams: contextParams)
-        case .GPTNeox_gguf:
+        default:
             self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
-        case .GPT2:
-            self.model = try? GPT2(path: self.modelPath, contextParams: contextParams)
-        case .Replit:
-            self.model = try? Replit(path: self.modelPath, contextParams: contextParams)
-        case .Starcoder:
-            self.model = try? Starcoder(path: self.modelPath, contextParams: contextParams)
-        case .Starcoder_gguf:
-            self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
-        case .RWKV:
-            self.model = try? RWKV(path: self.modelPath, contextParams: contextParams)
+        // case .LLama_bin:
+        //     self.model = try? LLaMa_dadbed9(path: self.modelPath, contextParams: contextParams)
+        // case .GPTNeox:
+        //     self.model = try? GPTNeoX(path: self.modelPath, contextParams: contextParams)
+        // case .GPTNeox_gguf:
+        //     self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
+        // case .GPT2:
+        //     self.model = try? GPT2(path: self.modelPath, contextParams: contextParams)
+        // case .Replit:
+        //     self.model = try? Replit(path: self.modelPath, contextParams: contextParams)
+        // case .Starcoder:
+        //     self.model = try? Starcoder(path: self.modelPath, contextParams: contextParams)
+        // case .Starcoder_gguf:
+        //     self.model = try? LLaMa(path: self.modelPath, contextParams: contextParams)
+        // case .RWKV:
+        //     self.model = try? RWKV(path: self.modelPath, contextParams: contextParams)
         }
     
     }

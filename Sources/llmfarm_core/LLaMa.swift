@@ -40,9 +40,7 @@ public class LLaMa: LLMBase {
                                           self.contextParams.grammar_path ?? "");
     }
     
-    public override func llm_load_model(path: String = "",
-                                        contextParams: ModelAndContextParams = .default,
-                                        params:gpt_context_params) throws -> Bool {
+    public override func llm_load_model(path: String = "",contextParams: ModelAndContextParams = .default) throws -> Bool {
         var context_params = llama_context_default_params()
         var model_params = llama_model_default_params()        
         

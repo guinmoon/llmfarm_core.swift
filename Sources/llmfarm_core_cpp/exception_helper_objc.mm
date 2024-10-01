@@ -6,9 +6,10 @@
 //
 
 #import <Foundation/Foundation.h>
-
 #import "exception_helper_objc.h"
+
 #include <exception>
+#include <sys/utsname.h>
 
 @implementation ExceptionCather
 + (BOOL)catchException:(noEscape void(^)(void))tryBlock error:(__autoreleasing NSError **)error {
@@ -34,3 +35,17 @@
     }
 }
 @end
+
+// NSString * get_core_bundle_path(){
+//     NSString *path = [SWIFTPM_MODULE_BUNDLE resourcePath];
+//     return  path;
+// }
+
+
+// NSString *Get_Machine_Hardware_Name(void) {
+//     struct utsname sysinfo;
+//     int retVal = uname(&sysinfo);
+//     if (EXIT_SUCCESS != retVal) return nil;
+//     return [NSString stringWithUTF8String:sysinfo.machine];
+// }
+

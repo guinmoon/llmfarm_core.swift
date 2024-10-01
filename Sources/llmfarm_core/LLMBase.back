@@ -12,12 +12,8 @@ public enum ModelLoadError: Error {
 }
 
 
-// protocol LLMInference {
-//     func llm_sample() -> ModelToken
-// }
 
-
-public class LLMBase/*: LLMInference*/ {
+public class LLMBase {
     
     public var context: OpaquePointer?
     public var grammar: OpaquePointer?
