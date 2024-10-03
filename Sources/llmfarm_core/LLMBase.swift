@@ -86,6 +86,9 @@ public class LLMBase/*: LLMInference*/ {
         }
     }
     
+
+
+    
     public func load_clip_model() -> Bool{
         return true
     }
@@ -119,6 +122,12 @@ public class LLMBase/*: LLMInference*/ {
         return false
     }
     
+    public func llm_token_is_eog(token: ModelToken) -> Bool{
+        if token == llm_token_eos(){
+            return true
+        }
+        return false
+    }
     
     public func llm_token_nl() -> ModelToken{
         return 13
@@ -393,7 +402,7 @@ public class LLMBase/*: LLMInference*/ {
             var output = [String]()
             // Loop until target count is reached
             var completion_loop = true
-            let eos_token = llm_token_eos()
+            // let eos_token = llm_token_eos()
             while completion_loop {
                 // Pull a generation from context
                 var outputToken:Int32 = -1
@@ -406,11 +415,17 @@ public class LLMBase/*: LLMInference*/ {
                     outputRepeatTokens.removeFirst()
                 }
                 // Check for eos - end early - check eos before bos in case they are the same
-                if outputToken == eos_token {
-                    completion_loop = false
-                    print("[EOS]")
+                // if outputToken == eos_token {
+                //     completion_loop = false
+                //     print("[EOS]")
+                //     break
+                // }
+                if llm_token_is_eog(token:outputToken) {
+                    completion_loop = true
+                    print("[EOG]")
                     break
                 }
+
                 // Check for BOS and tokens in skip list
                 var skipCallback = false
                 if !self.chekc_skip_tokens(outputToken){

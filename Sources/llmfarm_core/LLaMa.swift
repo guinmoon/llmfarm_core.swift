@@ -365,6 +365,10 @@ public class LLaMa: LLMBase {
         }
         return new_token_str
     }
+
+    public override func llm_token_is_eog(token: ModelToken) -> Bool{
+        return llama_token_is_eog(model, token) ;
+    }
     
     public override func llm_token_nl() -> ModelToken{
         return llama_token_nl(self.model)
