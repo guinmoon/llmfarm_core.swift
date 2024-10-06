@@ -60,9 +60,9 @@ var cSettings: [CSetting] =  [
                 .define("NDEBUG"),
 //                .define("GGML_METAL_NDEBUG", .when(configuration: .release)),
 //                .define("NDEBUG", .when(configuration: .release)),
-//                .unsafeFlags(["-Ofast"], .when(configuration: .release)), 
-                .unsafeFlags(["-O3"]),
-//                .unsafeFlags(["-O3"], .when(configuration: .release)),
+                .unsafeFlags(["-Ofast"], .when(configuration: .release)), 
+//                .unsafeFlags(["-O3"]),
+                .unsafeFlags(["-O3"], .when(configuration: .debug)),
                  .unsafeFlags(["-mfma","-mfma","-mavx","-mavx2","-mf16c","-msse3","-mssse3"]), //for Intel CPU
 //                .unsafeFlags(["-march=native","-mtune=native"],.when(platforms: [.macOS])),
 //                .unsafeFlags(["-mcpu=apple-a14"],.when(platforms: [.iOS])),// use at your own risk, I've noticed more responsive work on 12 pro max
@@ -70,7 +70,7 @@ var cSettings: [CSetting] =  [
                 .unsafeFlags(["-fno-objc-arc"]),
 //                .unsafeFlags(["-fPIC"]),
                 .unsafeFlags(["-Wno-shorten-64-to-32"]),
-//                .unsafeFlags(["-fno-finite-math-only"], .when(configuration: .release)),
+                .unsafeFlags(["-fno-finite-math-only"], .when(configuration: .release)),
                 .unsafeFlags(["-w"]),    // ignore all warnings
 
                 .headerSearchPath("llama.cpp/common"),
