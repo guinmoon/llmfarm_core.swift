@@ -2,10 +2,6 @@
 LLMFarm_core swift library to work with large language models (LLM). It allows you to load different LLMs with certain parameters.<br>
 Based on [ggml](https://github.com/ggerganov/ggml) and [llama.cpp](https://github.com/ggerganov/llama.cpp) by [Georgi Gerganov](https://github.com/ggerganov).
 
-Also used sources from:
-* [rwkv.cpp](https://github.com/saharNooby/rwkv.cpp) by [saharNooby](https://github.com/saharNooby).
-* [Mia](https://github.com/byroneverson/Mia) by [byroneverson](https://github.com/byroneverson).
-
 # Features
 
 - [x] MacOS (13+)
@@ -75,6 +71,11 @@ To build with `QKK_64` support uncomment `.unsafeFlags(["-DGGML_QKK_64"])` in `P
 
 ## [See examples in the Demo Project](/DemoProject)
 
-# Projects based on this library
- * ## [LLM Farm](https://github.com/guinmoon/LLMFarm)
+## Also used sources from:
+* [rwkv.cpp](https://github.com/saharNooby/rwkv.cpp) by [saharNooby](https://github.com/saharNooby).
+* [Mia](https://github.com/byroneverson/Mia) by [byroneverson](https://github.com/byroneverson).
+* [swift-markdown-ui](https://github.com/gonzalezreal/swift-markdown-ui) by [gonzalezreal](https://github.com/gonzalezreal)
+
+## Projects based on this library
+ * ### [LLM Farm](https://github.com/guinmoon/LLMFarm)
 App to run LLaMA and other large language models locally on iOS and MacOS.
