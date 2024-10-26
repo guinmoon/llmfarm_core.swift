@@ -265,15 +265,17 @@ public class LLaMa: LLMBase {
     
     public override func kv_shift() throws{
         let n_discard = self.nPast/2
-        llama_kv_cache_seq_rm (context, 0, 0            , n_discard);
-        llama_kv_cache_seq_add(context, 0, n_discard, self.nPast, -n_discard);
+        llama_kv_cache_seq_rm (context, 0, self.sampleParams.repeat_last_n            , self.sampleParams.repeat_last_n + n_discard);
+        llama_kv_cache_seq_add(context, 0,  self.sampleParams.repeat_last_n + n_discard, self.nPast, -n_discard);
+//        llama_kv_cache_seq_rm (ctx, 0, params.n_keep            , params.n_keep + n_discard);
+//        llama_kv_cache_seq_add(ctx, 0, params.n_keep + n_discard, n_past, -n_discard);
         self.nPast -= n_discard;
-        try ExceptionCather.catchException {
-            var in_batch = [self.llm_token_eos()]
-            _ = try? self.llm_eval(inputBatch: &in_batch)
-        }
+//        try ExceptionCather.catchException {
+//            var in_batch = [self.llm_token_eos()]
+//            _ = try? self.llm_eval(inputBatch: &in_batch)
+//        }
         self.nPast+=1
-        self.outputRepeatTokens = []
+//        self.outputRepeatTokens = []
         print("Context Limit!")
     }
     
