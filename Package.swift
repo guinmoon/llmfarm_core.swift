@@ -3,10 +3,12 @@
 
 import PackageDescription
 
+
+
 var sources = [ "llama.cpp/ggml/src/ggml.c",
                 "llama.cpp/ggml/src/ggml-quants.c",
                 "llama.cpp/ggml/src/ggml-alloc.c",
-                "llama.cpp/ggml/src/ggml-backend.c",
+                "llama.cpp/ggml/src/ggml-backend.cpp",
                 "llama.cpp/ggml/src/ggml-metal.m",
                 "llama.cpp/ggml/src/ggml-blas.cpp",
                 "llama.cpp/ggml/src/ggml-aarch64.c",

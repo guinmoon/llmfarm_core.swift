@@ -311,7 +311,7 @@ int check_tensor_name(struct ggml_tensor * t){
 
 
 /*struct llama_sampling_context*/ 
- struct gpt_sampler*  init_sampling(llama_model* model,
+ struct common_sampler*  init_sampling(llama_model* model,
                                                 int32_t     n_prev                = 64,                 // number of previous tokens to remember
                                                 int32_t     top_k                 = 40,                 // <= 0 to use vocab size
                                                 float       top_p                 = 0.95f,              // 1.0 = disabled
@@ -332,7 +332,7 @@ int check_tensor_name(struct ggml_tensor * t){
                                                 uint32_t    seed                  = LLAMA_DEFAULT_SEED,
                                                 const char * grammar_path = ""){
     // sparams
-    struct gpt_sampler_params  sparams;
+    struct common_sampler_params  sparams;
     sparams.n_prev = n_prev;
     sparams.top_k = top_k;
     sparams.top_p = top_p;              // 1.0 = disabled
@@ -363,12 +363,12 @@ int check_tensor_name(struct ggml_tensor * t){
             );
     }
 
-    struct gpt_sampler * ctx_sampling = gpt_sampler_init(model, sparams);
+    struct common_sampler * ctx_sampling = common_sampler_init(model, sparams);
     return ctx_sampling;
 }
 
 llama_token spm_llama_sampling_sample(
-        /*llama_sampling_context*/gpt_sampler * ctx_sampling,
+        /*llama_sampling_context*/common_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         // struct llama_context * ctx_cfg,
         int idx = -1,
@@ -376,16 +376,16 @@ llama_token spm_llama_sampling_sample(
 {
 
     //    llama_sampling_sample(ctx_sampling,ctx_main,ctx_cfg,idx);
-    gpt_sampler_sample(ctx_sampling, ctx_main, idx, grammar_first);
+    common_sampler_sample(ctx_sampling, ctx_main, idx, grammar_first);
 }
 
 void spm_llama_sampling_accept(
-        struct /*llama_sampling_context*/gpt_sampler * ctx_sampling,
+        struct /*llama_sampling_context*/common_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         llama_token id,
         bool apply_grammar)
 {
     // llama_sampling_accept(ctx_sampling,ctx_main,id,apply_grammar);
-    gpt_sampler_accept(ctx_sampling, id, apply_grammar);
+    common_sampler_accept(ctx_sampling, id, apply_grammar);
 }
 

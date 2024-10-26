@@ -185,7 +185,7 @@ char * get_tensor_name(struct ggml_tensor * t);
 int check_tensor_name(struct ggml_tensor * t);
 
 // struct llama_sampling_context *
-struct gpt_sampler* init_sampling(struct llama_model* model,
+struct common_sampler* init_sampling(struct llama_model* model,
                                                 int32_t     n_prev,                 // number of previous tokens to remember
                                                 int32_t     top_k,                 // <= 0 to use vocab size
                                                 float       top_p,              // 1.0 = disabled
@@ -209,7 +209,7 @@ struct gpt_sampler* init_sampling(struct llama_model* model,
 
 llama_token spm_llama_sampling_sample(
         // struct llama_sampling_context * ctx_sampling,
-        struct gpt_sampler * ctx_sampling,
+        struct common_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         // struct llama_context * ctx_cfg,
         int idx,        
@@ -217,7 +217,7 @@ llama_token spm_llama_sampling_sample(
 
 void spm_llama_sampling_accept(
         // struct llama_sampling_context * ctx_sampling,
-        struct gpt_sampler * ctx_sampling,
+        struct common_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         llama_token id,
         bool apply_grammar);

@@ -206,7 +206,8 @@ public class LLaMa: LLMBase {
     
     public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool {
         
-        if llama_decode(context,llama_batch_get_one(&inputBatch, Int32(inputBatch.count), self.nPast, 0)) != 0 {
+        if llama_decode(context,llama_batch_get_one(&inputBatch, Int32(inputBatch.count))) != 0 {
+//        if llama_decode(context,llama_batch_get_one(&inputBatch, Int32(inputBatch.count), self.nPast, 0)) != 0 {
             print("failed to evaluate llama!")
             return false
         }
@@ -411,7 +412,8 @@ public class LLaMa: LLMBase {
         }
         
         if (llama_model_has_encoder(model)) {
-            if (llama_encode(context, llama_batch_get_one(&embeddings, Int32(embeddings.count), 0, 0)) != 0) {
+            if (llama_encode(context, llama_batch_get_one(&embeddings, Int32(embeddings.count))) != 0) {
+//            if (llama_encode(context, llama_batch_get_one(&embeddings, Int32(embeddings.count), 0, 0)) != 0) {
                 print("failed to eval encode.")
                 return [];                
             }
