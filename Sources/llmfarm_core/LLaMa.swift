@@ -84,6 +84,7 @@ public class LLaMa: LLMBase {
         if self.hardware_arch=="x86_64"{
             model_params.n_gpu_layers = 0
         }
+        
 #if targetEnvironment(simulator)
         model_params.n_gpu_layers = 0
         print("Running on simulator, force use n_gpu_layers = 0")

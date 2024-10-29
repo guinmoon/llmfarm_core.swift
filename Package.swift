@@ -54,12 +54,12 @@ var cSettings: [CSetting] =  [
                 .define("GGML_USE_ACCELERATE"),
                 .define("ACCELERATE_NEW_LAPACK"),
                 .define("ACCELERATE_LAPACK_ILP64"),
-                .define("GGML_USE_METAL"),
                 .define("GGML_USE_BLAS"),
 //                .define("_DARWIN_C_SOURCE"),
                 .define("GGML_USE_LLAMAFILE"),
                 .define("GGML_METAL_NDEBUG"),
                 .define("NDEBUG"),
+                .define("GGML_USE_METAL"),
 //                .define("GGML_METAL_NDEBUG", .when(configuration: .release)),
 //                .define("NDEBUG", .when(configuration: .release)),
                 .unsafeFlags(["-Ofast"], .when(configuration: .release)), 
@@ -78,6 +78,7 @@ var cSettings: [CSetting] =  [
                 .headerSearchPath("llama.cpp/common"),
                 .headerSearchPath("llama.cpp/ggml/include"),                
             ]
+
 
 
 var linkerSettings: [LinkerSetting] = [
