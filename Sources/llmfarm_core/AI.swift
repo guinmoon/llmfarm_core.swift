@@ -92,26 +92,12 @@ public class AI {
         aiQueue.async {
             do{
                 try self.model?.load_model()
-//                try ExceptionCather.catchException {
-////                    do{
-//                        try? self.model?.load_model()
-////                    }catch {
-////                        print(error)
-////                        DispatchQueue.main.async {
-////                            if self.model?.modelLoadCompleteCallback != nil{
-////                                self.model?.modelLoadCompleteCallback!("[Error] \(error)")
-////                                self.model?.modelLoadCompleteCallback!("[Error] \(error)")
-////                            }
-////                        }
-////                    }
-//                }
             }
             catch{
                 print(error)
                 DispatchQueue.main.async {
                     if self.model?.modelLoadCompleteCallback != nil{
-                        self.model?.modelLoadCompleteCallback!("[Error] \(error)")
-                        self.model?.modelLoadCompleteCallback!("[Error] \(error)")
+                        self.model?.modelLoadCompleteCallback!("[Error] \(error)")                        
                     }
                 }
                 return
