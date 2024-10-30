@@ -337,7 +337,7 @@ int check_tensor_name(struct ggml_tensor * t){
     sparams.top_k = top_k;
     sparams.top_p = top_p;              // 1.0 = disabled
     sparams.min_p = min_p;             // 0.0 = disabled
-    sparams.tfs_z = tfs_z;              // 1.0 = disabled
+//    sparams.tfs_z = tfs_z;              // 1.0 = disabled
     sparams.typ_p = typical_p;             // 1.0 = disabled
     sparams.temp = temp;             // <= 0.0 to sample greedily, 0.0 to not output probabilities
     sparams.dynatemp_range  = dynatemp_range;             // 0.0 = disabled
