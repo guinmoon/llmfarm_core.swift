@@ -87,6 +87,8 @@ public class LLaMa: LLMBase {
         
 #if targetEnvironment(simulator)
         model_params.n_gpu_layers = 0
+//        model_params.main_gpu = 0
+//        model_params.split_mode = LLAMA_SPLIT_MODE_NONE
         print("Running on simulator, force use n_gpu_layers = 0")
 #endif
         
@@ -95,7 +97,9 @@ public class LLaMa: LLMBase {
         }
         _ = self.modelLoadProgressCallback?(0)
         llama_backend_init()
-        self.model = llama_load_model_from_file(path, model_params)
+        try ExceptionCather.catchException {
+            self.model = llama_load_model_from_file(path, model_params)
+        }
         if self.model == nil{
             return false
         }
@@ -116,7 +120,9 @@ public class LLaMa: LLMBase {
         //     return std::make_tuple(nullptr, nullptr);
         // }
         // llama_lora_adapter_set(lctx, adapter, lora_scale);
-        self.context = llama_new_context_with_model(self.model, context_params)
+        try ExceptionCather.catchException {
+            self.context = llama_new_context_with_model(self.model, context_params)
+        }
         if self.context == nil {
             return false
         }
@@ -155,7 +161,8 @@ public class LLaMa: LLMBase {
     
     public override func save_state(){
         if self.contextParams.save_load_state &&
-            self.contextParams.state_dump_path != "" {
+            self.contextParams.state_dump_path != "" &&
+            self.context != nil{
             self.outputRepeatTokens.append(self.nPast)
             llama_state_save_file(self.context,self.contextParams.state_dump_path,self.outputRepeatTokens, self.outputRepeatTokens.count)
         }
