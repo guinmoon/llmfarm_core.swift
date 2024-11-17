@@ -350,6 +350,7 @@ int check_tensor_name(struct ggml_tensor * t){
     sparams.mirostat_tau   = mirostat_tau;           // target entropy
     sparams.mirostat_eta   = mirostat_eta;
     sparams.seed = seed;
+     sparams.no_perf = true;	
     if (sparams.seed == 0)
         sparams.seed = LLAMA_DEFAULT_SEED;        
 
