@@ -9,10 +9,16 @@ var sources = [ "llama.cpp/ggml/src/ggml.c",
                 "llama.cpp/ggml/src/ggml-quants.c",
                 "llama.cpp/ggml/src/ggml-alloc.c",
                 "llama.cpp/ggml/src/ggml-backend.cpp",
-                "llama.cpp/ggml/src/ggml-metal.m",
-                "llama.cpp/ggml/src/ggml-blas.cpp",
+                "llama.cpp/ggml/src/ggml-threading.cpp",
+                "llama.cpp/ggml/src/ggml-backend-reg.cpp",
+                "llama.cpp/ggml/src/ggml-metal/ggml-metal.m",
+                "llama.cpp/ggml/src/ggml-blas/ggml-blas.cpp",
                 "llama.cpp/ggml/src/ggml-aarch64.c",
-                "llama.cpp/ggml/src/llamafile/sgemm.cpp",                                
+                "llama.cpp/ggml/src/ggml-cpu/ggml-cpu-aarch64.c",
+                "llama.cpp/ggml/src/ggml-cpu/ggml-cpu.c",
+                "llama.cpp/ggml/src/ggml-cpu/ggml-cpu.cpp",
+                "llama.cpp/ggml/src/ggml-cpu/ggml-cpu-quants.c",
+                "llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp",
                 "llama.cpp/src/llama.cpp",
                 "llama.cpp/src/unicode.cpp",
                 "llama.cpp/src/unicode-data.cpp",
@@ -52,6 +58,7 @@ var sources_legacy = [
 var cSettings: [CSetting] =  [
                 .define("SWIFT_PACKAGE"),
                 .define("GGML_USE_ACCELERATE"),
+                .define("GGML_BLAS_USE_ACCELERATE"),
                 .define("ACCELERATE_NEW_LAPACK"),
                 .define("ACCELERATE_LAPACK_ILP64"),
                 .define("GGML_USE_BLAS"),
@@ -76,7 +83,8 @@ var cSettings: [CSetting] =  [
                 .unsafeFlags(["-w"]),    // ignore all warnings
 
                 .headerSearchPath("llama.cpp/common"),
-                .headerSearchPath("llama.cpp/ggml/include"),                
+                .headerSearchPath("llama.cpp/ggml/include"),
+                .headerSearchPath("llama.cpp/ggml/src"),
             ]
 
 
