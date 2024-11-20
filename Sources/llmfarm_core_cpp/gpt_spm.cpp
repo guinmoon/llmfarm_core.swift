@@ -370,24 +370,20 @@ int check_tensor_name(struct ggml_tensor * t){
 }
 
 llama_token spm_llama_sampling_sample(
-        /*llama_sampling_context*/common_sampler * ctx_sampling,
+        common_sampler * ctx_sampling,
         struct llama_context * ctx_main,
-        // struct llama_context * ctx_cfg,
         int idx = -1,
         bool grammar_first = false)
 {
-
-    //    llama_sampling_sample(ctx_sampling,ctx_main,ctx_cfg,idx);
-    common_sampler_sample(ctx_sampling, ctx_main, idx, grammar_first);
+    return common_sampler_sample(ctx_sampling, ctx_main, idx, grammar_first);
 }
 
 void spm_llama_sampling_accept(
-        struct /*llama_sampling_context*/common_sampler * ctx_sampling,
+        struct common_sampler * ctx_sampling,
         struct llama_context * ctx_main,
         llama_token id,
         bool apply_grammar)
 {
-    // llama_sampling_accept(ctx_sampling,ctx_main,id,apply_grammar);
     common_sampler_accept(ctx_sampling, id, apply_grammar);
 }
 
