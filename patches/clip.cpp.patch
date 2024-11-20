@@ -1,0 +1,22 @@
+--- ./update/examples/llava/clip.cpp	2024-10-26 10:34:08
++++ ../Sources/llmfarm_core_cpp/llama.cpp/examples/llava/clip.cpp	2024-10-26 17:46:38
+@@ -1028,7 +1028,7 @@
+ }
+ 
+ // read and create ggml_context containing the tensors and their data
+-struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
++struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1, int ngl = 0) {
+     struct ggml_context * meta = NULL;
+ 
+     struct gguf_init_params params = {
+@@ -1147,8 +1147,10 @@
+ #endif
+ 
+ #ifdef GGML_USE_METAL
++if (ngl>0){
+     new_clip->backend = ggml_backend_metal_init();
+     LOG_INF("%s: CLIP using Metal backend\n", __func__);
++}
+ #endif
+ 
+ #ifdef GGML_USE_CANN

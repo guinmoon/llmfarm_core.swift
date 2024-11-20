@@ -1,0 +1,19 @@
+--- ./update/ggml/include/ggml.h	2024-09-11 14:43:24
++++ ../Sources/llmfarm_core_cpp/llama.cpp/ggml/include/ggml.h	2024-09-11 15:49:39
+@@ -275,7 +275,15 @@
+ #endif
+ 
+ #define GGML_ABORT(...) ggml_abort(__FILE__, __LINE__, __VA_ARGS__)
+-#define GGML_ASSERT(x) if (!(x)) GGML_ABORT("GGML_ASSERT(%s) failed", #x)
++
++#include "exception_helper.h"
++
++#define GGML_ASSERT(x) if (!(x)) { \
++            char descr[700]; \
++            sprintf(descr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x);\
++            throw_exception(descr); \
++}
++// #define GGML_ASSERT(x) if (!(x)) GGML_ABORT("GGML_ASSERT(%s) failed", #x)
+ 
+ // used to copy the number of elements and stride in bytes of tensors into local variables.
+ // main purpose is to reduce code duplication and improve readability.

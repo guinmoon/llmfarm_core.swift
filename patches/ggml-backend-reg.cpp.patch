@@ -1,0 +1,14 @@
+--- ./update/ggml/src/ggml-backend.cpp	2024-10-30 19:01:52
++++ ../Sources/llmfarm_core_cpp/llama.cpp/ggml/src/ggml-backend.cpp	2024-11-18 14:21:01
+@@ -575,8 +575,11 @@
+         register_backend(ggml_backend_cuda_reg());
+ #endif
+ #ifdef GGML_USE_METAL
++#include <TargetConditionals.h>
++#if !TARGET_OS_SIMULATOR
+         register_backend(ggml_backend_metal_reg());
+ #endif
++#endif
+ #ifdef GGML_USE_SYCL
+         register_backend(ggml_backend_sycl_reg());
+ #endif

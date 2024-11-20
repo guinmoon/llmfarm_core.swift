@@ -1,0 +1,19 @@
+--- ./update/examples/llava/clip.h	2024-09-11 14:43:24
++++ ../Sources/llmfarm_core_cpp/llama.cpp/examples/llava/clip.h	2024-09-11 19:20:20
+@@ -3,6 +3,7 @@
+ 
+ #include <stddef.h>
+ #include <stdint.h>
++#include <stdbool.h>
+ 
+ #ifdef LLAMA_SHARED
+ #    if defined(_WIN32) && !defined(__MINGW32__)
+@@ -39,7 +40,7 @@
+     size_t size;
+ };
+ 
+-CLIP_API struct clip_ctx * clip_model_load    (const char * fname, int verbosity);
++CLIP_API struct clip_ctx * clip_model_load    (const char * fname, int verbosity,int ngl);
+ CLIP_API struct clip_ctx * clip_model_load_cpu(const char * fname, int verbosity);
+ 
+ CLIP_API void clip_free(struct clip_ctx * ctx);

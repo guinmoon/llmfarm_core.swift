@@ -1,0 +1,20 @@
+--- ./update/examples/llava/llava-cli.cpp	2024-09-11 14:43:24
++++ ../Sources/llmfarm_core_cpp/llama.cpp/examples/llava/llava-cli.cpp	2024-09-11 16:19:37
+@@ -237,7 +237,7 @@
+         prompt = "describe the image in detail.";
+     }
+ 
+-    auto ctx_clip = clip_model_load(clip_path, /*verbosity=*/ 1);
++    auto ctx_clip = clip_model_load(clip_path, /*verbosity=*/ 1,params->n_gpu_layers);
+ 
+ 
+     llama_context_params ctx_params = llama_context_params_from_gpt_params(*params);
+@@ -275,7 +275,7 @@
+     LOG_TEE("%s", text);
+ }
+ 
+-int main(int argc, char ** argv) {
++int run_llava(int argc, char ** argv, bool(*swift_callback)(const char*)){
+     ggml_time_init();
+ 
+     gpt_params params;

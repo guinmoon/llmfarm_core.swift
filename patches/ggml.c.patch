@@ -1,0 +1,20 @@
+--- ./update/ggml/src/ggml.c	2024-09-28 15:32:46
++++ ../Sources/llmfarm_core_cpp/llama.cpp/ggml/src/ggml.c	2024-10-03 12:22:41
+@@ -44,7 +44,7 @@
+ #endif
+ 
+ #ifdef GGML_USE_LLAMAFILE
+-#include <llamafile/sgemm.h>
++#include "llamafile/sgemm.h"
+ #endif
+ 
+ #if defined(_MSC_VER)
+@@ -13990,7 +13990,7 @@
+         const int64_t i10 = (i - i12*ne11*ne10 - i11*ne10);
+         const int64_t i01 = *(int32_t *) ((char *) src1->data + i10*nb10 + i11*nb11 + i12*nb12);
+ 
+-        GGML_ASSERT(i01 >= 0 && i01 < ne01);
++        // GGML_ASSERT(i01 >= 0 && i01 < ne01);
+ 
+         ggml_vec_cpy_f32(nc,
+                 (float *) ((char *)  dst->data + i10*nb1  + i11*nb2  + i12*nb3),
