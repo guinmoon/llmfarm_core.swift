@@ -333,7 +333,7 @@ int check_tensor_name(struct ggml_tensor * t){
                                                 uint32_t    seed                  = LLAMA_DEFAULT_SEED,
                                                 const char * grammar_path = ""){
     // sparams
-    struct common_sampler_params  sparams;
+    struct common_params_sampling  sparams;
     sparams.n_prev = n_prev;
     sparams.top_k = top_k;
     sparams.top_p = top_p;              // 1.0 = disabled
@@ -351,7 +351,7 @@ int check_tensor_name(struct ggml_tensor * t){
     sparams.mirostat_tau   = mirostat_tau;           // target entropy
     sparams.mirostat_eta   = mirostat_eta;
     sparams.seed = seed;
-     sparams.no_perf = true;	
+    sparams.no_perf = true;
     if (sparams.seed == 0)
         sparams.seed = LLAMA_DEFAULT_SEED;        
 
