@@ -122,6 +122,7 @@ public class LLMBase/*: LLMInference*/ {
         return false
     }
     
+    
     public func llm_token_is_eog(token: ModelToken) -> Bool{
         if token == llm_token_eos(){
             return true
@@ -261,6 +262,7 @@ public class LLMBase/*: LLMInference*/ {
 
 //     }
     
+    public func ForgotLastNTokens(_ N: Int32){ }
     
     public func load_state(){}
     
@@ -290,7 +292,7 @@ public class LLMBase/*: LLMInference*/ {
     }
     
     
-    public func llm_token_to_str(outputToken:Int32) -> String? {
+    public func LLMTokenToStr(outputToken:Int32) -> String? {
         // if let cStr = gpt_base_token_to_str(context, outputToken){
         //     return String(cString: cStr)
         // }
@@ -300,7 +302,7 @@ public class LLMBase/*: LLMInference*/ {
     
     public func _eval_system_prompt(system_prompt:String? = nil) throws{
         if system_prompt != nil{
-            var system_pormpt_Tokens = try tokenizePrompt(system_prompt ?? "", .None)            
+            var system_pormpt_Tokens = try TokenizePrompt(system_prompt ?? "", .None)            
             var eval_res:Bool? = nil
             try ExceptionCather.catchException {
                 eval_res = try? self.llm_eval(inputBatch: &system_pormpt_Tokens)
@@ -328,7 +330,7 @@ public class LLMBase/*: LLMInference*/ {
         }
     }
     
-    public func kv_shift() throws{
+    public func KVShift() throws{
         self.nPast = self.nPast / 2
         try ExceptionCather.catchException {
             var in_batch = [self.llm_token_eos()]
@@ -337,7 +339,7 @@ public class LLMBase/*: LLMInference*/ {
         print("Context Limit!")
     }
 
-    public func chekc_skip_tokens (_ token:Int32) ->Bool{
+    public func CheckSkipTokens (_ token:Int32) ->Bool{
         for skip in self.contextParams.skip_tokens{
             if skip == token{
                 return false
@@ -346,7 +348,7 @@ public class LLMBase/*: LLMInference*/ {
         return true
     }
 
-    public func eval_input_tokens_batched(inputTokens: inout [ModelToken],callback: ((String, Double) -> Bool)) throws -> Void {
+    public func EvalInputTokensBatched(inputTokens: inout [ModelToken],callback: ((String, Double) -> Bool)) throws -> Void {
         var inputBatch: [ModelToken] = []
         while inputTokens.count > 0 {
             inputBatch.removeAll()
@@ -357,7 +359,7 @@ public class LLMBase/*: LLMInference*/ {
             inputTokens.removeFirst(evalCount)
 
             if self.nPast + Int32(inputBatch.count) >= self.contextParams.context{
-                try self.kv_shift()
+                try self.KVShift()
                 _ = callback(" `C_LIMIT` ",0)
             }
             var eval_res:Bool? = nil
@@ -371,7 +373,10 @@ public class LLMBase/*: LLMInference*/ {
         }
     }
 
-    public func predict(_ input: String, _ callback: ((String, Double) -> Bool),system_prompt:String? = nil,img_path: String? = nil ) throws -> String {
+    public func Predict(_ input: String, _ evalCallback: ((String, Double) -> Bool),
+                        system_prompt:String? = nil,
+                        img_path: String? = nil,
+                        infoCallback: ((String,Any) -> Void)? = nil ) throws -> String {
         //Eval system prompt then image if it's not nil
         if self.nPast == 0{
             try _eval_system_prompt(system_prompt:system_prompt)
@@ -382,7 +387,9 @@ public class LLMBase/*: LLMInference*/ {
         print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
         // Tokenize with prompt format
         do {
-            var inputTokens = try tokenizePrompt(input, self.contextParams.promptFormat)
+            var inputTokens = try TokenizePrompt(input, self.contextParams.promptFormat)
+            infoCallback?("itc",inputTokens.count)
+            
             if inputTokens.count == 0 && img_path == nil{
                 return "Empty input."
             }
@@ -396,7 +403,7 @@ public class LLMBase/*: LLMInference*/ {
             var inputBatch: [ModelToken] = []
         
             //Batched Eval all input tokens             
-            try eval_input_tokens_batched(inputTokens: &inputTokens,callback:callback)            
+            try EvalInputTokensBatched(inputTokens: &inputTokens,callback:evalCallback)            
             // Output
             outputRepeatTokens = []
             var output = [String]()
@@ -428,18 +435,18 @@ public class LLMBase/*: LLMInference*/ {
 
                 // Check for BOS and tokens in skip list
                 var skipCallback = false
-                if !self.chekc_skip_tokens(outputToken){
+                if !self.CheckSkipTokens(outputToken){
                     print("Skip token: \(outputToken)")
                     skipCallback = true
                 }
                 // Convert token to string and callback             
-                if !skipCallback, let str = llm_token_to_str(outputToken: outputToken){
+                if !skipCallback, let str = LLMTokenToStr(outputToken: outputToken){
                     output.append(str)
                     // Per token callback
                      let (output, time) = Utils.time {
                          return str
                      }
-                     if callback(output, time) {
+                     if evalCallback(output, time) {
                         // Early exit if requested by callback
                         print(" * exit requested by callback *")
                         completion_loop = false 
@@ -457,8 +464,8 @@ public class LLMBase/*: LLMInference*/ {
                     // Send generated token back into model for next generation
                     var eval_res:Bool? = nil
                     if self.nPast >= self.contextParams.context - 2{
-                        try self.kv_shift()
-                        _ = callback(" `C_LIMIT` ",0)
+                        try self.KVShift()
+                        _ = evalCallback(" `C_LIMIT` ",0)
                     }
                     try ExceptionCather.catchException {
                         inputBatch = [outputToken]
@@ -472,6 +479,7 @@ public class LLMBase/*: LLMInference*/ {
                 }
             }
             print("Total tokens: \(inputTokensCount + output.count) (\(inputTokensCount) -> \(output.count))")
+            infoCallback?("otc",output.count)
             // print("Past token count: \(nPast)/\(contextLength) (\(past.count))")
             // Return full string for case without callback
             return output.joined()
@@ -482,7 +490,7 @@ public class LLMBase/*: LLMInference*/ {
     }
 
     
-    public func llm_tokenize(_ input: String, add_bos: Bool? = nil, parse_special:Bool? = nil) -> [ModelToken] {
+    public func LLMTokenize(_ input: String, add_bos: Bool? = nil, parse_special:Bool? = nil) -> [ModelToken] {
         return []
         // if input.count == 0 {
         //     return []
@@ -504,17 +512,17 @@ public class LLMBase/*: LLMInference*/ {
         // return embeddings
     }
     
-    public func tokenizePrompt(_ input: String, _ style: ModelPromptStyle) throws -> [ModelToken] {
+    public func TokenizePrompt(_ input: String, _ style: ModelPromptStyle) throws -> [ModelToken] {
         switch style {
         case .None:
-            return llm_tokenize(input)
+            return LLMTokenize(input)
         case .Custom:
             var formated_input = self.contextParams.custom_prompt_format.replacingOccurrences(of: "{{prompt}}", with: input)
             formated_input = formated_input.replacingOccurrences(of: "{prompt}", with: input)
             formated_input = formated_input.replacingOccurrences(of: "\\n", with: "\n")
             var tokenized:[ModelToken] = []
             try ExceptionCather.catchException {
-                tokenized = llm_tokenize(formated_input)
+                tokenized = LLMTokenize(formated_input)
             }
             return tokenized
          }
@@ -527,7 +535,7 @@ public class LLMBase/*: LLMInference*/ {
 
         let splited_skip_tokens = self.contextParams.skip_tokens_str.components(separatedBy: [","])
         for word in splited_skip_tokens{
-            let tokenized_skip = self.llm_tokenize(word,add_bos: false,parse_special: true)
+            let tokenized_skip = self.LLMTokenize(word,add_bos: false,parse_special: true)
             // Add only if tokenized text is one token
             if tokenized_skip.count == 1{
                 self.contextParams.skip_tokens.append(tokenized_skip[0])

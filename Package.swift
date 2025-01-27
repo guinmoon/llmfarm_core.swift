@@ -6,6 +6,7 @@ import PackageDescription
 
 
 var sources = [ "llama.cpp/ggml/src/ggml.c",
+                "llama.cpp/ggml/src/gguf.cpp",
                 "llama.cpp/ggml/src/ggml-quants.c",
                 "llama.cpp/ggml/src/ggml-alloc.c",
                 "llama.cpp/ggml/src/ggml-backend.cpp",
@@ -26,6 +27,20 @@ var sources = [ "llama.cpp/ggml/src/ggml.c",
                 "llama.cpp/src/llama-grammar.cpp",
                 "llama.cpp/src/llama-vocab.cpp",
                 "llama.cpp/src/llama-sampling.cpp",
+                "llama.cpp/src/llama-context.cpp",
+                "llama.cpp/src/llama-kv-cache.cpp",
+                "llama.cpp/src/llama-mmap.cpp",
+                "llama.cpp/src/llama-quant.cpp",
+                "llama.cpp/src/llama-model.cpp",
+                "llama.cpp/src/llama-model-loader.cpp",
+                "llama.cpp/src/llama-impl.cpp",
+                "llama.cpp/src/llama-cparams.cpp",
+                "llama.cpp/src/llama-hparams.cpp",
+                "llama.cpp/src/llama-chat.cpp",
+                "llama.cpp/src/llama-batch.cpp",
+                "llama.cpp/src/llama-arch.cpp",
+                "llama.cpp/src/llama-adapter.cpp",
+                
                 "llama.cpp/common/common.cpp",
                 "llama.cpp/common/log.cpp",
                 "llama.cpp/common/arg.cpp",
@@ -86,6 +101,7 @@ var cSettings: [CSetting] =  [
                 .unsafeFlags(["-w"]),    // ignore all warnings
 
                 .headerSearchPath("llama.cpp/common"),
+                .headerSearchPath("llama.cpp/include"),
                 .headerSearchPath("llama.cpp/ggml/include"),
                 .headerSearchPath("llama.cpp/ggml/src"),
                 .headerSearchPath("llama.cpp/ggml/src/ggml-cpu"),

@@ -110,7 +110,12 @@ public class AI {
     }
 
 
-    public func conversation(_ input: String,  _ tokenCallback: ((String, Double)  -> ())?, _ completion: ((String) -> ())?,system_prompt:String?, img_path: String? = nil) {
+    public func conversation(_ input: String,
+                             _ tokenCallback: ((String, Double)  -> ())?,
+                             _ infoCallBack: ((String,Any) -> ())?,
+                             _ completion: ((String) -> ())?,
+                             system_prompt:String?,
+                             img_path: String? = nil) {
         flagResponding = true
         aiQueue.async {
             guard let completion = completion else { return }
@@ -128,18 +133,24 @@ public class AI {
             var output:String? = ""
             do{
                 try ExceptionCather.catchException {
-                    output = try? self.model?.predict(input, { str, time in
-                        if self.flagExit {
-                            // Reset flag
-                            self.flagExit = false
-                            // Alert model of exit flag
-                            return true
-                        }
-                        DispatchQueue.main.async {
-                            tokenCallback?(str, time)
-                        }
-                        return false
-                    },system_prompt:system_prompt,img_path:img_path)
+                    output = try? self.model?.Predict(input,
+                        { str, time in
+                            if self.flagExit {
+                                // Reset flag
+                                self.flagExit = false
+                                // Alert model of exit flag
+                                return true
+                            }
+                            DispatchQueue.main.async {
+                                tokenCallback?(str, time)
+                            }
+                            return false
+                        },
+                        system_prompt:system_prompt,
+                        img_path:img_path,
+                        infoCallback:{str, obj in
+                                infoCallBack?(str,obj)
+                        })
                 }
             }catch{
                 print(error)

@@ -13,6 +13,7 @@ public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
     public var ctx_sampling: OpaquePointer?
+    public var vocab: OpaquePointer?
     public var batch: llama_batch?
     public var hardware_arch: String=""
     public var temporary_invalid_cchars: [CChar]  = []
@@ -99,6 +100,7 @@ public class LLaMa: LLMBase {
         llama_backend_init()
         try ExceptionCather.catchException {
             self.model = llama_load_model_from_file(path, model_params)
+            self.vocab = llama_model_get_vocab(model);
         }
         if self.model == nil{
             return false
@@ -203,7 +205,7 @@ public class LLaMa: LLMBase {
     }
     
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
-        return llama_n_vocab(self.model)
+        return llama_n_vocab(self.vocab)
     }
     
     override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
@@ -222,6 +224,9 @@ public class LLaMa: LLMBase {
         return true
     }
     
+    public override func ForgotLastNTokens(_ N: Int32){
+        llama_kv_cache_seq_rm(self.context, -1, 0/*begin*/, -1/*end*/);
+    }
     
     //    if (llama_model_has_encoder(model)) {
     //         int enc_input_size = embd_inp.size();
@@ -271,7 +276,7 @@ public class LLaMa: LLMBase {
     //     }
     // }
     
-    public override func kv_shift() throws{
+    public override func KVShift() throws{
         let n_discard = self.nPast/2
         llama_kv_cache_seq_rm (context, 0, self.sampleParams.repeat_last_n            , self.sampleParams.repeat_last_n + n_discard);
         llama_kv_cache_seq_add(context, 0,  self.sampleParams.repeat_last_n + n_discard, self.nPast, -n_discard);
@@ -338,7 +343,7 @@ public class LLaMa: LLMBase {
         }
         //        llama_token_to_piece(const struct llama_model * model, llama_token token, char * buf, int32_t length, bool special)
         //        llama_token_to_piece(const struct llama_model * model,llama_token   token,char * buf,int32_t   length,int32_t   lstrip,bool   special);
-        let nTokens = llama_token_to_piece(model, token, result, 8,0,/*true*/self.contextParams.parse_special_tokens)
+        let nTokens = llama_token_to_piece(self.vocab, token, result, 8,0,/*true*/self.contextParams.parse_special_tokens)
         
         if nTokens < 0 {
             let newResult = UnsafeMutablePointer<Int8>.allocate(capacity: Int(-nTokens))
@@ -346,7 +351,7 @@ public class LLaMa: LLMBase {
             defer {
                 newResult.deallocate()
             }
-            let nNewTokens = llama_token_to_piece(model, token, newResult, -nTokens,0,/*true*/self.contextParams.parse_special_tokens)
+            let nNewTokens = llama_token_to_piece(self.vocab, token, newResult, -nTokens,0,/*true*/self.contextParams.parse_special_tokens)
             let bufferPointer = UnsafeBufferPointer(start: newResult, count: Int(nNewTokens))
             return Array(bufferPointer)
         } else {
@@ -355,7 +360,7 @@ public class LLaMa: LLMBase {
         }
     }
     
-    public override func llm_token_to_str(outputToken:Int32) -> String? {
+    public override func LLMTokenToStr(outputToken:Int32) -> String? {
         //        if let cStr = llama_token_to_str(context, outputToken){
         //            return String(cString: cStr)
         //        }
@@ -378,19 +383,19 @@ public class LLaMa: LLMBase {
     }
 
     public override func llm_token_is_eog(token: ModelToken) -> Bool{
-        return llama_token_is_eog(model, token) ;
+        return llama_vocab_is_eog(self.vocab, token) ;
     }
     
     public override func llm_token_nl() -> ModelToken{
-        return llama_token_nl(self.model)
+        return llama_vocab_nl(self.vocab)
     }
     
     public override func llm_token_bos() -> ModelToken{
-        return llama_token_bos(self.model)
+        return llama_vocab_bos(self.vocab)
     }
     
     public override func llm_token_eos() -> ModelToken{
-        return llama_token_eos(self.model)
+        return llama_vocab_eos(self.vocab)
     }
     
 //    // if user stop generation mid-way, we must add EOT to finish model's last response
@@ -400,14 +405,14 @@ public class LLaMa: LLMBase {
 //                           need_insert_eot = false;
 //                       }
     
-    public override func llm_tokenize(_ input: String, add_bos: Bool?, parse_special:Bool?) -> [ModelToken] {
+    public override func LLMTokenize(_ input: String, add_bos: Bool?, parse_special:Bool?) -> [ModelToken] {
         if input.count == 0 {
             return []
         }
         print("input \(input)")
         let n_tokens = Int32(input.utf8.count) + (self.contextParams.add_bos_token == true ? 1 : 0)
         var embeddings: [llama_token] = Array<llama_token>(repeating: llama_token(), count: input.utf8.count)
-        let n:Int32 = llama_tokenize(self.model, input, Int32(input.utf8.count), &embeddings, n_tokens,
+        let n:Int32 = llama_tokenize(self.vocab, input, Int32(input.utf8.count), &embeddings, n_tokens,
                                      add_bos ?? self.contextParams.add_bos_token,
                                      parse_special ?? self.contextParams.parse_special_tokens)
         if n<=0{
@@ -427,9 +432,9 @@ public class LLaMa: LLMBase {
                 print("failed to eval encode.")
                 return [];                
             }
-            var decoder_start_token_id = llama_model_decoder_start_token(model)
+            var decoder_start_token_id = llama_model_decoder_start_token(self.model)
             if (decoder_start_token_id == -1) {
-                decoder_start_token_id = llama_token_bos(model)
+                decoder_start_token_id = llama_vocab_bos(self.vocab)
             }
             embeddings = [decoder_start_token_id]
         }        
