@@ -4,6 +4,7 @@
 
 import Foundation
 import llmfarm_core_cpp
+import llama
 
 // var LLaMa_obj_ptr:UnsafeMutableRawPointer? = nil
 var LLaMa_obj:LLaMa? = nil
@@ -12,33 +13,55 @@ var LLaMa_obj:LLaMa? = nil
 public class LLaMa: LLMBase {
     
     public var model: OpaquePointer?
-    public var ctx_sampling: OpaquePointer?
+//    public var ctx_sampling: OpaquePointer?
     public var vocab: OpaquePointer?
-    public var batch: llama_batch?
+//    public var batch: llama_batch? 
     public var hardware_arch: String=""
     public var temporary_invalid_cchars: [CChar]  = []
     
+    private var sampling: UnsafeMutablePointer<llama_sampler>?
+    private var batch: llama_batch?
+    private var tokens_list: [llama_token]?
+    
     public func init_sampling_param(){
-        self.ctx_sampling = init_sampling(model,
-                                          sampleParams.repeat_last_n,
-                                          sampleParams.top_k,
-                                          sampleParams.top_p,
-                                          sampleParams.min_p,
-                                          sampleParams.tfs_z,
-                                          sampleParams.typical_p,
-                                          sampleParams.temp,
-                                          0.0,
-                                          1.0,
-                                          sampleParams.repeat_last_n,
-                                          sampleParams.repeat_penalty,
-                                          sampleParams.frequence_penalty,
-                                          sampleParams.presence_penalty,
-                                          sampleParams.mirostat,
-                                          sampleParams.mirostat_tau,
-                                          sampleParams.mirostat_eta,
-                                          sampleParams.penalize_nl,
-                                          0 /*SEED*/,
-                                          self.contextParams.grammar_path ?? "");
+//        self.ctx_sampling = init_sampling(model,
+//                                          sampleParams.repeat_last_n,
+//                                          sampleParams.top_k,
+//                                          sampleParams.top_p,
+//                                          sampleParams.min_p,
+//                                          sampleParams.tfs_z,
+//                                          sampleParams.typical_p,
+//                                          sampleParams.temp,
+//                                          0.0,
+//                                          1.0,
+//                                          sampleParams.repeat_last_n,
+//                                          sampleParams.repeat_penalty,
+//                                          sampleParams.frequence_penalty,
+//                                          sampleParams.presence_penalty,
+//                                          sampleParams.mirostat,
+//                                          sampleParams.mirostat_tau,
+//                                          sampleParams.mirostat_eta,
+//                                          sampleParams.penalize_nl,
+//                                          0 /*SEED*/,
+//                                          self.contextParams.grammar_path ?? "");
+        llama_sampler_chain_add(self.sampling, llama_sampler_init_dist(1234567))
+        if (sampleParams.temp == 0){
+            llama_sampler_chain_add(self.sampling, llama_sampler_init_greedy())
+            return;
+        }
+        llama_sampler_chain_add(self.sampling, llama_sampler_init_temp(sampleParams.temp))
+        if (sampleParams.top_k != 0){
+            llama_sampler_chain_add(self.sampling, llama_sampler_init_top_k(sampleParams.top_k))
+        }
+        //TODO mirostat v1
+        if (sampleParams.mirostat != 0){
+            llama_sampler_chain_add(self.sampling,
+                    llama_sampler_init_mirostat_v2(1234135,sampleParams.mirostat_tau,sampleParams.mirostat_eta))
+        }
+        
+        
+     
+        
     }
     
     public override func llm_load_model(path: String = "",contextParams: ModelAndContextParams = .default) throws -> Bool {
@@ -48,13 +71,20 @@ public class LLaMa: LLMBase {
         context_params.n_ctx = UInt32(contextParams.context)
 //        context_params.seed = UInt32(contextParams.seed)
         context_params.n_threads = contextParams.n_threads
-        context_params.logits_all = contextParams.logitsAll
+//        context_params.logits_all = contextParams.logitsAll
         context_params.flash_attn = contextParams.flash_attn
         // context_params.flash_attn = false
         
         model_params.vocab_only = contextParams.vocabOnly
         model_params.use_mlock = contextParams.useMlock
         model_params.use_mmap = contextParams.useMMap
+        
+        let sparams = llama_sampler_chain_default_params()
+        self.sampling = llama_sampler_chain_init(sparams)
+        init_sampling_param()
+//        llama_sampler_init_top_p(<#T##p: Float##Float#>, <#T##min_keep: Int##Int#>)
+        
+        vocab = llama_model_get_vocab(model)
         
         self.retain_new_self_ptr()
         model_params.progress_callback = { progress,b in
@@ -81,6 +111,7 @@ public class LLaMa: LLMBase {
         }else{
             model_params.n_gpu_layers = 0
         }
+        
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
         if self.hardware_arch=="x86_64"{
             model_params.n_gpu_layers = 0
@@ -97,9 +128,10 @@ public class LLaMa: LLMBase {
             model_params.use_mmap = false
         }
         _ = self.modelLoadProgressCallback?(0)
-        llama_backend_init()
+//        llama_backend_init()
         try ExceptionCather.catchException {
-            self.model = llama_load_model_from_file(path, model_params)
+//            self.model = llama_load_model_from_file(path, model_params)
+            self.model = llama_model_load_from_file(path,model_params);
             self.vocab = llama_model_get_vocab(model);
         }
         if self.model == nil{
@@ -123,7 +155,8 @@ public class LLaMa: LLMBase {
         // }
         // llama_lora_adapter_set(lctx, adapter, lora_scale);
         try ExceptionCather.catchException {
-            self.context = llama_new_context_with_model(self.model, context_params)
+//            self.context = llama_new_context_with_model(self.model, context_params)
+            self.context = llama_init_from_model(self.model, context_params)
         }
         if self.context == nil {
             return false
@@ -135,14 +168,16 @@ public class LLaMa: LLMBase {
         
         self.load_state()
         
-        self.batch = llama_batch_init(sampleParams.n_batch, 0, 1)
+//        self.batch = llama_batch_init(sampleParams.n_batch, 0, 1)
+        self.batch =  llama_batch_init(512, 0, 1)
         return true
     }
     
     
     public override func llm_sample() -> ModelToken {
-        let id  = spm_llama_sampling_sample(self.ctx_sampling, self.context, /*nil,*/-1,false);
-        spm_llama_sampling_accept(self.ctx_sampling, self.context,  id, /* apply_grammar= */ true);
+//        let id  = spm_llama_sampling_sample(self.ctx_sampling, self.context, /*nil,*/-1,false);
+//        spm_llama_sampling_accept(self.ctx_sampling, self.context,  id, /* apply_grammar= */ true);
+        let id = llama_sampler_sample(sampling, context, batch!.n_tokens - 1)
         return id;
     }
     
@@ -177,7 +212,7 @@ public class LLaMa: LLMBase {
     public override func destroy_objects(){
         print("destroy LLaMa")
         if batch != nil{
-            llama_batch_free(batch!)
+//            llama_batch_free(batch!)
         }
         if context != nil{
             llama_free(context)
@@ -205,7 +240,7 @@ public class LLaMa: LLMBase {
     }
     
     override func llm_n_vocab(_ ctx: OpaquePointer!) -> Int32{
-        return llama_n_vocab(self.vocab)
+        return llama_vocab_n_tokens(self.vocab)
     }
     
     override func llm_get_logits(_ ctx: OpaquePointer!) -> UnsafeMutablePointer<Float>?{
@@ -216,6 +251,7 @@ public class LLaMa: LLMBase {
     
     public override func llm_eval(inputBatch: inout [ModelToken]) throws -> Bool {
         
+//        llama_batch_clear(&batch!)
         if llama_decode(context,llama_batch_get_one(&inputBatch, Int32(inputBatch.count))) != 0 {
 //        if llama_decode(context,llama_batch_get_one(&inputBatch, Int32(inputBatch.count), self.nPast, 0)) != 0 {
             print("failed to evaluate llama!")
@@ -225,7 +261,7 @@ public class LLaMa: LLMBase {
     }
     
     public override func ForgotLastNTokens(_ N: Int32){
-        llama_kv_cache_seq_rm(self.context, -1, 0/*begin*/, -1/*end*/);
+//        llama_kv_cache_seq_rm(self.context, -1, 0/*begin*/, -1/*end*/);
     }
     
     //    if (llama_model_has_encoder(model)) {
@@ -277,19 +313,19 @@ public class LLaMa: LLMBase {
     // }
     
     public override func KVShift() throws{
-        let n_discard = self.nPast/2
-        llama_kv_cache_seq_rm (context, 0, self.sampleParams.repeat_last_n            , self.sampleParams.repeat_last_n + n_discard);
-        llama_kv_cache_seq_add(context, 0,  self.sampleParams.repeat_last_n + n_discard, self.nPast, -n_discard);
-//        llama_kv_cache_seq_rm (ctx, 0, params.n_keep            , params.n_keep + n_discard);
-//        llama_kv_cache_seq_add(ctx, 0, params.n_keep + n_discard, n_past, -n_discard);
-        self.nPast -= n_discard;
-//        try ExceptionCather.catchException {
-//            var in_batch = [self.llm_token_eos()]
-//            _ = try? self.llm_eval(inputBatch: &in_batch)
-//        }
-        self.nPast+=1
-//        self.outputRepeatTokens = []
-        print("Context Limit!")
+//        let n_discard = self.nPast/2
+//        llama_kv_cache_seq_rm (context, 0, self.sampleParams.repeat_last_n            , self.sampleParams.repeat_last_n + n_discard);
+//        llama_kv_cache_seq_add(context, 0,  self.sampleParams.repeat_last_n + n_discard, self.nPast, -n_discard);
+////        llama_kv_cache_seq_rm (ctx, 0, params.n_keep            , params.n_keep + n_discard);
+////        llama_kv_cache_seq_add(ctx, 0, params.n_keep + n_discard, n_past, -n_discard);
+//        self.nPast -= n_discard;
+////        try ExceptionCather.catchException {
+////            var in_batch = [self.llm_token_eos()]
+////            _ = try? self.llm_eval(inputBatch: &in_batch)
+////        }
+//        self.nPast+=1
+////        self.outputRepeatTokens = []
+//        print("Context Limit!")
     }
     
     

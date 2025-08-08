@@ -1,1 +1,0 @@
-../llama.cpp/examples/llava/clip.h

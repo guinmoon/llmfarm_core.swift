@@ -23,7 +23,7 @@ public class LLMBase/*: LLMInference*/ {
     public var grammar: OpaquePointer?
     public var contextParams: ModelAndContextParams
     public var sampleParams: ModelSampleParams = .default    
-    public var core_resourses = get_core_bundle_path()    
+//    public var core_resourses = get_core_bundle_path()    
     public var session_tokens: [Int32] = []
     public var modelLoadProgressCallback: ((Float)  -> (Bool))? = nil    
     public var modelLoadCompleteCallback: ((String)  -> ())? = nil
@@ -71,7 +71,7 @@ public class LLMBase/*: LLMInference*/ {
                 try? self.load_grammar(self.contextParams.grammar_path!)
             }
             
-            print(String(cString: print_system_info()))
+//            print(String(cString: print_system_info()))
             try ExceptionCather.catchException {
                 _ = try? self.llm_init_logits()
             }
