@@ -53,13 +53,16 @@ public class LLaMa: LLMBase {
         if (sampleParams.top_k != 0){
             llama_sampler_chain_add(self.sampling, llama_sampler_init_top_k(sampleParams.top_k))
         }
+        if (sampleParams.top_p != 0){
+            llama_sampler_chain_add(self.sampling, llama_sampler_init_top_p(sampleParams.top_p,64)) //TODO 64 change to variable
+        }
         //TODO mirostat v1
         if (sampleParams.mirostat != 0){
             llama_sampler_chain_add(self.sampling,
                     llama_sampler_init_mirostat_v2(1234135,sampleParams.mirostat_tau,sampleParams.mirostat_eta))
         }
         
-        
+//        common_chat_templates_init(self.model, )
      
         
     }
@@ -72,7 +75,7 @@ public class LLaMa: LLMBase {
 //        context_params.seed = UInt32(contextParams.seed)
         context_params.n_threads = contextParams.n_threads
 //        context_params.logits_all = contextParams.logitsAll
-        context_params.flash_attn = contextParams.flash_attn
+//        context_params.flash_attn = contextParams.flash_attn
         // context_params.flash_attn = false
         
         model_params.vocab_only = contextParams.vocabOnly
@@ -110,6 +113,7 @@ public class LLaMa: LLMBase {
             model_params.n_gpu_layers = 100
         }else{
             model_params.n_gpu_layers = 0
+            model_params.devices = UnsafeMutablePointer<ggml_backend_dev_t?>.allocate(capacity: 1)
         }
         
         self.hardware_arch = Get_Machine_Hardware_Name()// Disable Metal on intel Mac
@@ -119,6 +123,7 @@ public class LLaMa: LLMBase {
         
 #if targetEnvironment(simulator)
         model_params.n_gpu_layers = 0
+        model_params.devices = UnsafeMutablePointer<ggml_backend_dev_t?>.allocate(capacity: 1)
 //        model_params.main_gpu = 0
 //        model_params.split_mode = LLAMA_SPLIT_MODE_NONE
         print("Running on simulator, force use n_gpu_layers = 0")
