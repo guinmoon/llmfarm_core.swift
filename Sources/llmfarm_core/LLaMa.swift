@@ -141,6 +141,8 @@ public class LLaMa: LLMBase {
         }
         if self.model == nil{
             return false
+            
+
         }
         init_sampling_param()
 //         for lora in contextParams.lora_adapters{
